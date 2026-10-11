@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+.next/
+out/
+.env
+.env.*
+!.env.example
