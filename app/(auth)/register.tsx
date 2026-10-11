@@ -74,9 +74,16 @@ export default function RegisterScreen() {
 
   const handleSignUp = () => {
     if (validate()) {
-      // TODO: Connect to Supabase auth
       console.log('Registering with:', { role, name, email, password });
-      router.replace('/(auth)/login'); // Temporary fallback, should go to tabs eventually
+      if (role === 'buyer') {
+        router.replace('/(buyer)');
+      } else if (role === 'farmer') {
+        router.replace('/(farmer)');
+      } else if (role === 'supplier') {
+        router.replace('/(supplier)');
+      } else {
+        router.replace('/(auth)/login');
+      }
     }
   };
 
@@ -85,8 +92,13 @@ export default function RegisterScreen() {
   };
 
   const handleGoogleAuth = () => {
-    // TODO: Implement Google OAuth
-    console.log('Google Auth');
+    if (role === 'farmer') {
+      router.replace('/(farmer)');
+    } else if (role === 'supplier') {
+      router.replace('/(supplier)');
+    } else {
+      router.replace('/(buyer)');
+    }
   };
 
   const RoleCard = ({ type, title, icon }: { type: Role, title: string, icon: keyof typeof MaterialCommunityIcons.glyphMap }) => {

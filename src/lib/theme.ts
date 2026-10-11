@@ -16,6 +16,29 @@ export const colors = {
     secondaryText: '#187A36',
     accent: '#7CD958', // Light green Next button
   },
+  buyer: {
+    background: '#F5F2EB',
+    cardBackground: '#FFFFFF',
+    forestDark: '#1E3523',
+    forestDarkest: '#16281A',
+    sageMint: '#A6C0A1',
+    sageLight: '#E8F5E9',
+    stoneCream: '#E7E3D8',
+    borderLight: '#E5E1D7',
+    textDark: '#16301A',
+    textMuted: '#6B7E6C',
+    badgeBlueBg: '#EBF2FF',
+    badgeBlueText: '#3D63DD',
+    badgeAmberBg: '#FFF4E5',
+    badgeAmberText: '#D97706',
+    tabBarBg: '#1B3220',
+    tabBarActive: '#FFFFFF',
+    tabBarInactive: '#889C8A',
+    tabBarIndicator: '#E68A28',
+    badgeOrange: '#E66926',
+    progressBarBg: '#E2DFD7',
+    progressBarFill: '#5D7C49',
+  },
 };
 
 export const typography = {
