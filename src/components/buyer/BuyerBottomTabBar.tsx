@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface BuyerBottomTabBarProps {
   state: {
@@ -102,8 +102,8 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
             tab.name === 'index'
               ? currentRouteName === 'index'
               : currentRouteName === tab.name ||
-                currentRouteName === `${tab.name}/index` ||
-                currentRouteName.startsWith(`${tab.name}/`);
+              currentRouteName === `${tab.name}/index` ||
+              currentRouteName.startsWith(`${tab.name}/`);
 
           const activeColor = '#FFFFFF';
           const inactiveColor = '#8A9E8D'; // Soft sage green matching design screenshot
@@ -115,10 +115,10 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
           const handlePress = () => {
             const event = matchingRoute
               ? navigation.emit({
-                  type: 'tabPress',
-                  target: matchingRoute.key,
-                  canPreventDefault: true,
-                })
+                type: 'tabPress',
+                target: matchingRoute.key,
+                canPreventDefault: true,
+              })
               : { defaultPrevented: false };
 
             if (!isFocused && !event.defaultPrevented) {

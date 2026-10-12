@@ -1,14 +1,14 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  View,
+  ImageBackground,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Platform,
-  ImageBackground,
+  View,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerStats } from '../../types/buyer.types';
 
 interface BuyerHeroBannerProps {
