@@ -8,6 +8,9 @@ export interface JourneyStage {
   iconName: string;
   notes?: string;
   inputsUsed?: string[];
+  tags?: string[];
+  recordCount?: number;
+  stageEmoji?: string;
 }
 
 export interface FieldItem {
@@ -29,6 +32,11 @@ export interface FieldItem {
   currentStageIndex?: number;
   totalStages?: number;
   recordCount?: number;
+  evidenceCount?: number;
+  isImmutable?: boolean;
+  nextStageName?: string;
+  nextStageEst?: string;
+  daysCount?: number;
 }
 
 export interface FarmerProfile {
@@ -67,4 +75,32 @@ export interface QuickFeatureCard {
   badgeDotColor?: string;
   bgTint: string;
   route?: string;
+}
+
+export interface RecentRecordItem {
+  id: string;
+  recordCode: string;
+  title: string;
+  stage: string;
+  date: string;
+  time?: string;
+  location?: string;
+  inputs?: string[];
+  photoEvidenceAttached?: boolean;
+  isLocked?: boolean;
+  isOriginal?: boolean;
+  cropId?: string;
+  isCompact?: boolean;
+}
+
+export interface UpcomingItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  iconType: 'stage' | 'message';
+  iconColor: string;
+  iconBg: string;
+  dotColor?: string;
+  route?: string;
+  cropId?: string;
 }

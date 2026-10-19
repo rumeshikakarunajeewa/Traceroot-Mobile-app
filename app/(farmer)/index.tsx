@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
+  useWindowDimensions,
   TouchableOpacity,
   Image,
   RefreshControl,
@@ -18,6 +20,9 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { FarmerWeatherCard } from '../../src/components/farmer/FarmerWeatherCard';
 import { FieldCard } from '../../src/components/farmer/FieldCard';
+import { ActiveJourneyCard } from '../../src/components/farmer/ActiveJourneyCard';
+import { RecentRecordCard } from '../../src/components/farmer/RecentRecordCard';
+import { UpcomingCard } from '../../src/components/farmer/UpcomingCard';
 import { PhotoOptionsModal } from '../../src/components/farmer/PhotoOptionsModal';
 import {
   mockFarmerProfile,
@@ -25,16 +30,28 @@ import {
   mockFarmerStats,
   mockQuickFeatures,
   mockFields,
+  mockRecentRecords,
+  mockUpcomingItems,
 } from '../../src/constants/farmerMockData';
-import { FieldItem } from '../../src/types/farmer.types';
+import { FieldItem, RecentRecordItem, UpcomingItem } from '../../src/types/farmer.types';
+import { useCropsStore, updateFieldPhoto } from '../../src/store/cropStore';
 
 export default function FarmerHomeScreen() {
+  const { width: windowWidth } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   // Ensure the plant growth animation and loop run reliably on dashboard
   const isFocused = true;
 
-  // Fields, Category filter, and Photo picker state
-  const [fields, setFields] = useState<FieldItem[]>(mockFields);
+  // Active Journey card dimensions for single full-width card paging
+  const DASHBOARD_PADDING = 18;
+  const JOURNEY_CARD_GAP = 12;
+  const JOURNEY_CARD_WIDTH = windowWidth - DASHBOARD_PADDING * 2;
+  const JOURNEY_SNAP_INTERVAL = JOURNEY_CARD_WIDTH + JOURNEY_CARD_GAP;
+
+  const [activeJourneyIndex, setActiveJourneyIndex] = useState(0);
+
+  // Reactive shared fields store across Dashboard, My Crops, and Journey page
+  const { fields } = useCropsStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [selectedFieldForPhoto, setSelectedFieldForPhoto] = useState<FieldItem | null>(null);
@@ -50,6 +67,12 @@ export default function FarmerHomeScreen() {
   const statsSlide = useRef(new Animated.Value(20)).current;
   const actionsFade = useRef(new Animated.Value(0)).current;
   const actionsSlide = useRef(new Animated.Value(25)).current;
+  const journeyFade = useRef(new Animated.Value(0)).current;
+  const journeySlide = useRef(new Animated.Value(30)).current;
+  const recordsFade = useRef(new Animated.Value(0)).current;
+  const recordsSlide = useRef(new Animated.Value(30)).current;
+  const upcomingFade = useRef(new Animated.Value(0)).current;
+  const upcomingSlide = useRef(new Animated.Value(30)).current;
 
   // Summary numbers count-up animated values
   const countCropsAnim = useRef(new Animated.Value(0)).current;
@@ -81,6 +104,18 @@ export default function FarmerHomeScreen() {
       Animated.parallel([
         Animated.timing(actionsFade, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(actionsSlide, { toValue: 0, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(journeyFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(journeySlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(recordsFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(recordsSlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(upcomingFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(upcomingSlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
     ]).start();
 
@@ -172,11 +207,8 @@ export default function FarmerHomeScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newUri = result.assets[0].uri;
-        // Update local state with newly taken photo
-        // TODO: Upload to Supabase Storage and persist URL in database
-        setFields((prev) =>
-          prev.map((f) => (f.id === selectedFieldForPhoto.id ? { ...f, imageUrl: newUri } : f))
-        );
+        // Update shared reactive store immediately (reflects across Dashboard, My Crops, and Journey)
+        updateFieldPhoto(selectedFieldForPhoto.id, newUri);
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -205,11 +237,8 @@ export default function FarmerHomeScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newUri = result.assets[0].uri;
-        // Update local state with selected photo
-        // TODO: Upload to Supabase Storage and persist URL in database
-        setFields((prev) =>
-          prev.map((f) => (f.id === selectedFieldForPhoto.id ? { ...f, imageUrl: newUri } : f))
-        );
+        // Update shared reactive store immediately (reflects across Dashboard, My Crops, and Journey)
+        updateFieldPhoto(selectedFieldForPhoto.id, newUri);
       }
     } catch (error) {
       console.error('Error choosing photo:', error);
@@ -219,11 +248,7 @@ export default function FarmerHomeScreen() {
 
   const handleRemovePhoto = () => {
     if (!selectedFieldForPhoto) return;
-    // Reset photo for selected field
-    // TODO: Upload to Supabase Storage / remove from database
-    setFields((prev) =>
-      prev.map((f) => (f.id === selectedFieldForPhoto.id ? { ...f, imageUrl: undefined } : f))
-    );
+    updateFieldPhoto(selectedFieldForPhoto.id, undefined);
   };
 
   const handleNavigateToJourney = (field: FieldItem) => {
@@ -241,6 +266,12 @@ export default function FarmerHomeScreen() {
             f.category?.toLowerCase() === selectedCategory.toLowerCase() ||
             f.cropName.toLowerCase().includes(selectedCategory.toLowerCase())
         );
+
+  // Active journeys filter: Crops that are actively growing/in progress (not harvested)
+  // TODO: Fetch active cultivation cycles directly from Supabase query where status = 'active'
+  const activeCrops = fields.filter(
+    (f) => f.statusBadge === 'Healthy' || f.statusBadge === 'Growing' || f.statusBadge === 'Attention'
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -543,6 +574,201 @@ export default function FarmerHomeScreen() {
               <Text style={styles.addFieldSubtitle}>Register a new crop plot</Text>
             </TouchableOpacity>
           </ScrollView>
+        </Animated.View>
+
+        {/* 7. Section: "Active journey" */}
+        <Animated.View
+          style={[
+            styles.activeJourneySection,
+            {
+              opacity: journeyFade,
+              transform: [{ translateY: journeySlide }],
+            },
+          ]}
+        >
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.journeySectionTitle}>Active journey</Text>
+            <TouchableOpacity
+              style={styles.seeAllPillBtn}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(farmer)/crops')}
+            >
+              <Text style={styles.seeAllPillText}>See All</Text>
+              <Feather name="chevron-right" size={13} color="#5D7A65" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Active Journey Horizontal FlatList / Empty state */}
+          {activeCrops.length > 0 ? (
+            <View>
+              <FlatList
+                horizontal
+                data={activeCrops}
+                keyExtractor={(item) => item.id}
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={activeCrops.length > 1 ? JOURNEY_SNAP_INTERVAL : undefined}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                disableIntervalMomentum={true}
+                nestedScrollEnabled={true}
+                contentContainerStyle={styles.horizontalJourneyContainer}
+                ItemSeparatorComponent={() => <View style={{ width: JOURNEY_CARD_GAP }} />}
+                onScroll={(event) => {
+                  const offsetX = event.nativeEvent.contentOffset.x;
+                  const newIndex = Math.round(offsetX / JOURNEY_SNAP_INTERVAL);
+                  if (newIndex >= 0 && newIndex < activeCrops.length && newIndex !== activeJourneyIndex) {
+                    setActiveJourneyIndex(newIndex);
+                  }
+                }}
+                scrollEventThrottle={16}
+                renderItem={({ item, index }) => (
+                  <ActiveJourneyCard
+                    crop={item}
+                    index={index}
+                    cardWidth={JOURNEY_CARD_WIDTH}
+                    isSingle={activeCrops.length === 1}
+                    onPress={() => handleNavigateToJourney(item)}
+                  />
+                )}
+              />
+
+              {/* Page Indicator Dots (Only visible when more than 1 journey) */}
+              {activeCrops.length > 1 && (
+                <View style={styles.paginationDotsContainer}>
+                  {activeCrops.map((_, dotIdx) => {
+                    const isActive = dotIdx === activeJourneyIndex;
+                    return (
+                      <View
+                        key={`journey-dot-${dotIdx}`}
+                        style={[
+                          styles.paginationDot,
+                          isActive ? styles.paginationDotActive : styles.paginationDotInactive,
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.emptyJourneyCard}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="leaf-outline" size={24} color="#52785B" />
+              </View>
+              <Text style={styles.emptyJourneyTitle}>No active crop journeys</Text>
+              <Text style={styles.emptyJourneySub}>
+                Start planting and record evidence to trace your crop growth timeline.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyJourneyBtn}
+                activeOpacity={0.8}
+                onPress={() => router.push('/(farmer)/harvests/new')}
+              >
+                <Feather name="plus" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyJourneyBtnText}>Start New Journey</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* 8. Section: "Recent records" */}
+        <Animated.View
+          style={[
+            styles.recentRecordsSection,
+            {
+              opacity: recordsFade,
+              transform: [{ translateY: recordsSlide }],
+            },
+          ]}
+        >
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.recordsSectionTitle}>Recent records</Text>
+            <TouchableOpacity
+              style={styles.seeAllPillBtn}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(farmer)/crops')}
+            >
+              <Text style={styles.seeAllPillText}>See All</Text>
+              <Feather name="chevron-right" size={13} color="#5D7A65" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Records mapped vertically */}
+          {mockRecentRecords.length > 0 ? (
+            mockRecentRecords.map((record) => (
+              <RecentRecordCard
+                key={record.id}
+                record={record}
+                onPress={() => {
+                  // Navigate to the crop journey containing this record
+                  // TODO: When a dedicated immutable record inspection screen is built, link to /(farmer)/records/[id]
+                  if (record.cropId) {
+                    router.push({
+                      pathname: '/(farmer)/harvests/[id]',
+                      params: { id: record.cropId },
+                    });
+                  } else {
+                    Alert.alert('Record Details', `${record.recordCode}: ${record.title} (${record.stage})`);
+                  }
+                }}
+                onAddCorrectionPress={() => {
+                  // Navigate to add new evidence / correction record
+                  // TODO: Pass correction query params to /(farmer)/harvests/new
+                  router.push('/(farmer)/harvests/new');
+                }}
+              />
+            ))
+          ) : (
+            <View style={styles.emptyJourneyCard}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="document-text-outline" size={24} color="#52785B" />
+              </View>
+              <Text style={styles.emptyJourneyTitle}>No recent records</Text>
+              <Text style={styles.emptyJourneySub}>
+                Logged farming operations and evidence will appear here.
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* 9. Section: "Upcoming" */}
+        <Animated.View
+          style={[
+            styles.upcomingSection,
+            {
+              opacity: upcomingFade,
+              transform: [{ translateY: upcomingSlide }],
+            },
+          ]}
+        >
+          <Text style={styles.upcomingSectionTitle}>Upcoming</Text>
+
+          {/* Upcoming stacked card */}
+          {mockUpcomingItems.length > 0 ? (
+            <UpcomingCard
+              items={mockUpcomingItems}
+              onItemPress={(item) => {
+                if (item.route) {
+                  router.push(item.route as any);
+                } else if (item.cropId) {
+                  router.push({
+                    pathname: '/(farmer)/harvests/[id]',
+                    params: { id: item.cropId },
+                  });
+                }
+              }}
+            />
+          ) : (
+            <View style={styles.emptyJourneyCard}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="time-outline" size={24} color="#52785B" />
+              </View>
+              <Text style={styles.emptyJourneyTitle}>No upcoming tasks</Text>
+              <Text style={styles.emptyJourneySub}>
+                Projected crop stage changes and buyer notifications will appear here.
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* Extra Bottom Spacer for floating bottom tab bar */}
@@ -918,5 +1144,120 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 35,
+  },
+  activeJourneySection: {
+    marginTop: 26,
+    marginBottom: 8,
+  },
+  journeySectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0D3E53', // Deep blue-teal title color matching screenshot
+    letterSpacing: -0.2,
+  },
+  seeAllPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#C8CEBF',
+    gap: 4,
+  },
+  seeAllPillText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#556658',
+  },
+  horizontalJourneyContainer: {
+    paddingBottom: 4,
+    alignItems: 'stretch',
+  },
+  paginationDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+    gap: 6,
+  },
+  paginationDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  paginationDotActive: {
+    width: 22,
+    backgroundColor: '#2D6B3C', // Accent green matching theme
+  },
+  paginationDotInactive: {
+    width: 6,
+    backgroundColor: '#D1D9D3',
+  },
+  emptyJourneyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ECEAE2',
+    marginTop: 8,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EBF4ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyJourneyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A3822',
+    marginBottom: 6,
+  },
+  emptyJourneySub: {
+    fontSize: 13,
+    color: '#6E8174',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  emptyJourneyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#265934',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  emptyJourneyBtnText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  recentRecordsSection: {
+    marginTop: 24,
+    marginBottom: 6,
+  },
+  recordsSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0D3E53', // Deep blue-teal title color matching screenshot
+    letterSpacing: -0.2,
+  },
+  upcomingSection: {
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  upcomingSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0D3E53',
+    letterSpacing: -0.2,
+    marginBottom: 12,
   },
 });

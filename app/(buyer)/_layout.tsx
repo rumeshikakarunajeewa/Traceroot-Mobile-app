@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { BuyerBottomTabBar } from '../../src/components/buyer/BuyerBottomTabBar';
+import { BuyerBottomTabBar } from '@/components/buyer/BuyerBottomTabBar';
 
 export default function BuyerTabsLayout() {
   return (

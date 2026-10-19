@@ -224,20 +224,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 2,
   },
-  // badgePill: {
-  //   position: 'absolute',
-  //   top: -3,
-  //   right: -7,
-  //   backgroundColor: '#E66722', // Vibrant orange notification badge
-  //   minWidth: 16,
-  //   height: 16,
-  //   borderRadius: 8,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   paddingHorizontal: 3,
-  //   borderWidth: 1.5,
-  //   borderColor: '#1D3724', // Matches capsule background
-  // },
+  badgePill: {
+    position: 'absolute',
+    top: -3,
+    right: -7,
+    backgroundColor: '#E66722', // Vibrant orange notification badge
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#1D3724', // Matches capsule background
+  },
   badgeNumber: {
     color: '#FFFFFF',
     fontSize: 9.5,

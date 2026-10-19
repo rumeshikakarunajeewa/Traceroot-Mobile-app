@@ -16,10 +16,11 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { CropSummaryCard } from '../../src/components/farmer/CropSummaryCard';
 import { mockFields } from '../../src/constants/farmerMockData';
 import { FieldItem } from '../../src/types/farmer.types';
+import { useCropsStore } from '../../src/store/cropStore';
 
 export default function FarmerCropsScreen() {
   const [refreshing, setRefreshing] = useState(false);
-  const [crops, setCrops] = useState<FieldItem[]>(mockFields);
+  const { fields: crops } = useCropsStore();
 
   // Staggered Entrance Animations
   const headerFade = useRef(new Animated.Value(0)).current;
