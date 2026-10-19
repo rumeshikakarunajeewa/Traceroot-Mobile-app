@@ -6,6 +6,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
+    "module": "preserve",
     "moduleResolution": "bundler",
     "paths": {
       "@/*": [
