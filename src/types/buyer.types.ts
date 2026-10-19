@@ -54,7 +54,16 @@ export interface ActiveContractItem {
   coverImageUrl: string;
 }
 
-export type OrderStatus = 'processing' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+export type OrderStatus =
+  | 'Growing'
+  | 'Pending'
+  | 'Delivered'
+  | 'Cancelled'
+  | 'processing'
+  | 'confirmed'
+  | 'in_transit'
+  | 'delivered'
+  | 'cancelled';
 
 export interface OrderTrackingMilestone {
   stage: string;
@@ -67,11 +76,11 @@ export interface OrderTrackingMilestone {
 
 export interface BuyerOrder {
   id: string;
-  orderNumber: string; // e.g. "#TR-8492"
+  orderNumber: string; // e.g. "ORD-0012"
   createdAt: string;   // e.g. "18 Oct 2026, 09:30 AM"
   status: OrderStatus;
   cropName: string;
-  cropEmoji: string;
+  cropEmoji?: string;
   farmingType: FarmingType;
   quantityKg: number;
   pricePerKg: number;
@@ -82,6 +91,8 @@ export interface BuyerOrder {
   farmerName: string;
   location: string;
   recordsCount: number;
+  stagesCount?: number;
+  progressPercentage: number;
   batchId: string;
   estimatedDelivery: string;
   deliveryAddress: string;
@@ -90,4 +101,5 @@ export interface BuyerOrder {
   notes?: string;
   trackingSteps: OrderTrackingMilestone[];
 }
+
 

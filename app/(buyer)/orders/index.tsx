@@ -3,279 +3,270 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  TextInput,
+  ScrollView,
   TouchableOpacity,
   RefreshControl,
   StatusBar,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { colors } from '../../../src/lib/theme';
 import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
 import { BuyerOrder } from '../../../src/types/buyer.types';
 import { BuyerOrderCard } from '../../../src/components/orders/BuyerOrderCard';
 import { OrderDetailModal } from '../../../src/components/orders/OrderDetailModal';
 
-type FilterTab = 'all' | 'active' | 'delivered' | 'cancelled';
+type FilterType = 'All' | 'Growing' | 'Pending' | 'Delivered';
 
 export default function BuyerOrdersScreen() {
-  const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
+    'ord-001': true, // Tomato card expanded by default as in Figma design
+  });
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState<BuyerOrder | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<BuyerOrder | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+
+  // Toggle expand / collapse for a card
+  const handleToggleExpand = (order: BuyerOrder) => {
+    setExpandedIds((prev) => ({
+      ...prev,
+      [order.id]: !prev[order.id],
+    }));
+  };
 
   // Pull to refresh simulation
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-    }, 600);
+    }, 500);
   };
 
-  // Filter orders according to active tab and search query
+  // Filter orders according to active pill
   const filteredOrders = useMemo(() => {
-    return mockBuyerOrders.filter((order) => {
-      // Tab filter
-      if (activeTab === 'active') {
-        if (order.status !== 'in_transit' && order.status !== 'processing' && order.status !== 'confirmed') {
-          return false;
-        }
-      } else if (activeTab === 'delivered') {
-        if (order.status !== 'delivered') {
-          return false;
-        }
-      } else if (activeTab === 'cancelled') {
-        if (order.status !== 'cancelled') {
-          return false;
-        }
-      }
-
-      // Search query filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesOrderNumber = order.orderNumber.toLowerCase().includes(q);
-        const matchesCrop = order.cropName.toLowerCase().includes(q);
-        const matchesFarmer = order.farmerName.toLowerCase().includes(q);
-        const matchesLocation = order.location.toLowerCase().includes(q);
-        const matchesBatch = order.batchId.toLowerCase().includes(q);
-
-        if (!matchesOrderNumber && !matchesCrop && !matchesFarmer && !matchesLocation && !matchesBatch) {
-          return false;
-        }
-      }
-
+    if (activeFilter === 'All') return mockBuyerOrders;
+    return mockBuyerOrders.filter((o) => {
+      if (activeFilter === 'Growing') return o.status === 'Growing' || o.status === 'in_transit';
+      if (activeFilter === 'Pending') return o.status === 'Pending' || o.status === 'processing';
+      if (activeFilter === 'Delivered') return o.status === 'Delivered' || o.status === 'delivered';
       return true;
     });
-  }, [activeTab, searchQuery]);
+  }, [activeFilter]);
 
-  // Tab counts
+  // Counts for pills
   const counts = useMemo(() => {
-    const activeCount = mockBuyerOrders.filter(
-      (o) => o.status === 'in_transit' || o.status === 'processing' || o.status === 'confirmed'
+    const growing = mockBuyerOrders.filter(
+      (o) => o.status === 'Growing' || o.status === 'in_transit'
     ).length;
-    const deliveredCount = mockBuyerOrders.filter((o) => o.status === 'delivered').length;
-    const cancelledCount = mockBuyerOrders.filter((o) => o.status === 'cancelled').length;
+    const pending = mockBuyerOrders.filter(
+      (o) => o.status === 'Pending' || o.status === 'processing'
+    ).length;
+    const delivered = mockBuyerOrders.filter(
+      (o) => o.status === 'Delivered' || o.status === 'delivered'
+    ).length;
 
     return {
       all: mockBuyerOrders.length,
-      active: activeCount,
-      delivered: deliveredCount,
-      cancelled: cancelledCount,
+      growing,
+      pending,
+      delivered,
     };
   }, []);
 
-  const handleOpenDetail = (order: BuyerOrder) => {
-    setSelectedOrder(order);
-    setModalVisible(true);
+  const handleCameraScan = (order?: BuyerOrder) => {
+    Alert.alert(
+      'TraceRoot QR Scanner',
+      'Scan produce batch seal or QR code to verify on-chain records directly with your camera.',
+      [{ text: 'Open Camera' }, { text: 'Cancel', style: 'cancel' }]
+    );
   };
 
-  const handleContactFarmer = (order: BuyerOrder) => {
-    // Navigate to messages screen or user chat
-    router.push('/(buyer)/messages' as any);
+  const handleOpenCropJourney = (order: BuyerOrder) => {
+    setSelectedOrderForModal(order);
   };
-
-  const handleBrowseMarketplace = () => {
-    router.push('/(buyer)/explore' as any);
-  };
-
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      {/* Top Title & Subtitle */}
-      <View style={styles.titleSection}>
-        <View>
-          <Text style={styles.screenTitle}>My Orders</Text>
-          <Text style={styles.screenSubtitle}>
-            {counts.active} active {counts.active === 1 ? 'shipment' : 'shipments'} in transit
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleBrowseMarketplace}
-          style={styles.newOrderButton}
-        >
-          <MaterialCommunityIcons name="plus" size={16} color="#FFFFFF" />
-          <Text style={styles.newOrderButtonText}>New Order</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Quick Metric Pills */}
-      <View style={styles.metricsRow}>
-        <View style={styles.metricCard}>
-          <MaterialCommunityIcons name="truck-fast" size={16} color="#D97706" />
-          <Text style={styles.metricNumber}>{counts.active}</Text>
-          <Text style={styles.metricLabel}>In Transit</Text>
-        </View>
-
-        <View style={styles.metricCard}>
-          <MaterialCommunityIcons name="shield-check" size={16} color="#2E7D32" />
-          <Text style={styles.metricNumber}>100%</Text>
-          <Text style={styles.metricLabel}>Verified Logs</Text>
-        </View>
-
-        <View style={styles.metricCard}>
-          <MaterialCommunityIcons name="package-variant-closed" size={16} color="#3F61D6" />
-          <Text style={styles.metricNumber}>{counts.all}</Text>
-          <Text style={styles.metricLabel}>Total Orders</Text>
-        </View>
-      </View>
-
-      {/* Live Search Bar */}
-      <View style={styles.searchBarWrapper}>
-        <MaterialCommunityIcons name="magnify" size={18} color="#768776" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by order #, crop, or farmer..."
-          placeholderTextColor="#8B9C8C"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          clearButtonMode="while-editing"
-          returnKeyType="search"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setSearchQuery('')}
-            style={styles.clearSearchBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialCommunityIcons name="close-circle" size={16} color="#8B9C8C" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Segmented Status Tabs */}
-      <View style={styles.tabsContainer}>
-        {(
-          [
-            { key: 'all', label: 'All', count: counts.all },
-            { key: 'active', label: 'Active', count: counts.active },
-            { key: 'delivered', label: 'Delivered', count: counts.delivered },
-            { key: 'cancelled', label: 'Cancelled', count: counts.cancelled },
-          ] as const
-        ).map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              activeOpacity={0.8}
-              onPress={() => setActiveTab(tab.key)}
-              style={[styles.tabButton, isActive && styles.tabButtonActive]}
-            >
-              <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
-                {tab.label}
-              </Text>
-              <View
-                style={[
-                  styles.tabCountPill,
-                  isActive ? styles.tabCountPillActive : styles.tabCountPillInactive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabCountText,
-                    isActive ? styles.tabCountTextActive : styles.tabCountTextInactive,
-                  ]}
-                >
-                  {tab.count}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconCircle}>
-        <MaterialCommunityIcons name="basket-outline" size={38} color="#768776" />
-      </View>
-      <Text style={styles.emptyTitle}>
-        {searchQuery ? 'No matching orders found' : 'No orders in this category'}
-      </Text>
-      <Text style={styles.emptySubtitle}>
-        {searchQuery
-          ? `We couldn't find any orders matching "${searchQuery}". Try a different keyword.`
-          : 'Explore freshly verified crops from local greenhouse and open-field farmers.'}
-      </Text>
-      <TouchableOpacity
-        activeOpacity={0.88}
-        onPress={searchQuery ? () => setSearchQuery('') : handleBrowseMarketplace}
-        style={styles.emptyCTA}
-      >
-        <Text style={styles.emptyCTAText}>
-          {searchQuery ? 'Clear Search' : 'Browse Marketplace'}
-        </Text>
-        <MaterialCommunityIcons
-          name={searchQuery ? 'close' : 'arrow-right'}
-          size={16}
-          color="#FFFFFF"
-        />
-      </TouchableOpacity>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F2EB" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
 
-      <FlatList
-        data={filteredOrders}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <BuyerOrderCard
-            order={item}
-            onPress={handleOpenDetail}
-            onTrackPress={handleOpenDetail}
-            onContactFarmer={handleContactFarmer}
-          />
-        )}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmptyState}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={['#1D3524']}
+            tintColor="#1D3524"
           />
         }
-      />
+      >
+        {/* Top Header Bar */}
+        <View style={styles.topHeader}>
+          {/* Left Circular Basket Icon Button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push('/(buyer)/explore' as any)}
+            style={styles.basketCircleBtn}
+          >
+            <MaterialCommunityIcons name="basket-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-      {/* Interactive Detail & Tracking Modal */}
+          {/* Center Title Group */}
+          <View style={styles.titleGroup}>
+            <Text style={styles.purchaseHistorySubtitle}>Purchase history</Text>
+            <View style={styles.headlineRow}>
+              <Text style={styles.headlineMy}>My </Text>
+              <View style={styles.ordersHighlightBox}>
+                <Text style={styles.headlineOrders}>Orders</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Right Circular Camera Button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => handleCameraScan()}
+            style={styles.cameraCircleBtn}
+          >
+            <MaterialCommunityIcons name="camera-outline" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Metrics Banner Card (Dark Green Pill) */}
+        <View style={styles.metricsCard}>
+          {/* Lighter Curved Background Accent on Right */}
+          <View style={styles.metricsCircleAccent} />
+
+          {/* Column 1: Orders */}
+          <View style={styles.metricColumn}>
+            <MaterialCommunityIcons name="basket-outline" size={16} color="#9DBA9F" />
+            <Text style={styles.metricNumber}>{counts.all}</Text>
+            <Text style={styles.metricLabel}>Orders</Text>
+          </View>
+
+          {/* Column 2: Growing */}
+          <View style={styles.metricColumn}>
+            <MaterialCommunityIcons name="sprout-outline" size={16} color="#9DBA9F" />
+            <Text style={styles.metricNumber}>{counts.growing}</Text>
+            <Text style={styles.metricLabel}>Growing</Text>
+          </View>
+
+          {/* Column 3: LKR Spent */}
+          <View style={styles.metricColumn}>
+            <MaterialCommunityIcons name="shield-check-outline" size={16} color="#9DBA9F" />
+            <Text style={styles.metricNumber}>9k</Text>
+            <Text style={styles.metricLabel}>LKR spent</Text>
+          </View>
+        </View>
+
+        {/* Status Filter Chips Row */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBarContainer}
+        >
+          {/* All */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setActiveFilter('All')}
+            style={[styles.filterChip, activeFilter === 'All' && styles.filterChipActive]}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'All' && styles.filterChipTextActive,
+              ]}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
+
+          {/* Growing 1 */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setActiveFilter('Growing')}
+            style={[styles.filterChip, activeFilter === 'Growing' && styles.filterChipActive]}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'Growing' && styles.filterChipTextActive,
+              ]}
+            >
+              Growing {counts.growing}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Pending 1 */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setActiveFilter('Pending')}
+            style={[styles.filterChip, activeFilter === 'Pending' && styles.filterChipActive]}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'Pending' && styles.filterChipTextActive,
+              ]}
+            >
+              Pending {counts.pending}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Delivered 1 */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setActiveFilter('Delivered')}
+            style={[styles.filterChip, activeFilter === 'Delivered' && styles.filterChipActive]}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'Delivered' && styles.filterChipTextActive,
+              ]}
+            >
+              Delivered {counts.delivered}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Awaiting Confirmation Notice Banner */}
+        <View style={styles.noticeCard}>
+          <View style={styles.noticeIconCircle}>
+            <MaterialCommunityIcons name="bell-ring-outline" size={20} color="#FFFFFF" />
+          </View>
+          <View style={styles.noticeTextContainer}>
+            <Text style={styles.noticeTitle}>1 order awaiting confirmation</Text>
+            <Text style={styles.noticeSubtitle}>Farmers usually confirm within 24 hours</Text>
+          </View>
+        </View>
+
+        {/* Order Cards List */}
+        {filteredOrders.map((order) => (
+          <BuyerOrderCard
+            key={order.id}
+            order={order}
+            isExpanded={!!expandedIds[order.id]}
+            onToggleExpand={handleToggleExpand}
+            onCropJourneyPress={handleOpenCropJourney}
+            onCameraPress={handleCameraScan}
+          />
+        ))}
+      </ScrollView>
+
+      {/* Interactive Detail Modal for Crop Journey */}
       <OrderDetailModal
-        order={selectedOrder}
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onContactFarmer={handleContactFarmer}
+        order={selectedOrderForModal}
+        visible={!!selectedOrderForModal}
+        onClose={() => setSelectedOrderForModal(null)}
+        onContactFarmer={() => {
+          setSelectedOrderForModal(null);
+          router.push('/(buyer)/messages' as any);
+        }}
       />
     </SafeAreaView>
   );
@@ -284,201 +275,166 @@ export default function BuyerOrdersScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F2EB',
+    backgroundColor: '#F4EFE6',
   },
-  listContent: {
-    paddingBottom: 125, // Inset for floating capsule bottom navigation bar
+  scrollContent: {
+    paddingBottom: 115, // Smooth spacing above floating capsule bottom navigation bar
   },
-  headerContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
-  titleSection: {
+  topHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
-  screenTitle: {
-    fontSize: 26,
+  basketCircleBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#4A6F44',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleGroup: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  purchaseHistorySubtitle: {
+    fontSize: 13,
+    color: '#768B77',
+    fontWeight: '400',
+    marginBottom: 2,
+  },
+  headlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headlineMy: {
+    fontSize: 27,
     fontWeight: '700',
     color: '#16301A',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
-  screenSubtitle: {
-    fontSize: 13,
-    color: '#6A7B6B',
-    marginTop: 3,
+  ordersHighlightBox: {
+    backgroundColor: '#D1E1D0',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
   },
-  newOrderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E3523',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  newOrderButtonText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: '#ECE7DD',
-  },
-  metricNumber: {
-    fontSize: 15,
+  headlineOrders: {
+    fontSize: 27,
     fontWeight: '700',
     color: '#16301A',
-    marginTop: 4,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  cameraCircleBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#1E3523',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricsCard: {
+    backgroundColor: '#1C3423',
+    borderRadius: 24,
+    marginHorizontal: 16,
+    marginTop: 18,
+    marginBottom: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  metricsCircleAccent: {
+    position: 'absolute',
+    right: -10,
+    top: -15,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#27442F',
+    opacity: 0.9,
+  },
+  metricColumn: {
+    alignItems: 'center',
+    zIndex: 2,
+    minWidth: 70,
+  },
+  metricNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginVertical: 4,
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
   metricLabel: {
-    fontSize: 10.5,
-    color: '#768776',
-    marginTop: 2,
+    fontSize: 11,
+    color: '#8EAA90',
+    fontWeight: '500',
   },
-  searchBarWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    height: 44,
-    borderWidth: 0.5,
-    borderColor: '#ECE7DD',
-    marginBottom: 14,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13.5,
-    color: '#16301A',
-    height: '100%',
-  },
-  clearSearchBtn: {
-    padding: 4,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: '#ECE7DD',
-    gap: 5,
-  },
-  tabButtonActive: {
-    backgroundColor: '#1E3523',
-    borderColor: '#1E3523',
-  },
-  tabButtonText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#556A55',
-  },
-  tabButtonTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  tabCountPill: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 8,
-  },
-  tabCountPillActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  tabCountPillInactive: {
-    backgroundColor: '#F0ECE4',
-  },
-  tabCountText: {
-    fontSize: 9.5,
-    fontWeight: '700',
-  },
-  tabCountTextActive: {
-    color: '#FFFFFF',
-  },
-  tabCountTextInactive: {
-    color: '#556A55',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    marginHorizontal: 20,
-    marginTop: 10,
-    padding: 32,
-    borderWidth: 0.5,
-    borderColor: '#ECE7DD',
-  },
-  emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F5F2EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#16301A',
-    textAlign: 'center',
-    marginBottom: 6,
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-  },
-  emptySubtitle: {
-    fontSize: 12.5,
-    color: '#768776',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
-    paddingHorizontal: 8,
-  },
-  emptyCTA: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E3523',
+  filterBarContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    gap: 6,
+    gap: 8,
+    marginBottom: 14,
   },
-  emptyCTAText: {
-    fontSize: 13,
-    fontWeight: '700',
+  filterChip: {
+    backgroundColor: '#FAF7F1',
+    borderWidth: 1,
+    borderColor: '#E2DDD0',
+    paddingHorizontal: 18,
+    paddingVertical: 8.5,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterChipActive: {
+    backgroundColor: '#3F653B',
+    borderColor: '#3F653B',
+  },
+  filterChipText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#3B5838',
+  },
+  filterChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  noticeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FBECE3',
+    borderWidth: 1,
+    borderColor: '#F1D6C4',
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+  },
+  noticeIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#DC723A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noticeTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  noticeTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#242424',
+  },
+  noticeSubtitle: {
+    fontSize: 12,
+    color: '#BA6D3E',
+    marginTop: 2,
   },
 });

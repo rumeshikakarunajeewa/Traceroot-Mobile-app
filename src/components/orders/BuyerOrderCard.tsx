@@ -5,563 +5,501 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Image,
+  ImageBackground,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerOrder, OrderStatus } from '../../types/buyer.types';
 
-interface BuyerOrderCardProps {
-  order: BuyerOrder;
-  onPress: (order: BuyerOrder) => void;
-  onTrackPress: (order: BuyerOrder) => void;
-  onContactFarmer?: (order: BuyerOrder) => void;
-}
-
 export const getOrderStatusConfig = (status: OrderStatus) => {
   switch (status) {
+    case 'Growing':
     case 'in_transit':
       return {
-        label: 'In Transit',
-        bg: '#FFF4E5',
-        text: '#D97706',
-        dotColor: '#F59E0B',
-        icon: 'truck-fast-outline' as const,
+        label: 'Growing',
+        bg: '#EEF5ED',
+        text: '#365331',
+        dotColor: '#5C7A4E',
+        icon: 'sprout-outline' as const,
       };
-    case 'processing':
-      return {
-        label: 'Processing',
-        bg: '#EDF2FE',
-        text: '#3F61D6',
-        dotColor: '#3B82F6',
-        icon: 'clock-outline' as const,
-      };
+    case 'Delivered':
     case 'delivered':
       return {
         label: 'Delivered',
-        bg: '#E8F5E9',
-        text: '#2E7D32',
-        dotColor: '#22C55E',
+        bg: '#F5F2EB',
+        text: '#554C37',
+        dotColor: '#8C7B5D',
         icon: 'check-circle-outline' as const,
       };
-    case 'cancelled':
-      return {
-        label: 'Cancelled',
-        bg: '#FEE2E2',
-        text: '#DC2626',
-        dotColor: '#EF4444',
-        icon: 'close-circle-outline' as const,
-      };
+    case 'Pending':
+    case 'processing':
     case 'confirmed':
     default:
       return {
-        label: 'Confirmed',
-        bg: '#F3E8FF',
-        text: '#7E22CE',
-        dotColor: '#A855F7',
-        icon: 'check-outline' as const,
+        label: 'Pending',
+        bg: '#FBECE3',
+        text: '#C25F28',
+        dotColor: '#E07238',
+        icon: 'clock-outline' as const,
       };
   }
 };
 
+interface BuyerOrderCardProps {
+  order: BuyerOrder;
+  isExpanded: boolean;
+  onToggleExpand: (order: BuyerOrder) => void;
+  onCropJourneyPress: (order: BuyerOrder) => void;
+  onCameraPress?: (order: BuyerOrder) => void;
+}
+
 export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
   order,
-  onPress,
-  onTrackPress,
-  onContactFarmer,
+  isExpanded,
+  onToggleExpand,
+  onCropJourneyPress,
+  onCameraPress,
 }) => {
-  const statusConfig = getOrderStatusConfig(order.status);
   const isGreenhouse = order.farmingType === 'greenhouse';
 
-  // Determine active step index for the mini progress line
-  const activeStepIndex = order.trackingSteps.findIndex((s) => s.isCurrent);
-  const allCompleted = order.status === 'delivered';
-  const isCancelled = order.status === 'cancelled';
+  // Status badge styling helper matching Figma screenshot
+  const renderStatusBadge = () => {
+    switch (order.status) {
+      case 'Growing':
+      case 'in_transit':
+        return (
+          <View style={styles.growingBadge}>
+            <View style={styles.growingDot} />
+            <Text style={styles.growingText}>Growing</Text>
+          </View>
+        );
+      case 'Delivered':
+      case 'delivered':
+        return (
+          <View style={styles.deliveredBadge}>
+            <View style={styles.deliveredDot} />
+            <Text style={styles.deliveredText}>Delivered</Text>
+          </View>
+        );
+      case 'Pending':
+      case 'processing':
+      case 'confirmed':
+      default:
+        return (
+          <View style={styles.pendingBadge}>
+            <View style={styles.pendingDot} />
+            <Text style={styles.pendingText}>Pending</Text>
+          </View>
+        );
+    }
+  };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.92}
-      onPress={() => onPress(order)}
-      style={styles.cardContainer}
-    >
-      {/* Top Header: Order ID, Date & Status Badge */}
-      <View style={styles.cardHeader}>
-        <View style={styles.orderIdGroup}>
-          <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-          <Text style={styles.orderDate}>{order.createdAt}</Text>
-        </View>
+    <View style={styles.cardContainer}>
+      {/* Upper Hero Image Container with Overlays */}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onToggleExpand(order)}
+      >
+        <ImageBackground
+          source={{ uri: order.imageUrl }}
+          style={styles.heroImage}
+          imageStyle={styles.heroImageRadius}
+        >
+          {/* Subtle gradient overlay */}
+          <View style={styles.imageDarkOverlay} />
 
-        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusConfig.dotColor }]} />
-          <Text style={[styles.statusText, { color: statusConfig.text }]}>
-            {statusConfig.label}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
-      {/* Produce Overview Row */}
-      <View style={styles.produceRow}>
-        <View style={styles.imageWrapper}>
-          <Image
-            source={{ uri: order.imageUrl }}
-            style={styles.produceImage}
-            resizeMode="cover"
-          />
-          <View style={styles.emojiOverlay}>
-            <Text style={styles.cropEmoji}>{order.cropEmoji}</Text>
+          {/* Top Status & Code Row */}
+          <View style={styles.topOverlayRow}>
+            {renderStatusBadge()}
+            <Text style={styles.orderCode}>{order.orderNumber}</Text>
           </View>
-        </View>
 
-        <View style={styles.produceDetails}>
-          <View style={styles.cropTitleRow}>
-            <Text style={styles.cropName}>{order.cropName}</Text>
-            <View
-              style={[
-                styles.typePill,
-                isGreenhouse ? styles.greenhousePill : styles.openFieldPill,
-              ]}
-            >
-              <Text style={styles.typeEmoji}>{isGreenhouse ? '🏡' : '🌾'}</Text>
-              <Text
-                style={[
-                  styles.typePillText,
-                  isGreenhouse ? styles.greenhouseText : styles.openFieldText,
-                ]}
-              >
-                {isGreenhouse ? 'Greenhouse' : 'Open-field'}
+          {/* Bottom Crop Name, Subtitle & Price Row */}
+          <View style={styles.bottomOverlayRow}>
+            <View style={styles.cropTitleGroup}>
+              <Text style={styles.cropTitle}>{order.cropName}</Text>
+              <Text style={styles.cropSubtitle}>
+                {order.quantityKg} kg · {order.currency} {order.pricePerKg}/kg
               </Text>
             </View>
-          </View>
 
-          {/* Farmer & Location */}
-          <View style={styles.farmerMetaRow}>
-            <MaterialCommunityIcons name="account-outline" size={13} color="#6A7B6B" />
-            <Text style={styles.farmerName} numberOfLines={1}>
-              {order.farmerName}
-            </Text>
-            <Text style={styles.metaBullet}>•</Text>
-            <MaterialCommunityIcons name="map-marker-outline" size={13} color="#6A7B6B" />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {order.location}
-            </Text>
-          </View>
-
-          {/* Quantity & Unit Price */}
-          <View style={styles.priceMetaRow}>
-            <Text style={styles.quantityLabel}>
-              {order.quantityKg} kg @ {order.currency} {order.pricePerKg}/kg
-            </Text>
-            <Text style={styles.totalPriceValue}>
+            <Text style={styles.priceText}>
               {order.currency} {order.totalPrice.toLocaleString()}
             </Text>
           </View>
-        </View>
-      </View>
+        </ImageBackground>
+      </TouchableOpacity>
 
-      {/* Mini Progress Stepper (Hidden if Cancelled) */}
-      {!isCancelled && order.trackingSteps && order.trackingSteps.length > 0 && (
-        <View style={styles.progressSection}>
-          <View style={styles.stepperTrack}>
-            {order.trackingSteps.map((step, idx) => {
-              const isDone = step.isCompleted || allCompleted;
-              const isCurrent = step.isCurrent && !allCompleted;
-
-              return (
-                <React.Fragment key={step.stage + idx}>
-                  <View style={styles.stepNodeContainer}>
-                    <View
-                      style={[
-                        styles.stepDot,
-                        isDone && styles.stepDotDone,
-                        isCurrent && styles.stepDotCurrent,
-                      ]}
-                    >
-                      {isDone ? (
-                        <MaterialCommunityIcons name="check" size={10} color="#FFFFFF" />
-                      ) : isCurrent ? (
-                        <View style={styles.innerCurrentDot} />
-                      ) : null}
-                    </View>
-                    <Text
-                      style={[
-                        styles.stepTitle,
-                        (isDone || isCurrent) && styles.stepTitleActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {step.stage === 'placed'
-                        ? 'Placed'
-                        : step.stage === 'harvested'
-                        ? 'Packed'
-                        : step.stage === 'in_transit'
-                        ? 'Transit'
-                        : 'Delivered'}
-                    </Text>
-                  </View>
-
-                  {idx < order.trackingSteps.length - 1 && (
-                    <View
-                      style={[
-                        styles.stepConnector,
-                        (isDone || (isCurrent && idx < (activeStepIndex || 0))) &&
-                          styles.stepConnectorDone,
-                      ]}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </View>
-
-          {/* Delivery Estimate / Status Line */}
-          <View style={styles.estimateRow}>
+      {/* Card Body */}
+      <View style={styles.cardBody}>
+        {/* Farmer Row & Expand / Collapse Chevron */}
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => onToggleExpand(order)}
+          style={styles.farmerRow}
+        >
+          <View style={styles.farmerLeftCol}>
             <MaterialCommunityIcons
-              name={statusConfig.icon}
-              size={14}
-              color={statusConfig.text}
+              name="home-variant-outline"
+              size={15}
+              color="#5C7456"
             />
-            <Text style={[styles.estimateText, { color: statusConfig.text }]}>
-              {order.status === 'delivered'
-                ? order.estimatedDelivery
-                : `Est. Delivery: ${order.estimatedDelivery}`}
+            <Text style={styles.farmerText} numberOfLines={1}>
+              {order.farmerName} · {order.location}
             </Text>
           </View>
-        </View>
-      )}
 
-      {/* Bottom Footer: Verification Badge & Actions */}
-      <View style={styles.cardFooter}>
-        <View style={styles.recordsPill}>
-          <MaterialCommunityIcons name="shield-check" size={12} color="#2E7D32" />
-          <Text style={styles.recordsPillText}>
-            {order.recordsCount} verified records
-          </Text>
+          <MaterialCommunityIcons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color="#6B8268"
+          />
+        </TouchableOpacity>
+
+        {/* Progress Bar */}
+        <View style={styles.progressBarTrack}>
+          <View
+            style={[
+              styles.progressBarFill,
+              { width: `${Math.min(Math.max(order.progressPercentage, 5), 100)}%` },
+            ]}
+          />
         </View>
 
-        <View style={styles.actionButtonsRow}>
-          {onContactFarmer && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => onContactFarmer(order)}
-              style={styles.contactBtn}
-            >
-              <MaterialCommunityIcons
-                name="chat-outline"
-                size={15}
-                color="#2C4E32"
-              />
-            </TouchableOpacity>
-          )}
+        {/* Expanded Content Section */}
+        {isExpanded && (
+          <View style={styles.expandedSection}>
+            {/* 2-Column Info Tiles Grid */}
+            <View style={styles.infoGridRow}>
+              {/* Delivery Tile */}
+              <View style={styles.infoTile}>
+                <View style={styles.tileHeader}>
+                  <MaterialCommunityIcons
+                    name="sprout-outline"
+                    size={13}
+                    color="#7E917A"
+                  />
+                  <Text style={styles.tileHeaderLabel}>Delivery</Text>
+                </View>
+                <Text style={styles.tileValue} numberOfLines={1}>
+                  {order.estimatedDelivery}
+                </Text>
+              </View>
 
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={() => onTrackPress(order)}
-            style={styles.trackBtn}
-          >
-            <Text style={styles.trackBtnText}>
-              {order.status === 'in_transit'
-                ? 'Track Order'
-                : order.status === 'delivered'
-                ? 'View Trace'
-                : 'View Details'}
-            </Text>
-            <MaterialCommunityIcons
-              name="arrow-right"
-              size={14}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
-        </View>
+              {/* Farming Tile */}
+              <View style={styles.infoTile}>
+                <View style={styles.tileHeader}>
+                  <MaterialCommunityIcons
+                    name="white-balance-sunny"
+                    size={13}
+                    color="#7E917A"
+                  />
+                  <Text style={styles.tileHeaderLabel}>Farming</Text>
+                </View>
+                <Text style={styles.tileValue} numberOfLines={1}>
+                  {isGreenhouse ? 'Greenhouse' : 'Open-field'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Traceability Verification Banner */}
+            <View style={styles.traceBanner}>
+              <View style={styles.traceShieldCircle}>
+                <MaterialCommunityIcons
+                  name="shield-check"
+                  size={16}
+                  color="#FFFFFF"
+                />
+              </View>
+              <Text style={styles.traceBannerText}>
+                Traceability verified — {order.recordsCount} locked records across{' '}
+                {order.stagesCount || 3} stages
+              </Text>
+            </View>
+
+            {/* Action Buttons Row */}
+            <View style={styles.actionRow}>
+              {/* Crop Journey Main Button */}
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={() => onCropJourneyPress(order)}
+                style={styles.cropJourneyBtn}
+              >
+                <MaterialCommunityIcons
+                  name="leaf"
+                  size={16}
+                  color="#FFFFFF"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.cropJourneyBtnText}>Crop Journey</Text>
+              </TouchableOpacity>
+
+              {/* Camera Action Button */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => onCameraPress && onCameraPress(order)}
+                style={styles.cameraBtn}
+              >
+                <MaterialCommunityIcons
+                  name="camera-outline"
+                  size={19}
+                  color="#253B2A"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginHorizontal: 20,
+    borderRadius: 24,
+    marginHorizontal: 16,
     marginBottom: 16,
-    padding: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
     borderWidth: 0.5,
     borderColor: '#ECE7DD',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  orderIdGroup: {
-    flexDirection: 'column',
-  },
-  orderNumber: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#16301A',
-    letterSpacing: 0.2,
-  },
-  orderDate: {
-    fontSize: 11.5,
-    color: '#768776',
-    marginTop: 2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 9,
-    paddingVertical: 4.5,
-    borderRadius: 12,
-    gap: 5,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-  },
-  divider: {
-    height: 0.5,
-    backgroundColor: '#F0ECE4',
-    marginBottom: 12,
-  },
-  produceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  imageWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 14,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#EBE7DE',
-  },
-  produceImage: {
+  heroImage: {
     width: '100%',
-    height: '100%',
-  },
-  emojiOverlay: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-  },
-  cropEmoji: {
-    fontSize: 12,
-  },
-  produceDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  cropTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    height: 165,
     justifyContent: 'space-between',
-    marginBottom: 4,
+    padding: 14,
   },
-  cropName: {
-    fontSize: 16,
+  heroImageRadius: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  imageDarkOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  topOverlayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  orderCode: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.88)',
+    letterSpacing: 0.4,
+  },
+  bottomOverlayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    zIndex: 2,
+  },
+  cropTitleGroup: {
+    flex: 1,
+  },
+  cropTitle: {
+    fontSize: 22,
     fontWeight: '700',
-    color: '#16301A',
+    color: '#FFFFFF',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
-  typePill: {
+  cropSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.92)',
+    marginTop: 2,
+    fontWeight: '400',
+  },
+  priceText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#F4DEA8',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    marginLeft: 8,
+  },
+  cardBody: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  farmerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    gap: 2,
+    justifyContent: 'space-between',
   },
-  typeEmoji: {
-    fontSize: 9,
+  farmerLeftCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
   },
-  greenhousePill: {
-    backgroundColor: '#EDF2FE',
+  farmerText: {
+    fontSize: 13,
+    color: '#556E52',
+    fontWeight: '500',
   },
-  greenhouseText: {
-    color: '#3F61D6',
+  progressBarTrack: {
+    height: 5,
+    backgroundColor: '#EBE7DE',
+    borderRadius: 3,
+    marginTop: 10,
+    overflow: 'hidden',
   },
-  openFieldPill: {
-    backgroundColor: '#FFF4E5',
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#5C7A4E',
+    borderRadius: 3,
   },
-  openFieldText: {
-    color: '#D97706',
+  expandedSection: {
+    marginTop: 14,
   },
-  typePillText: {
-    fontSize: 10,
-    fontWeight: '600',
+  infoGridRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
   },
-  farmerMetaRow: {
+  infoTile: {
+    flex: 1,
+    backgroundColor: '#F5F2EB',
+    borderRadius: 14,
+    padding: 10,
+  },
+  tileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 6,
-  },
-  farmerName: {
-    fontSize: 12,
-    color: '#6A7B6B',
-    maxWidth: 100,
-  },
-  metaBullet: {
-    fontSize: 10,
-    color: '#A0ADA1',
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#6A7B6B',
-    flex: 1,
-  },
-  priceMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  quantityLabel: {
-    fontSize: 12,
-    color: '#556A55',
-    fontWeight: '500',
-  },
-  totalPriceValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#16301A',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-  },
-  progressSection: {
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: '#F2EFE8',
-  },
-  stepperTrack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    paddingHorizontal: 6,
-  },
-  stepNodeContainer: {
-    alignItems: 'center',
-    width: 48,
-  },
-  stepDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#E5E1D7',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 4,
   },
-  stepDotDone: {
-    backgroundColor: '#2E7D32',
+  tileHeaderLabel: {
+    fontSize: 11,
+    color: '#7E917A',
+    fontWeight: '500',
   },
-  stepDotCurrent: {
-    backgroundColor: '#F59E0B',
-    borderWidth: 2,
-    borderColor: '#FEF3C7',
+  tileValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#16301A',
   },
-  innerCurrentDot: {
+  traceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF5EE',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  traceShieldCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#507B48',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  traceBannerText: {
+    fontSize: 12,
+    color: '#274426',
+    fontWeight: '500',
+    marginLeft: 10,
+    flex: 1,
+    lineHeight: 16,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cropJourneyBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1D3524',
+    borderRadius: 22,
+    paddingVertical: 12,
+  },
+  cropJourneyBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  cameraBtn: {
+    width: 48,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#ECEEE9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  // Status Badges
+  growingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 12,
+    gap: 5,
+  },
+  growingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#5C7A4E',
+  },
+  growingText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#365331',
+  },
+  deliveredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 12,
+    gap: 5,
+  },
+  deliveredDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#8C7B5D',
+  },
+  deliveredText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#554C37',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E07238',
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 12,
+    gap: 5,
+  },
+  pendingDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#FFFFFF',
   },
-  stepTitle: {
-    fontSize: 9.5,
-    color: '#8B9C8C',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  stepTitleActive: {
-    color: '#16301A',
-    fontWeight: '700',
-  },
-  stepConnector: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#E5E1D7',
-    marginBottom: 16,
-  },
-  stepConnectorDone: {
-    backgroundColor: '#2E7D32',
-  },
-  estimateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-    paddingHorizontal: 4,
-  },
-  estimateText: {
-    fontSize: 11.5,
+  pendingText: {
+    fontSize: 11,
     fontWeight: '600',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: '#F0ECE4',
-  },
-  recordsPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  recordsPillText: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#2E7D32',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  contactBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F1EFE8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#DDD8CE',
-  },
-  trackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E3523',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-    gap: 5,
-  },
-  trackBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
     color: '#FFFFFF',
   },
 });
