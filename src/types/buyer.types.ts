@@ -37,6 +37,9 @@ export interface ProduceListing {
   pricePerKg: number;
   currency: string;
   imageUrl: string;
+  category?: 'Vegetables' | 'Fruits' | 'Spices' | 'Grains' | 'Tubers';
+  farmerId?: string;
+  isOrganic?: boolean;
 }
 
 export interface ActiveContractItem {

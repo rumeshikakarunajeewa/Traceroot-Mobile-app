@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     color: '#D2E6D5',
   },
   photoScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(15, 30, 20, 0.32)',
   },
   topBadgesRow: {
