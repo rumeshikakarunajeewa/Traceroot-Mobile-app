@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   heroDarkScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(10, 25, 15, 0.35)',
   },
   cameraEditButton: {
