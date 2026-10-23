@@ -56,6 +56,7 @@ const BUYER_TABS: TabConfig[] = [
     name: 'messages',
     routePath: '/(buyer)/messages',
     label: 'Messages',
+    badge: 1,
     iconName: 'chat-outline',
     focusedIconName: 'chat',
     size: 22,

@@ -5,6 +5,7 @@ import {
   ProduceListing,
   ActiveContractItem,
   BuyerOrder,
+  BuyerMessageThread,
 } from '../types/buyer.types';
 
 export const mockBuyerProfile: BuyerProfile = {
@@ -333,6 +334,57 @@ export const mockBuyerOrders: BuyerOrder[] = [
         isCurrent: true,
       },
     ],
+  },
+];
+
+export const mockBuyerMessages: BuyerMessageThread[] = [
+  {
+    id: 'msg-001',
+    senderId: 'farmer-001',
+    senderName: 'Saman Perera',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+    category: 'Request',
+    status: 'New',
+    timestamp: '2h ago',
+    messageSnippet: 'Can you confirm the exact harvest date for the upcoming tomato batch? Need to arrange',
+    isOnline: true,
+    isUnread: true,
+  },
+  {
+    id: 'msg-002',
+    senderId: 'agronomist-001',
+    senderName: 'Dr. Silva (Agronomist)',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    category: 'Note',
+    status: 'Replied',
+    timestamp: 'Yesterday',
+    messageSnippet: 'Soil moisture levels look great based on your recent records. Keep up the current irrigation',
+    isOnline: false,
+    isUnread: false,
+  },
+  {
+    id: 'msg-003',
+    senderId: 'buyer-org-002',
+    senderName: 'FreshMart Ltd',
+    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
+    category: 'Request',
+    status: 'Pending',
+    timestamp: 'Mon',
+    messageSnippet: 'We would like to increase our order quantity for next week to 500kg. Please let me know if',
+    isOnline: false,
+    isUnread: false,
+  },
+  {
+    id: 'msg-004',
+    senderId: 'coop-001',
+    senderName: 'Green Valley Co-op',
+    avatarUrl: 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=300&q=80',
+    category: 'Note',
+    status: 'Replied',
+    timestamp: 'Last week',
+    messageSnippet: 'Reminder: The organic farming certification renewal deadline is approaching next month.',
+    isOnline: false,
+    isUnread: false,
   },
 ];
 

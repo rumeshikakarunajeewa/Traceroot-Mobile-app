@@ -102,4 +102,20 @@ export interface BuyerOrder {
   trackingSteps: OrderTrackingMilestone[];
 }
 
+export type MessageCategory = 'Request' | 'Note';
+export type MessageStatus = 'New' | 'Replied' | 'Pending';
+
+export interface BuyerMessageThread {
+  id: string;
+  senderId: string;
+  senderName: string;
+  avatarUrl: string;
+  category: MessageCategory;
+  status: MessageStatus;
+  timestamp: string;
+  messageSnippet: string;
+  isOnline?: boolean;
+  isUnread?: boolean;
+}
+
 
