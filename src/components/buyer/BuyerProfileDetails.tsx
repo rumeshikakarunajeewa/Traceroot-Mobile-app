@@ -5,6 +5,7 @@ import { BuyerProfile } from '../../types/buyer.types';
 
 interface BuyerProfileDetailsProps {
   profile: BuyerProfile;
+  isDark?: boolean;
   onPressPhone?: () => void;
   onPressEmail?: () => void;
   onPressLocation?: () => void;
@@ -12,6 +13,7 @@ interface BuyerProfileDetailsProps {
 
 export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
   profile,
+  isDark = false,
   onPressPhone,
   onPressEmail,
   onPressLocation,
@@ -19,21 +21,27 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
   return (
     <View style={styles.container}>
       {/* 1. Contact & Business Details Card */}
-      <View style={styles.detailsCard}>
+      <View style={[styles.detailsCard, isDark && styles.detailsCardDark]}>
         {/* Row 1: Phone */}
         <TouchableOpacity
           activeOpacity={onPressPhone ? 0.7 : 1}
           onPress={onPressPhone}
           style={styles.rowItem}
         >
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="chat-outline" size={17} color="#2A4B2F" />
+          <View style={[styles.iconCircle, isDark && styles.iconCircleDark]}>
+            <MaterialCommunityIcons
+              name="chat-outline"
+              size={17}
+              color={isDark ? '#A6C5A8' : '#2A4B2F'}
+            />
           </View>
-          <Text style={styles.rowLabel}>Phone</Text>
-          <Text style={styles.rowValue}>{profile.phone || '+94 71 987 6543'}</Text>
+          <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Phone</Text>
+          <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
+            {profile.phone || '+94 71 987 6543'}
+          </Text>
         </TouchableOpacity>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, isDark && styles.dividerDark]} />
 
         {/* Row 2: Email */}
         <TouchableOpacity
@@ -41,33 +49,51 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
           onPress={onPressEmail}
           style={styles.rowItem}
         >
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="email-outline" size={17} color="#2A4B2F" />
+          <View style={[styles.iconCircle, isDark && styles.iconCircleDark]}>
+            <MaterialCommunityIcons
+              name="email-outline"
+              size={17}
+              color={isDark ? '#A6C5A8' : '#2A4B2F'}
+            />
           </View>
-          <Text style={styles.rowLabel}>Email</Text>
-          <Text style={styles.rowValue}>{profile.email || 'saman.p@freshmart.lk'}</Text>
+          <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Email</Text>
+          <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
+            {profile.email || 'saman.p@freshmart.lk'}
+          </Text>
         </TouchableOpacity>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, isDark && styles.dividerDark]} />
 
         {/* Row 3: Business */}
         <View style={styles.rowItem}>
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="storefront-outline" size={17} color="#2A4B2F" />
+          <View style={[styles.iconCircle, isDark && styles.iconCircleDark]}>
+            <MaterialCommunityIcons
+              name="storefront-outline"
+              size={17}
+              color={isDark ? '#A6C5A8' : '#2A4B2F'}
+            />
           </View>
-          <Text style={styles.rowLabel}>Business</Text>
-          <Text style={styles.rowValue}>{profile.businessType || 'Retail supermarket'}</Text>
+          <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Business</Text>
+          <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
+            {profile.businessType || 'Retail supermarket'}
+          </Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, isDark && styles.dividerDark]} />
 
         {/* Row 4: Registration ID */}
         <View style={styles.rowItem}>
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="shield-check-outline" size={17} color="#2A4B2F" />
+          <View style={[styles.iconCircle, isDark && styles.iconCircleDark]}>
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={17}
+              color={isDark ? '#A6C5A8' : '#2A4B2F'}
+            />
           </View>
-          <Text style={styles.rowLabel}>Reg. ID</Text>
-          <Text style={styles.rowValue}>{profile.registrationId || 'BR-99321'}</Text>
+          <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Reg. ID</Text>
+          <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
+            {profile.registrationId || 'BR-99321'}
+          </Text>
         </View>
       </View>
 
@@ -75,7 +101,7 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPressLocation}
-        style={styles.locationCard}
+        style={[styles.locationCard, isDark && styles.locationCardDark]}
       >
         {/* Left Column info */}
         <View style={styles.locationContent}>
@@ -131,6 +157,12 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#ECE8DF',
   },
+  detailsCardDark: {
+    backgroundColor: '#1B2A1F',
+    borderColor: '#293E2E',
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+  },
   rowItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -145,11 +177,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  iconCircleDark: {
+    backgroundColor: '#26382A',
+  },
   rowLabel: {
     fontSize: 13.5,
     color: '#6E8070',
     fontWeight: '500',
     flex: 1,
+  },
+  rowLabelDark: {
+    color: '#A0B7A4',
   },
   rowValue: {
     fontSize: 13.5,
@@ -157,10 +195,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'right',
   },
+  rowValueDark: {
+    color: '#F0F4F1',
+  },
   divider: {
     height: 0.6,
     backgroundColor: '#F0ECE4',
     marginLeft: 48,
+  },
+  dividerDark: {
+    backgroundColor: '#293D2E',
   },
   locationCard: {
     position: 'relative',
@@ -179,6 +223,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 10,
     elevation: 3,
+  },
+  locationCardDark: {
+    backgroundColor: '#152518',
+    borderColor: '#243C28',
+    borderWidth: 0.5,
   },
   locationContent: {
     flex: 1,
