@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -20,29 +20,17 @@ interface BuyerEditProfileModalProps {
   onSave: (updatedProfile: Partial<BuyerProfile>) => void;
 }
 
-export const BuyerEditProfileModal: React.FC<BuyerEditProfileModalProps> = ({
-  visible,
-  profile,
-  onClose,
-  onSave,
-}) => {
+const EditProfileForm: React.FC<{
+  profile: BuyerProfile;
+  onClose: () => void;
+  onSave: (updatedProfile: Partial<BuyerProfile>) => void;
+}> = ({ profile, onClose, onSave }) => {
   const [fullName, setFullName] = useState(profile.fullName);
   const [company, setCompany] = useState(profile.company || '');
   const [phone, setPhone] = useState(profile.phone || '');
   const [email, setEmail] = useState(profile.email || '');
   const [businessType, setBusinessType] = useState(profile.businessType || '');
   const [bio, setBio] = useState(profile.bio || '');
-
-  useEffect(() => {
-    if (visible) {
-      setFullName(profile.fullName);
-      setCompany(profile.company || '');
-      setPhone(profile.phone || '');
-      setEmail(profile.email || '');
-      setBusinessType(profile.businessType || '');
-      setBio(profile.bio || '');
-    }
-  }, [visible, profile]);
 
   const handleSave = () => {
     onSave({
@@ -57,6 +45,123 @@ export const BuyerEditProfileModal: React.FC<BuyerEditProfileModalProps> = ({
   };
 
   return (
+    <View style={styles.modalContainer}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Edit Profile</Text>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <MaterialCommunityIcons name="close" size={22} color="#16301A" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Full Name */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Full Name</Text>
+          <TextInput
+            value={fullName}
+            onChangeText={setFullName}
+            style={styles.textInput}
+            placeholder="Enter full name"
+            placeholderTextColor="#9AA89B"
+          />
+        </View>
+
+        {/* Company / Business */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Company / Supermarket</Text>
+          <TextInput
+            value={company}
+            onChangeText={setCompany}
+            style={styles.textInput}
+            placeholder="e.g. FreshMart Ltd"
+            placeholderTextColor="#9AA89B"
+          />
+        </View>
+
+        {/* Business Type */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Business Type</Text>
+          <TextInput
+            value={businessType}
+            onChangeText={setBusinessType}
+            style={styles.textInput}
+            placeholder="e.g. Retail supermarket"
+            placeholderTextColor="#9AA89B"
+          />
+        </View>
+
+        {/* Phone */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Contact Phone</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            style={styles.textInput}
+            placeholder="+94 7X XXX XXXX"
+            keyboardType="phone-pad"
+            placeholderTextColor="#9AA89B"
+          />
+        </View>
+
+        {/* Email */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Work Email</Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            style={styles.textInput}
+            placeholder="buyer@freshmart.lk"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholderTextColor="#9AA89B"
+          />
+        </View>
+
+        {/* Bio statement */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Professional Bio</Text>
+          <TextInput
+            value={bio}
+            onChangeText={setBio}
+            style={[styles.textInput, styles.textArea]}
+            placeholder="Brief summary of your sourcing roles..."
+            multiline={true}
+            numberOfLines={3}
+            placeholderTextColor="#9AA89B"
+          />
+        </View>
+
+        {/* Action buttons */}
+        <View style={styles.buttonsRow}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onClose}
+            style={styles.cancelBtn}
+          >
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleSave}
+            style={styles.saveBtn}
+          >
+            <Text style={styles.saveBtnText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
+export const BuyerEditProfileModal: React.FC<BuyerEditProfileModalProps> = ({
+  visible,
+  profile,
+  onClose,
+  onSave,
+}) => {
+  return (
     <Modal
       visible={visible}
       animationType="slide"
@@ -67,113 +172,13 @@ export const BuyerEditProfileModal: React.FC<BuyerEditProfileModalProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
       >
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Edit Profile</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <MaterialCommunityIcons name="close" size={22} color="#16301A" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            {/* Full Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                value={fullName}
-                onChangeText={setFullName}
-                style={styles.textInput}
-                placeholder="Enter full name"
-                placeholderTextColor="#9AA89B"
-              />
-            </View>
-
-            {/* Company / Business */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Company / Supermarket</Text>
-              <TextInput
-                value={company}
-                onChangeText={setCompany}
-                style={styles.textInput}
-                placeholder="e.g. FreshMart Ltd"
-                placeholderTextColor="#9AA89B"
-              />
-            </View>
-
-            {/* Business Type */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Business Type</Text>
-              <TextInput
-                value={businessType}
-                onChangeText={setBusinessType}
-                style={styles.textInput}
-                placeholder="e.g. Retail supermarket"
-                placeholderTextColor="#9AA89B"
-              />
-            </View>
-
-            {/* Phone */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Contact Phone</Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                style={styles.textInput}
-                placeholder="+94 7X XXX XXXX"
-                keyboardType="phone-pad"
-                placeholderTextColor="#9AA89B"
-              />
-            </View>
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Work Email</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                style={styles.textInput}
-                placeholder="buyer@freshmart.lk"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor="#9AA89B"
-              />
-            </View>
-
-            {/* Bio statement */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Professional Bio</Text>
-              <TextInput
-                value={bio}
-                onChangeText={setBio}
-                style={[styles.textInput, styles.textArea]}
-                placeholder="Brief summary of your sourcing roles..."
-                multiline={true}
-                numberOfLines={3}
-                placeholderTextColor="#9AA89B"
-              />
-            </View>
-
-            {/* Action buttons */}
-            <View style={styles.buttonsRow}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={onClose}
-                style={styles.cancelBtn}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleSave}
-                style={styles.saveBtn}
-              >
-                <Text style={styles.saveBtnText}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
+        {visible && (
+          <EditProfileForm
+            profile={profile}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );
