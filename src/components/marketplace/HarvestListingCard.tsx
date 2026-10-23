@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Image } from 'react
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ProduceListing } from '../../types/buyer.types';
 import { colors } from '../../lib/theme';
+import { useDarkMode } from '../../store/uiStore';
 
 export interface HarvestListingCardProps {
   listing: ProduceListing;
@@ -13,13 +14,14 @@ export const HarvestListingCard: React.FC<HarvestListingCardProps> = ({
   listing,
   onPress,
 }) => {
+  const [isDark] = useDarkMode();
   const isGreenhouse = listing.farmingType === 'greenhouse';
 
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={() => onPress(listing)}
-      style={styles.cardContainer}
+      style={[styles.cardContainer, isDark && styles.cardContainerDark]}
       accessibilityRole="button"
       accessibilityLabel={`${listing.cropName}, ${listing.quantityKg} kg from ${listing.farmerName}`}
     >
@@ -48,7 +50,10 @@ export const HarvestListingCard: React.FC<HarvestListingCardProps> = ({
       <View style={styles.detailsContainer}>
         {/* Title & Farming Type Pill */}
         <View style={styles.titleRow}>
-          <Text style={styles.cropName} numberOfLines={1}>
+          <Text
+            style={[styles.cropName, isDark && styles.cropNameDark]}
+            numberOfLines={1}
+          >
             {listing.cropName}
           </Text>
           <View
@@ -72,14 +77,28 @@ export const HarvestListingCard: React.FC<HarvestListingCardProps> = ({
         {/* Farmer & Location Metadata */}
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="account-outline" size={13} color="#6A7B6B" />
-            <Text style={styles.metaText} numberOfLines={1}>
+            <MaterialCommunityIcons
+              name="account-outline"
+              size={13}
+              color={isDark ? '#98B39B' : '#6A7B6B'}
+            />
+            <Text
+              style={[styles.metaText, isDark && styles.metaTextDark]}
+              numberOfLines={1}
+            >
               {listing.farmerName}
             </Text>
           </View>
           <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="map-marker-outline" size={13} color="#6A7B6B" />
-            <Text style={styles.metaText} numberOfLines={1}>
+            <MaterialCommunityIcons
+              name="map-marker-outline"
+              size={13}
+              color={isDark ? '#98B39B' : '#6A7B6B'}
+            />
+            <Text
+              style={[styles.metaText, isDark && styles.metaTextDark]}
+              numberOfLines={1}
+            >
               {listing.location}
             </Text>
           </View>
@@ -87,12 +106,28 @@ export const HarvestListingCard: React.FC<HarvestListingCardProps> = ({
 
         {/* Trust Badges: Immutable Records & Stages */}
         <View style={styles.pillsRow}>
-          <View style={styles.recordsPill}>
-            <MaterialCommunityIcons name="shield-check" size={11} color="#2E7D32" />
-            <Text style={styles.recordsPillText}>{listing.recordsCount} records</Text>
+          <View style={[styles.recordsPill, isDark && styles.recordsPillDark]}>
+            <MaterialCommunityIcons
+              name="shield-check"
+              size={11}
+              color={isDark ? '#4ADE80' : '#2E7D32'}
+            />
+            <Text
+              style={[
+                styles.recordsPillText,
+                isDark && styles.recordsPillTextDark,
+              ]}
+            >
+              {listing.recordsCount} records
+            </Text>
           </View>
-          <View style={styles.stagesPill}>
-            <Text style={styles.stagesPillText}>
+          <View style={[styles.stagesPill, isDark && styles.stagesPillDark]}>
+            <Text
+              style={[
+                styles.stagesPillText,
+                isDark && styles.stagesPillTextDark,
+              ]}
+            >
               {listing.completedStages}/{listing.totalStages} stages
             </Text>
           </View>
@@ -100,15 +135,17 @@ export const HarvestListingCard: React.FC<HarvestListingCardProps> = ({
 
         {/* Price Row */}
         <View style={styles.priceRow}>
-          <Text style={styles.priceValue}>
+          <Text
+            style={[styles.priceValue, isDark && styles.priceValueDark]}
+          >
             {listing.currency} {listing.pricePerKg}
           </Text>
-          <Text style={styles.priceUnit}> /kg</Text>
+          <Text style={[styles.priceUnit, isDark && styles.priceUnitDark]}> /kg</Text>
         </View>
       </View>
 
       {/* Right Circular Action Arrow */}
-      <View style={styles.arrowButton}>
+      <View style={[styles.arrowButton, isDark && styles.arrowButtonDark]}>
         <MaterialCommunityIcons name="arrow-top-right" size={18} color="#FFFFFF" />
       </View>
     </TouchableOpacity>
@@ -133,6 +170,10 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 0.5,
     borderColor: '#ECE8DF',
+  },
+  cardContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
   },
   imageContainer: {
     width: 86,
@@ -201,6 +242,9 @@ const styles = StyleSheet.create({
     color: colors.buyer.textDark,
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
+  cropNameDark: {
+    color: '#F0F5F1',
+  },
   typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -244,6 +288,9 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#6A7B6B',
   },
+  metaTextDark: {
+    color: '#98B39B',
+  },
   pillsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -259,10 +306,16 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 8,
   },
+  recordsPillDark: {
+    backgroundColor: '#162C1B',
+  },
   recordsPillText: {
     fontSize: 10,
     fontWeight: '600',
     color: '#2E7D32',
+  },
+  recordsPillTextDark: {
+    color: '#4ADE80',
   },
   stagesPill: {
     backgroundColor: '#EFEFE8',
@@ -270,10 +323,16 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 8,
   },
+  stagesPillDark: {
+    backgroundColor: '#223826',
+  },
   stagesPillText: {
     fontSize: 10,
     fontWeight: '500',
     color: '#556A55',
+  },
+  stagesPillTextDark: {
+    color: '#C3D6C5',
   },
   priceRow: {
     flexDirection: 'row',
@@ -285,10 +344,16 @@ const styles = StyleSheet.create({
     color: colors.buyer.textDark,
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
+  priceValueDark: {
+    color: '#F0F5F1',
+  },
   priceUnit: {
     fontSize: 11,
     color: '#768776',
     fontWeight: '500',
+  },
+  priceUnitDark: {
+    color: '#98B39B',
   },
   arrowButton: {
     width: 36,
@@ -298,5 +363,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  arrowButtonDark: {
+    backgroundColor: '#25442A',
   },
 });
