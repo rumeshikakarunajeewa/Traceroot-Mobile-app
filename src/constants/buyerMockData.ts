@@ -8,11 +8,33 @@ import {
   BuyerMessageThread,
 } from '../types/buyer.types';
 
+export const BUYER_PROFILE_HERO_BG =
+  'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80';
+
 export const mockBuyerProfile: BuyerProfile = {
   id: 'buyer-001',
   fullName: 'Saman Perera',
   initials: 'SP',
   isVerified: true,
+  avatarUrl:
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+  roleTitle: 'Wholesale Buyer',
+  company: 'FreshMart Ltd',
+  district: 'Colombo District',
+  province: 'Western Province',
+  country: 'Sri Lanka',
+  coordinates: '6.9271° N, 79.8612° E',
+  bio: 'Lead purchasing manager for FreshMart Supermarkets, building long-term relationships with verified, sustainable farmers.',
+  ordersCount: 142,
+  contractsCount: 5,
+  kgSourced: '12.5k',
+  trustScore: 96,
+  trustScoreLabel: 'Exemplary',
+  trustScoreDetail: 'Payments settled on time • 142 orders',
+  phone: '+94 71 987 6543',
+  email: 'saman.p@freshmart.lk',
+  businessType: 'Retail supermarket',
+  registrationId: 'BR-99321',
 };
 
 export const mockBuyerStats: BuyerStats = {
