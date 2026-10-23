@@ -15,12 +15,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCropsStore } from '../../../src/store/cropStore';
 import { PhotoOptionsModal } from '../../../src/components/farmer/PhotoOptionsModal';
 import { AddRecordModal } from '../../../src/components/farmer/AddRecordModal';
 import { JourneyStage } from '../../../src/types/farmer.types';
 
-const HERO_HEIGHT = 280;
+const HERO_HEIGHT = 310;
 
 export default function CropFarmingJourneyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -87,6 +88,7 @@ export default function CropFarmingJourneyScreen() {
   // Entrance animations for content sections
   const contentFade = useRef(new Animated.Value(0)).current;
   const contentSlide = useRef(new Animated.Value(25)).current;
+  const headerScaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -98,6 +100,12 @@ export default function CropFarmingJourneyScreen() {
       Animated.timing(contentSlide, {
         toValue: 0,
         duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.spring(headerScaleAnim, {
+        toValue: 1,
+        friction: 7,
+        tension: 40,
         useNativeDriver: true,
       }),
       Animated.timing(addBarFadeAnim, {
@@ -245,8 +253,17 @@ export default function CropFarmingJourneyScreen() {
           )}
         </Animated.View>
 
-        {/* Gradient Scrim Overlay */}
-        <View style={styles.heroDarkScrim} />
+        {/* Gradient Scrim Overlay for crystal-clear text readability over any background photo */}
+        <LinearGradient
+          colors={[
+            'rgba(0, 0, 0, 0.45)', // Darker top for back & bookmark buttons
+            'rgba(0, 0, 0, 0.05)', // Clear middle so the tomato photo shines through
+            'rgba(7, 24, 13, 0.70)', // Rich dark organic green tint
+            'rgba(6, 20, 11, 0.96)', // Solid contrast base behind titles and pills
+          ]}
+          locations={[0, 0.35, 0.72, 1.0]}
+          style={StyleSheet.absoluteFill}
+        />
 
         {/* Camera / Edit button floating on top-right of photo */}
         <TouchableOpacity
@@ -302,7 +319,7 @@ export default function CropFarmingJourneyScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: HERO_HEIGHT - 60, paddingBottom: 120 },
+          { paddingTop: HERO_HEIGHT - 80, paddingBottom: 120 },
         ]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
@@ -317,27 +334,38 @@ export default function CropFarmingJourneyScreen() {
             transform: [{ translateY: contentSlide }],
           }}
         >
-          {/* Header Title & Tag Overlap Group */}
-          <View style={styles.titleInfoGroup}>
+          {/* Header Title & Tag Overlap Group - Enhanced Glass Container for Outstanding Legibility */}
+          <Animated.View
+            style={[
+              styles.titleInfoGroup,
+              {
+                transform: [{ scale: headerScaleAnim }],
+              },
+            ]}
+          >
             <View style={styles.environmentRow}>
               {/* Home icon Greenhouse Pill */}
               <View style={styles.environmentPill}>
-                <Ionicons name="home-outline" size={12} color="#2D5C35" style={{ marginRight: 4 }} />
+                <Ionicons name="home-outline" size={12} color="#1F4D25" style={{ marginRight: 5 }} />
                 <Text style={styles.environmentText}>
                   {field?.environmentType || 'Greenhouse'}
                 </Text>
               </View>
 
-              <Text style={styles.startedDateText}>
-                Started {field?.startDate || '15 Aug 2026'}
-              </Text>
+              {/* Started Date Pill / Badge */}
+              <View style={styles.dateBadge}>
+                <Ionicons name="calendar-outline" size={11} color="#E8F3EA" style={{ marginRight: 4 }} />
+                <Text style={styles.startedDateText}>
+                  Started {field?.startDate || '15 Aug 2026'}
+                </Text>
+              </View>
             </View>
 
-            {/* Serif Crop Title (e.g. Tomato) */}
+            {/* Serif Crop Title (e.g. Tomato) with clear text shadow and contrast */}
             <Text style={styles.mainCropTitle}>
               {field?.cropName || 'Tomato'}
             </Text>
-          </View>
+          </Animated.View>
 
           {/* 4 Summary Stats White Cards Strip */}
           <View style={styles.statsCardsRow}>
@@ -694,39 +722,60 @@ const styles = StyleSheet.create({
   /* Title & Tag Section */
   titleInfoGroup: {
     marginBottom: 16,
+    paddingHorizontal: 2,
   },
   environmentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
     gap: 8,
   },
   environmentPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 9,
-    paddingVertical: 4.5,
-    borderRadius: 14,
-    borderWidth: 0.8,
-    borderColor: '#ECEAE2',
+    paddingHorizontal: 11,
+    paddingVertical: 5.5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.16,
+    shadowRadius: 4,
+    elevation: 3,
   },
   environmentText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#265934',
+    fontWeight: '800',
+    color: '#1B4722',
+    letterSpacing: 0.2,
+  },
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 33, 18, 0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 14,
+    borderWidth: 0.8,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   startedDateText: {
-    fontSize: 12.5,
-    color: '#556D59',
+    fontSize: 12,
+    color: '#F0F7F1',
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
   mainCropTitle: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#15321B',
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#FFFFFF',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
+    textShadowColor: 'rgba(0, 0, 0, 0.65)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
 
   /* 4 Stats Cards Strip */
