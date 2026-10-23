@@ -6,6 +6,23 @@ export interface BuyerProfile {
   initials: string;
   isVerified: boolean;
   avatarUrl?: string;
+  roleTitle?: string;
+  company?: string;
+  district?: string;
+  province?: string;
+  country?: string;
+  coordinates?: string;
+  bio?: string;
+  ordersCount?: number;
+  contractsCount?: number;
+  kgSourced?: string;
+  trustScore?: number;
+  trustScoreLabel?: string;
+  trustScoreDetail?: string;
+  phone?: string;
+  email?: string;
+  businessType?: string;
+  registrationId?: string;
 }
 
 export interface BuyerStats {
