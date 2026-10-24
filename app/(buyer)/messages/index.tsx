@@ -17,12 +17,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { mockBuyerMessages } from '../../../src/constants/buyerMockData';
 import { BuyerMessageThread } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
-import { useDarkMode } from '../../../src/store/uiStore';
 
 type FilterTab = 'All' | 'Requests' | 'Notes' | 'Unread';
 
 export default function BuyerMessagesScreen() {
-  const [isDark] = useDarkMode();
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -82,14 +80,8 @@ export default function BuyerMessagesScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isDark && styles.safeAreaDark]}
-      edges={['top']}
-    >
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#0E1710' : '#F4EFE6'}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
 
       {/* Header Container */}
       <View style={styles.headerContainer}>
@@ -103,15 +95,9 @@ export default function BuyerMessagesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={24}
-              color={isDark ? '#F0F5F1' : '#162C1A'}
-            />
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#162C1A" />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
-            Messages
-          </Text>
+          <Text style={styles.headerTitle}>Messages</Text>
         </View>
 
         {/* Right Side: Search Action Button */}
@@ -121,8 +107,7 @@ export default function BuyerMessagesScreen() {
             onPress={() => setIsSearchVisible((prev) => !prev)}
             style={[
               styles.actionCircleButton,
-              isDark && styles.actionCircleButtonDark,
-              isSearchVisible && (isDark ? styles.actionCircleButtonActiveDark : styles.actionCircleButtonActive),
+              isSearchVisible && styles.actionCircleButtonActive,
             ]}
             accessibilityRole="button"
             accessibilityLabel="Search messages"
@@ -130,7 +115,7 @@ export default function BuyerMessagesScreen() {
             <MaterialCommunityIcons
               name="magnify"
               size={22}
-              color={isSearchVisible ? '#FFFFFF' : isDark ? '#E5EFE7' : '#162C1A'}
+              color={isSearchVisible ? '#FFFFFF' : '#162C1A'}
             />
           </TouchableOpacity>
         </View>
@@ -139,22 +124,12 @@ export default function BuyerMessagesScreen() {
       {/* Expandable Search Input Bar */}
       {isSearchVisible && (
         <View style={styles.searchBarWrapper}>
-          <View
-            style={[
-              styles.searchBarInputContainer,
-              isDark && styles.searchBarInputContainerDark,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="magnify"
-              size={20}
-              color={isDark ? '#7E9B82' : '#758876'}
-              style={styles.searchBarIcon}
-            />
+          <View style={styles.searchBarInputContainer}>
+            <MaterialCommunityIcons name="magnify" size={20} color="#758876" style={styles.searchBarIcon} />
             <TextInput
-              style={[styles.searchTextInput, isDark && styles.searchTextInputDark]}
+              style={styles.searchTextInput}
               placeholder="Search conversations, farmers, requests..."
-              placeholderTextColor={isDark ? '#6B826F' : '#8C9E8D'}
+              placeholderTextColor="#8C9E8D"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
@@ -165,11 +140,7 @@ export default function BuyerMessagesScreen() {
                 onPress={() => setSearchQuery('')}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <MaterialCommunityIcons
-                  name="close-circle"
-                  size={18}
-                  color={isDark ? '#7E9B82' : '#758876'}
-                />
+                <MaterialCommunityIcons name="close-circle" size={18} color="#758876" />
               </TouchableOpacity>
             )}
           </View>
@@ -189,14 +160,12 @@ export default function BuyerMessagesScreen() {
             onPress={() => setActiveTab('All')}
             style={[
               styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'All' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              activeTab === 'All' && styles.filterTabPillActive,
             ]}
           >
             <Text
               style={[
                 styles.filterTabText,
-                isDark && styles.filterTabTextDark,
                 activeTab === 'All' && styles.filterTabTextActive,
               ]}
             >
@@ -210,14 +179,12 @@ export default function BuyerMessagesScreen() {
             onPress={() => setActiveTab('Requests')}
             style={[
               styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'Requests' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              activeTab === 'Requests' && styles.filterTabPillActive,
             ]}
           >
             <Text
               style={[
                 styles.filterTabText,
-                isDark && styles.filterTabTextDark,
                 activeTab === 'Requests' && styles.filterTabTextActive,
               ]}
             >
@@ -231,14 +198,12 @@ export default function BuyerMessagesScreen() {
             onPress={() => setActiveTab('Notes')}
             style={[
               styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'Notes' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              activeTab === 'Notes' && styles.filterTabPillActive,
             ]}
           >
             <Text
               style={[
                 styles.filterTabText,
-                isDark && styles.filterTabTextDark,
                 activeTab === 'Notes' && styles.filterTabTextActive,
               ]}
             >
@@ -252,14 +217,12 @@ export default function BuyerMessagesScreen() {
             onPress={() => setActiveTab('Unread')}
             style={[
               styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'Unread' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              activeTab === 'Unread' && styles.filterTabPillActive,
             ]}
           >
             <Text
               style={[
                 styles.filterTabText,
-                isDark && styles.filterTabTextDark,
                 activeTab === 'Unread' && styles.filterTabTextActive,
               ]}
             >
@@ -274,7 +237,7 @@ export default function BuyerMessagesScreen() {
         </ScrollView>
       </View>
 
-      {/* Message List ScrollView */}
+      {/* Messages Scroll List */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -282,8 +245,8 @@ export default function BuyerMessagesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[isDark ? '#4ADE80' : '#1D3724']}
-            tintColor={isDark ? '#4ADE80' : '#1D3724'}
+            colors={['#1D3724']}
+            tintColor="#1D3724"
           />
         }
       >
@@ -297,17 +260,11 @@ export default function BuyerMessagesScreen() {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIconCircle, isDark && styles.emptyIconCircleDark]}>
-              <MaterialCommunityIcons
-                name="chat-outline"
-                size={32}
-                color={isDark ? '#8CA590' : '#7B8E7D'}
-              />
+            <View style={styles.emptyIconCircle}>
+              <MaterialCommunityIcons name="chat-outline" size={32} color="#7B8E7D" />
             </View>
-            <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
-              No messages found
-            </Text>
-            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+            <Text style={styles.emptyTitle}>No messages found</Text>
+            <Text style={styles.emptySubtitle}>
               {searchQuery.trim().length > 0
                 ? `No results matching "${searchQuery}".`
                 : `There are currently no ${activeTab.toLowerCase()} messages in your inbox.`}
@@ -319,7 +276,7 @@ export default function BuyerMessagesScreen() {
                   setActiveTab('All');
                   setSearchQuery('');
                 }}
-                style={[styles.clearFilterButton, isDark && styles.clearFilterButtonDark]}
+                style={styles.clearFilterButton}
               >
                 <Text style={styles.clearFilterButtonText}>Reset Filters</Text>
               </TouchableOpacity>
@@ -335,9 +292,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F4EFE6', // Soft warm cream/beige background matching the design
-  },
-  safeAreaDark: {
-    backgroundColor: '#0E1710',
   },
   headerContainer: {
     flexDirection: 'row',
@@ -362,9 +316,6 @@ const styles = StyleSheet.create({
     color: '#162C1A',
     letterSpacing: -0.5,
   },
-  headerTitleDark: {
-    color: '#F0F5F1',
-  },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -378,14 +329,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionCircleButtonDark: {
-    backgroundColor: '#1E2F21',
-  },
   actionCircleButtonActive: {
     backgroundColor: '#1D3724',
-  },
-  actionCircleButtonActiveDark: {
-    backgroundColor: '#2E7A43',
   },
   searchBarWrapper: {
     paddingHorizontal: 20,
@@ -401,10 +346,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E3E7DE',
   },
-  searchBarInputContainerDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-  },
   searchBarIcon: {
     marginRight: 8,
   },
@@ -412,9 +353,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14.5,
     color: '#162C1A',
-  },
-  searchTextInputDark: {
-    color: '#F0F5F1',
   },
   filterTabsContainer: {
     paddingBottom: 16,
@@ -433,25 +371,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 22,
   },
-  filterTabPillDark: {
-    backgroundColor: '#18271C',
-    borderWidth: 0.8,
-    borderColor: '#283D2C',
-  },
   filterTabPillActive: {
     backgroundColor: '#1D3724', // Deep hunter/forest green matching active Figma pill
-  },
-  filterTabPillActiveDark: {
-    backgroundColor: '#2B6B3B',
-    borderColor: '#2B6B3B',
   },
   filterTabText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#556957',
-  },
-  filterTabTextDark: {
-    color: '#9CB3A0',
   },
   filterTabTextActive: {
     color: '#FFFFFF',
@@ -491,17 +417,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyIconCircleDark: {
-    backgroundColor: '#1E2F22',
-  },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#162C1A',
     marginBottom: 6,
-  },
-  emptyTitleDark: {
-    color: '#F0F5F1',
   },
   emptySubtitle: {
     fontSize: 13.5,
@@ -510,17 +430,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
-  emptySubtitleDark: {
-    color: '#8CA590',
-  },
   clearFilterButton: {
     backgroundColor: '#1D3724',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-  },
-  clearFilterButtonDark: {
-    backgroundColor: '#276938',
   },
   clearFilterButtonText: {
     color: '#FFFFFF',
