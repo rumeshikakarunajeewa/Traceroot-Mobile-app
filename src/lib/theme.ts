@@ -1,5 +1,3 @@
-import { useDarkMode } from '../store/uiStore';
-
 export const colors = {
   primary: '#187A36',
   primaryLight: '#239345',
@@ -42,58 +40,6 @@ export const colors = {
     progressBarFill: '#5D7C49',
   },
 };
-
-export const darkColors = {
-  primary: '#2EB854',
-  primaryLight: '#3CD868',
-  background: '#0E1710',
-  surface: '#18271C',
-  onboardingBackground: '#0B140D',
-  text: {
-    primary: '#F0F5F1',
-    secondary: '#A2BBA6',
-    inverse: '#16301A',
-    onboarding: '#E8F5E9',
-  },
-  button: {
-    primary: '#247038',
-    secondary: '#253A2A',
-    secondaryText: '#4ADE80',
-    accent: '#7CD958',
-  },
-  buyer: {
-    background: '#0E1710',
-    cardBackground: '#18271C',
-    forestDark: '#233F29',
-    forestDarkest: '#0E1710',
-    sageMint: '#A6C0A1',
-    sageLight: '#233827',
-    stoneCream: '#283D2C',
-    borderLight: '#283D2C',
-    textDark: '#F0F5F1',
-    textMuted: '#9CB3A0',
-    badgeBlueBg: '#18293D',
-    badgeBlueText: '#60A5FA',
-    badgeAmberBg: '#3A2710',
-    badgeAmberText: '#FBBF24',
-    tabBarBg: '#142517',
-    tabBarActive: '#FFFFFF',
-    tabBarInactive: '#889C8A',
-    tabBarIndicator: '#E68A28',
-    badgeOrange: '#E66926',
-    progressBarBg: '#2A3F2E',
-    progressBarFill: '#4ADE80',
-  },
-};
-
-export function getThemeColors(isDark: boolean) {
-  return isDark ? darkColors : colors;
-}
-
-export function useAppColors() {
-  const [isDark] = useDarkMode();
-  return isDark ? darkColors : colors;
-}
 
 export const typography = {
   heading: { fontSize: 42, fontWeight: '600' as const },

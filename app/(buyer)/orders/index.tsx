@@ -18,12 +18,10 @@ import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
 import { BuyerOrder } from '../../../src/types/buyer.types';
 import { BuyerOrderCard } from '../../../src/components/orders/BuyerOrderCard';
 import { OrderDetailModal } from '../../../src/components/orders/OrderDetailModal';
-import { useDarkMode } from '../../../src/store/uiStore';
 
 type FilterType = 'All' | 'Growing' | 'Pending' | 'Delivered';
 
 export default function BuyerOrdersScreen() {
-  const [isDark] = useDarkMode();
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
     'ord-001': true, // Tomato card expanded by default as in Figma design
@@ -91,14 +89,8 @@ export default function BuyerOrdersScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isDark && styles.safeAreaDark]}
-      edges={['top']}
-    >
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#0E1710' : '#F4EFE6'}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -107,8 +99,8 @@ export default function BuyerOrdersScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[isDark ? '#4ADE80' : '#1D3524']}
-            tintColor={isDark ? '#4ADE80' : '#1D3524'}
+            colors={['#1D3524']}
+            tintColor="#1D3524"
           />
         }
       >
@@ -118,20 +110,18 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push('/(buyer)/explore' as any)}
-            style={[styles.basketCircleBtn, isDark && styles.circleBtnDark]}
+            style={styles.basketCircleBtn}
           >
             <MaterialCommunityIcons name="basket-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
           {/* Center Title Group */}
           <View style={styles.titleGroup}>
-            <Text style={[styles.purchaseHistorySubtitle, isDark && styles.purchaseHistorySubtitleDark]}>
-              Purchase history
-            </Text>
+            <Text style={styles.purchaseHistorySubtitle}>Purchase history</Text>
             <View style={styles.headlineRow}>
-              <Text style={[styles.headlineMy, isDark && styles.headlineTextDark]}>My </Text>
-              <View style={[styles.ordersHighlightBox, isDark && styles.ordersHighlightBoxDark]}>
-                <Text style={[styles.headlineOrders, isDark && styles.headlineTextDark]}>Orders</Text>
+              <Text style={styles.headlineMy}>My </Text>
+              <View style={styles.ordersHighlightBox}>
+                <Text style={styles.headlineOrders}>Orders</Text>
               </View>
             </View>
           </View>
@@ -140,14 +130,14 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => handleCameraScan()}
-            style={[styles.cameraCircleBtn, isDark && styles.circleBtnDark]}
+            style={styles.cameraCircleBtn}
           >
             <MaterialCommunityIcons name="camera-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         {/* Metrics Banner Card (Dark Green Pill) */}
-        <View style={[styles.metricsCard, isDark && styles.metricsCardDark]}>
+        <View style={styles.metricsCard}>
           {/* Lighter Curved Background Accent on Right */}
           <View style={styles.metricsCircleAccent} />
 
@@ -183,16 +173,11 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveFilter('All')}
-            style={[
-              styles.filterChip,
-              isDark && styles.filterChipDark,
-              activeFilter === 'All' && (isDark ? styles.filterChipActiveDark : styles.filterChipActive),
-            ]}
+            style={[styles.filterChip, activeFilter === 'All' && styles.filterChipActive]}
           >
             <Text
               style={[
                 styles.filterChipText,
-                isDark && styles.filterChipTextDark,
                 activeFilter === 'All' && styles.filterChipTextActive,
               ]}
             >
@@ -204,16 +189,11 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveFilter('Growing')}
-            style={[
-              styles.filterChip,
-              isDark && styles.filterChipDark,
-              activeFilter === 'Growing' && (isDark ? styles.filterChipActiveDark : styles.filterChipActive),
-            ]}
+            style={[styles.filterChip, activeFilter === 'Growing' && styles.filterChipActive]}
           >
             <Text
               style={[
                 styles.filterChipText,
-                isDark && styles.filterChipTextDark,
                 activeFilter === 'Growing' && styles.filterChipTextActive,
               ]}
             >
@@ -225,16 +205,11 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveFilter('Pending')}
-            style={[
-              styles.filterChip,
-              isDark && styles.filterChipDark,
-              activeFilter === 'Pending' && (isDark ? styles.filterChipActiveDark : styles.filterChipActive),
-            ]}
+            style={[styles.filterChip, activeFilter === 'Pending' && styles.filterChipActive]}
           >
             <Text
               style={[
                 styles.filterChipText,
-                isDark && styles.filterChipTextDark,
                 activeFilter === 'Pending' && styles.filterChipTextActive,
               ]}
             >
@@ -246,16 +221,11 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveFilter('Delivered')}
-            style={[
-              styles.filterChip,
-              isDark && styles.filterChipDark,
-              activeFilter === 'Delivered' && (isDark ? styles.filterChipActiveDark : styles.filterChipActive),
-            ]}
+            style={[styles.filterChip, activeFilter === 'Delivered' && styles.filterChipActive]}
           >
             <Text
               style={[
                 styles.filterChipText,
-                isDark && styles.filterChipTextDark,
                 activeFilter === 'Delivered' && styles.filterChipTextActive,
               ]}
             >
@@ -466,43 +436,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#BA6D3E',
     marginTop: 2,
-  },
-  safeAreaDark: {
-    backgroundColor: '#0E1710',
-  },
-  purchaseHistorySubtitleDark: {
-    color: '#8CA590',
-  },
-  headlineTextDark: {
-    color: '#F0F5F1',
-  },
-  ordersHighlightBoxDark: {
-    backgroundColor: '#1E3F26',
-  },
-  circleBtnDark: {
-    backgroundColor: '#1C3121',
-  },
-  metricsCardDark: {
-    backgroundColor: '#142517',
-    borderWidth: 1,
-    borderColor: '#243C28',
-  },
-  filterChipDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-  },
-  filterChipActiveDark: {
-    backgroundColor: '#276938',
-    borderColor: '#276938',
-  },
-  filterChipTextDark: {
-    color: '#A0B7A4',
-  },
-  noticeCardDark: {
-    backgroundColor: '#2A1D16',
-    borderColor: '#4A2F1E',
-  },
-  noticeTitleDark: {
-    color: '#F5D3BC',
   },
 });

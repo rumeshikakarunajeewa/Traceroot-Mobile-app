@@ -15,10 +15,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
 import { getOrderStatusConfig } from '../../../src/components/orders/BuyerOrderCard';
-import { useDarkMode } from '../../../src/store/uiStore';
 
 export default function OrderDetailScreen() {
-  const [isDark] = useDarkMode();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   // Find order by ID or orderNumber
@@ -61,31 +59,20 @@ export default function OrderDetailScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isDark && styles.safeAreaDark]}
-      edges={['top']}
-    >
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Top Navigation Bar */}
-      <View style={[styles.navBar, isDark && styles.navBarDark]}>
+      <View style={styles.navBar}>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={[styles.backButton, isDark && styles.backButtonDark]}
+          style={styles.backButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={20}
-            color={isDark ? '#F0F5F1' : '#16301A'}
-          />
+          <MaterialCommunityIcons name="arrow-left" size={20} color="#16301A" />
         </TouchableOpacity>
 
         <View style={styles.navTitleContainer}>
-          <Text style={[styles.navTitle, isDark && styles.navTitleDark]}>
-            Order Details
-          </Text>
-          <Text style={[styles.navSubtitle, isDark && styles.navSubtitleDark]}>
-            {order.orderNumber}
-          </Text>
+          <Text style={styles.navTitle}>Order Details</Text>
+          <Text style={styles.navSubtitle}>{order.orderNumber}</Text>
         </View>
 
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
@@ -101,7 +88,7 @@ export default function OrderDetailScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Produce Summary Card */}
-        <View style={[styles.produceCard, isDark && styles.produceCardDark]}>
+        <View style={styles.produceCard}>
           <Image
             source={{ uri: order.imageUrl }}
             style={styles.produceImage}
@@ -109,9 +96,7 @@ export default function OrderDetailScreen() {
           />
           <View style={styles.produceInfo}>
             <View style={styles.cropTitleRow}>
-              <Text style={[styles.cropName, isDark && styles.cropNameDark]}>
-                {order.cropName}
-              </Text>
+              <Text style={styles.cropName}>{order.cropName}</Text>
               <Text style={styles.cropEmoji}>{order.cropEmoji}</Text>
             </View>
 
@@ -133,27 +118,11 @@ export default function OrderDetailScreen() {
             </View>
 
             <View style={styles.farmerMeta}>
-              <MaterialCommunityIcons
-                name="account-outline"
-                size={14}
-                color={isDark ? '#98B39B' : '#6A7B6B'}
-              />
-              <Text
-                style={[styles.farmerName, isDark && styles.farmerNameDark]}
-              >
-                {order.farmerName}
-              </Text>
+              <MaterialCommunityIcons name="account-outline" size={14} color="#6A7B6B" />
+              <Text style={styles.farmerName}>{order.farmerName}</Text>
               <Text style={styles.metaBullet}>•</Text>
-              <MaterialCommunityIcons
-                name="map-marker-outline"
-                size={14}
-                color={isDark ? '#98B39B' : '#6A7B6B'}
-              />
-              <Text
-                style={[styles.locationText, isDark && styles.locationTextDark]}
-              >
-                {order.location}
-              </Text>
+              <MaterialCommunityIcons name="map-marker-outline" size={14} color="#6A7B6B" />
+              <Text style={styles.locationText}>{order.location}</Text>
             </View>
           </View>
         </View>
@@ -162,79 +131,34 @@ export default function OrderDetailScreen() {
         <TouchableOpacity
           activeOpacity={0.88}
           onPress={handleVerifyQR}
-          style={[styles.traceCard, isDark && styles.traceCardDark]}
+          style={styles.traceCard}
         >
           <View style={styles.traceHeader}>
-            <View
-              style={[
-                styles.traceIconWrapper,
-                isDark && styles.traceIconWrapperDark,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="qrcode-scan"
-                size={20}
-                color={isDark ? '#4ADE80' : '#1E3523'}
-              />
+            <View style={styles.traceIconWrapper}>
+              <MaterialCommunityIcons name="qrcode-scan" size={20} color="#1E3523" />
             </View>
             <View style={styles.traceDetails}>
-              <Text style={[styles.traceTitle, isDark && styles.traceTitleDark]}>
-                Farm-to-Table Traceability
-              </Text>
-              <Text
-                style={[styles.traceBatchId, isDark && styles.traceBatchIdDark]}
-              >
-                Batch: {order.batchId}
-              </Text>
+              <Text style={styles.traceTitle}>Farm-to-Table Traceability</Text>
+              <Text style={styles.traceBatchId}>Batch: {order.batchId}</Text>
             </View>
-            <View
-              style={[
-                styles.recordsCountPill,
-                isDark && styles.recordsCountPillDark,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={13}
-                color={isDark ? '#4ADE80' : '#2E7D32'}
-              />
-              <Text
-                style={[
-                  styles.recordsCountText,
-                  isDark && styles.recordsCountTextDark,
-                ]}
-              >
-                {order.recordsCount} Records
-              </Text>
+            <View style={styles.recordsCountPill}>
+              <MaterialCommunityIcons name="shield-check" size={13} color="#2E7D32" />
+              <Text style={styles.recordsCountText}>{order.recordsCount} Records</Text>
             </View>
           </View>
-          <View style={[styles.traceHintRow, isDark && styles.traceHintRowDark]}>
-            <Text
-              style={[styles.traceHintText, isDark && styles.traceHintTextDark]}
-            >
+          <View style={styles.traceHintRow}>
+            <Text style={styles.traceHintText}>
               Cryptographically verified farm logbook. Tap to inspect audit seal.
             </Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={16}
-              color={isDark ? '#4ADE80' : '#556A55'}
-            />
+            <MaterialCommunityIcons name="chevron-right" size={16} color="#556A55" />
           </View>
         </TouchableOpacity>
 
         {/* Delivery Timeline */}
-        <View style={[styles.sectionCard, isDark && styles.sectionCardDark]}>
+        <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons
-              name="routes"
-              size={18}
-              color={isDark ? '#4ADE80' : '#16301A'}
-            />
-            <Text
-              style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
-            >
-              Delivery Timeline
-            </Text>
+            <MaterialCommunityIcons name="routes" size={18} color="#16301A" />
+            <Text style={styles.sectionTitle}>Delivery Timeline</Text>
           </View>
 
           <View style={styles.timelineContainer}>
@@ -275,31 +199,15 @@ export default function OrderDetailScreen() {
                         style={[
                           styles.milestoneTitle,
                           (isDone || isCurrent) && styles.milestoneTitleActive,
-                          isDark && styles.milestoneTitleDark,
-                          (isDone || isCurrent) && isDark && styles.milestoneTitleActiveDark,
                         ]}
                       >
                         {step.title}
                       </Text>
                       {step.timestamp && (
-                        <Text
-                          style={[
-                            styles.milestoneTimestamp,
-                            isDark && styles.milestoneTimestampDark,
-                          ]}
-                        >
-                          {step.timestamp}
-                        </Text>
+                        <Text style={styles.milestoneTimestamp}>{step.timestamp}</Text>
                       )}
                     </View>
-                    <Text
-                      style={[
-                        styles.milestoneDescription,
-                        isDark && styles.milestoneDescriptionDark,
-                      ]}
-                    >
-                      {step.description}
-                    </Text>
+                    <Text style={styles.milestoneDescription}>{step.description}</Text>
                   </View>
                 </View>
               );
@@ -308,64 +216,26 @@ export default function OrderDetailScreen() {
         </View>
 
         {/* Destination & Logistics */}
-        <View style={[styles.sectionCard, isDark && styles.sectionCardDark]}>
+        <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons
-              name="truck-outline"
-              size={18}
-              color={isDark ? '#4ADE80' : '#16301A'}
-            />
-            <Text
-              style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
-            >
-              Logistics & Destination
-            </Text>
+            <MaterialCommunityIcons name="truck-outline" size={18} color="#16301A" />
+            <Text style={styles.sectionTitle}>Logistics & Destination</Text>
           </View>
 
           <View style={styles.logisticsRow}>
-            <MaterialCommunityIcons
-              name="map-marker-radius"
-              size={18}
-              color={isDark ? '#4ADE80' : '#1E3523'}
-            />
+            <MaterialCommunityIcons name="map-marker-radius" size={18} color="#1E3523" />
             <View style={styles.logisticsTextContainer}>
-              <Text
-                style={[styles.logisticsLabel, isDark && styles.logisticsLabelDark]}
-              >
-                Receiving Facility
-              </Text>
-              <Text
-                style={[styles.logisticsValue, isDark && styles.logisticsValueDark]}
-              >
-                {order.deliveryAddress}
-              </Text>
+              <Text style={styles.logisticsLabel}>Receiving Facility</Text>
+              <Text style={styles.logisticsValue}>{order.deliveryAddress}</Text>
             </View>
           </View>
 
           {order.courierName && (
             <View style={[styles.logisticsRow, { marginTop: 12 }]}>
-              <MaterialCommunityIcons
-                name="shield-car"
-                size={18}
-                color={isDark ? '#4ADE80' : '#1E3523'}
-              />
+              <MaterialCommunityIcons name="shield-car" size={18} color="#1E3523" />
               <View style={styles.logisticsTextContainer}>
-                <Text
-                  style={[
-                    styles.logisticsLabel,
-                    isDark && styles.logisticsLabelDark,
-                  ]}
-                >
-                  Assigned Carrier
-                </Text>
-                <Text
-                  style={[
-                    styles.logisticsValue,
-                    isDark && styles.logisticsValueDark,
-                  ]}
-                >
-                  {order.courierName}
-                </Text>
+                <Text style={styles.logisticsLabel}>Assigned Carrier</Text>
+                <Text style={styles.logisticsValue}>{order.courierName}</Text>
               </View>
               {order.courierPhone && (
                 <TouchableOpacity
@@ -381,58 +251,40 @@ export default function OrderDetailScreen() {
         </View>
 
         {/* Cost Breakdown */}
-        <View style={[styles.sectionCard, isDark && styles.sectionCardDark]}>
+        <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons
-              name="receipt-text-outline"
-              size={18}
-              color={isDark ? '#4ADE80' : '#16301A'}
-            />
-            <Text
-              style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
-            >
-              Payment & Escrow Details
-            </Text>
+            <MaterialCommunityIcons name="receipt-text-outline" size={18} color="#16301A" />
+            <Text style={styles.sectionTitle}>Payment & Escrow Details</Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={[styles.billLabel, isDark && styles.billLabelDark]}>
+            <Text style={styles.billLabel}>
               {order.cropName} ({order.quantityKg} kg @ {order.currency} {order.pricePerKg})
             </Text>
-            <Text style={[styles.billValue, isDark && styles.billValueDark]}>
+            <Text style={styles.billValue}>
               {order.currency} {subtotal.toLocaleString()}
             </Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={[styles.billLabel, isDark && styles.billLabelDark]}>
-              Cold-Chain Logistics Fee
-            </Text>
-            <Text style={[styles.billValue, isDark && styles.billValueDark]}>
+            <Text style={styles.billLabel}>Cold-Chain Logistics Fee</Text>
+            <Text style={styles.billValue}>
               {order.currency} {transportFee.toLocaleString()}
             </Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={[styles.billLabel, isDark && styles.billLabelDark]}>
-              TraceRoot Escrow Guarantee
-            </Text>
-            <Text style={[styles.billValue, isDark && styles.billValueDark]}>
+            <Text style={styles.billLabel}>TraceRoot Escrow Guarantee</Text>
+            <Text style={styles.billValue}>
               {order.currency} {platformFee.toLocaleString()}
             </Text>
           </View>
 
-          <View style={[styles.billDivider, isDark && styles.billDividerDark]} />
+          <View style={styles.billDivider} />
 
           <View style={styles.totalBillRow}>
-            <Text
-              style={[styles.totalBillLabel, isDark && styles.totalBillLabelDark]}
-            >
-              Total Escrow Paid
-            </Text>
-            <Text
-              style={[styles.totalBillValue, isDark && styles.totalBillValueDark]}
-            >
+            <Text style={styles.totalBillLabel}>Total Escrow Paid</Text>
+            <Text style={styles.totalBillValue}>
               {order.currency} {grandTotal.toLocaleString()}
             </Text>
           </View>
@@ -443,30 +295,16 @@ export default function OrderDetailScreen() {
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={() => router.push('/(buyer)/messages' as any)}
-            style={[styles.chatFarmerBtn, isDark && styles.chatFarmerBtnDark]}
+            style={styles.chatFarmerBtn}
           >
-            <MaterialCommunityIcons
-              name="chat-outline"
-              size={18}
-              color={isDark ? '#4ADE80' : '#16301A'}
-            />
-            <Text
-              style={[
-                styles.chatFarmerBtnText,
-                isDark && styles.chatFarmerBtnTextDark,
-              ]}
-            >
-              Message Farmer
-            </Text>
+            <MaterialCommunityIcons name="chat-outline" size={18} color="#16301A" />
+            <Text style={styles.chatFarmerBtnText}>Message Farmer</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleDownloadInvoice}
-            style={[
-              styles.downloadInvoiceBtn,
-              isDark && styles.downloadInvoiceBtnDark,
-            ]}
+            style={styles.downloadInvoiceBtn}
           >
             <MaterialCommunityIcons name="download-outline" size={18} color="#FFFFFF" />
             <Text style={styles.downloadInvoiceBtnText}>Get Invoice & Seal</Text>
@@ -482,9 +320,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F2EB',
   },
-  safeAreaDark: {
-    backgroundColor: '#0E1710',
-  },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -495,10 +330,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E1D7',
     backgroundColor: '#FFFFFF',
   },
-  navBarDark: {
-    backgroundColor: '#18271C',
-    borderBottomColor: '#263B2B',
-  },
   backButton: {
     width: 36,
     height: 36,
@@ -506,9 +337,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1EFE8',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backButtonDark: {
-    backgroundColor: '#223826',
   },
   navTitleContainer: {
     alignItems: 'center',
@@ -519,16 +347,10 @@ const styles = StyleSheet.create({
     color: '#16301A',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
-  navTitleDark: {
-    color: '#F0F5F1',
-  },
   navSubtitle: {
     fontSize: 11.5,
     color: '#768776',
     marginTop: 1,
-  },
-  navSubtitleDark: {
-    color: '#98B39B',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -561,10 +383,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#ECE7DD',
   },
-  produceCardDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-  },
   produceImage: {
     width: 76,
     height: 76,
@@ -586,9 +404,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#16301A',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-  },
-  cropNameDark: {
-    color: '#F0F5F1',
   },
   cropEmoji: {
     fontSize: 16,
@@ -631,9 +446,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6A7B6B',
   },
-  farmerNameDark: {
-    color: '#98B39B',
-  },
   metaBullet: {
     fontSize: 10,
     color: '#A0ADA1',
@@ -642,19 +454,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6A7B6B',
   },
-  locationTextDark: {
-    color: '#98B39B',
-  },
   traceCard: {
     backgroundColor: '#E8F5E9',
     borderRadius: 18,
     padding: 14,
     borderWidth: 0.5,
     borderColor: '#C8E6C9',
-  },
-  traceCardDark: {
-    backgroundColor: '#142517',
-    borderColor: '#263B2B',
   },
   traceHeader: {
     flexDirection: 'row',
@@ -670,9 +475,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  traceIconWrapperDark: {
-    backgroundColor: '#223826',
-  },
   traceDetails: {
     flex: 1,
     marginLeft: 10,
@@ -682,17 +484,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1B4D24',
   },
-  traceTitleDark: {
-    color: '#4ADE80',
-  },
   traceBatchId: {
     fontSize: 11,
     color: '#388E3C',
     fontWeight: '600',
     marginTop: 1,
-  },
-  traceBatchIdDark: {
-    color: '#A7F3D0',
   },
   recordsCountPill: {
     flexDirection: 'row',
@@ -703,16 +499,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 4,
   },
-  recordsCountPillDark: {
-    backgroundColor: '#1B2E1E',
-  },
   recordsCountText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#2E7D32',
-  },
-  recordsCountTextDark: {
-    color: '#4ADE80',
   },
   traceHintRow: {
     flexDirection: 'row',
@@ -722,16 +512,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: '#C8E6C9',
   },
-  traceHintRowDark: {
-    borderTopColor: '#263B2B',
-  },
   traceHintText: {
     fontSize: 11,
     color: '#2E7D32',
     flex: 1,
-  },
-  traceHintTextDark: {
-    color: '#98B39B',
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
@@ -739,10 +523,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 0.5,
     borderColor: '#ECE7DD',
-  },
-  sectionCardDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -754,9 +534,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#16301A',
-  },
-  sectionTitleDark: {
-    color: '#F0F5F1',
   },
   timelineContainer: {
     paddingLeft: 4,
@@ -818,31 +595,19 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#768776',
   },
-  milestoneTitleDark: {
-    color: '#98B39B',
-  },
   milestoneTitleActive: {
     fontSize: 13.5,
     fontWeight: '700',
     color: '#16301A',
   },
-  milestoneTitleActiveDark: {
-    color: '#4ADE80',
-  },
   milestoneTimestamp: {
     fontSize: 11,
     color: '#8B9C8C',
-  },
-  milestoneTimestampDark: {
-    color: '#98B39B',
   },
   milestoneDescription: {
     fontSize: 11.5,
     color: '#556A55',
     lineHeight: 16,
-  },
-  milestoneDescriptionDark: {
-    color: '#C5D6C7',
   },
   logisticsRow: {
     flexDirection: 'row',
@@ -856,17 +621,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#768776',
   },
-  logisticsLabelDark: {
-    color: '#98B39B',
-  },
   logisticsValue: {
     fontSize: 13,
     fontWeight: '600',
     color: '#16301A',
     marginTop: 1,
-  },
-  logisticsValueDark: {
-    color: '#F0F5F1',
   },
   callCourierBtn: {
     flexDirection: 'row',
@@ -892,24 +651,15 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: '#6A7B6B',
   },
-  billLabelDark: {
-    color: '#98B39B',
-  },
   billValue: {
     fontSize: 13,
     fontWeight: '600',
     color: '#16301A',
   },
-  billValueDark: {
-    color: '#F0F5F1',
-  },
   billDivider: {
     height: 0.5,
     backgroundColor: '#ECE7DD',
     marginVertical: 10,
-  },
-  billDividerDark: {
-    backgroundColor: '#263B2B',
   },
   totalBillRow: {
     flexDirection: 'row',
@@ -921,17 +671,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#16301A',
   },
-  totalBillLabelDark: {
-    color: '#F0F5F1',
-  },
   totalBillValue: {
     fontSize: 17,
     fontWeight: '700',
     color: '#16301A',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-  },
-  totalBillValueDark: {
-    color: '#4ADE80',
   },
   bottomButtons: {
     flexDirection: 'row',
@@ -950,17 +694,10 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     gap: 6,
   },
-  chatFarmerBtnDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#4ADE80',
-  },
   chatFarmerBtnText: {
     fontSize: 13.5,
     fontWeight: '700',
     color: '#16301A',
-  },
-  chatFarmerBtnTextDark: {
-    color: '#4ADE80',
   },
   downloadInvoiceBtn: {
     flex: 1,
@@ -971,9 +708,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 13,
     gap: 6,
-  },
-  downloadInvoiceBtnDark: {
-    backgroundColor: '#244D29',
   },
   downloadInvoiceBtnText: {
     fontSize: 13.5,

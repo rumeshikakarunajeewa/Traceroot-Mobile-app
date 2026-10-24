@@ -1,19 +1,13 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { BuyerBottomTabBar } from '@/components/buyer/BuyerBottomTabBar';
-import { useDarkMode } from '@/store/uiStore';
 
 export default function BuyerTabsLayout() {
-  const [isDark] = useDarkMode();
-
   return (
     <Tabs
       tabBar={(props) => <BuyerBottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: {
-          backgroundColor: isDark ? '#0E1710' : '#F5F2EB',
-        },
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',

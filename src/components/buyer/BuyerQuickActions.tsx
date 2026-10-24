@@ -2,7 +2,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { QuickActionItem } from '../../types/buyer.types';
-import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerQuickActionsProps {
   actions: QuickActionItem[];
@@ -13,13 +12,9 @@ export const BuyerQuickActions: React.FC<BuyerQuickActionsProps> = ({
   actions,
   onActionPress,
 }) => {
-  const [isDark] = useDarkMode();
-
   return (
     <View style={styles.sectionContainer}>
-      <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-        Quick Actions
-      </Text>
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
 
       <View style={styles.gridRow}>
         {actions.map((action) => {
@@ -30,25 +25,26 @@ export const BuyerQuickActions: React.FC<BuyerQuickActionsProps> = ({
               activeOpacity={0.85}
               style={[
                 styles.actionCard,
-                isActive
-                  ? [styles.activeCard, isDark && styles.activeCardDark]
-                  : [styles.inactiveCard, isDark && styles.inactiveCardDark],
+                isActive ? styles.activeCard : styles.inactiveCard,
               ]}
               onPress={() => onActionPress(action)}
             >
-              <View style={styles.iconContainer}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  isActive ? styles.activeIconContainer : styles.inactiveIconContainer,
+                ]}
+              >
                 <MaterialCommunityIcons
                   name={action.iconName as any}
                   size={24}
-                  color={isActive ? '#FFFFFF' : isDark ? '#4ADE80' : '#2A5531'}
+                  color={isActive ? '#FFFFFF' : '#2A5531'}
                 />
               </View>
               <Text
                 style={[
                   styles.actionLabel,
-                  isActive
-                    ? styles.activeLabel
-                    : [styles.inactiveLabel, isDark && styles.inactiveLabelDark],
+                  isActive ? styles.activeLabel : styles.inactiveLabel,
                 ]}
               >
                 {action.title}
@@ -74,9 +70,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     letterSpacing: -0.2,
   },
-  sectionTitleDark: {
-    color: '#F0F5F1',
-  },
   gridRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -92,30 +85,23 @@ const styles = StyleSheet.create({
   },
   activeCard: {
     backgroundColor: '#203924',
+    // Completely remove box shadow for the active/pressed card
     shadowColor: 'transparent',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
   },
-  activeCardDark: {
-    backgroundColor: '#2E7D42',
-  },
   inactiveCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#ECE7DC',
+    // Extremely subtle, soft ambient light without harsh box edges
     shadowColor: '#1B3220',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 4,
     elevation: 1,
-  },
-  inactiveCardDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-    shadowColor: '#000000',
-    shadowOpacity: 0.2,
   },
   iconContainer: {
     width: 36,
@@ -124,6 +110,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
+  },
+  activeIconContainer: {
+    backgroundColor: 'transparent',
+  },
+  inactiveIconContainer: {
+    backgroundColor: 'transparent',
   },
   actionLabel: {
     fontSize: 12,
@@ -134,8 +126,5 @@ const styles = StyleSheet.create({
   },
   inactiveLabel: {
     color: '#16301A',
-  },
-  inactiveLabelDark: {
-    color: '#F0F5F1',
   },
 });

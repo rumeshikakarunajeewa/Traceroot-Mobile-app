@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { colors } from '../../lib/theme';
 import { FarmingType } from '../../types/buyer.types';
-import { useDarkMode } from '../../store/uiStore';
 
 export type FarmingFilterOption = 'all' | FarmingType;
 export type CategoryFilterOption = 'All' | 'Vegetables' | 'Fruits' | 'Spices' | 'Tubers';
@@ -35,12 +34,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedCategory,
   onSelectCategory,
 }) => {
-  const [isDark] = useDarkMode();
-
   return (
     <View style={styles.container}>
       {/* 1. Farming Type Segmented Buttons */}
-      <View style={[styles.segmentedWrapper, isDark && styles.segmentedWrapperDark]}>
+      <View style={styles.segmentedWrapper}>
         {FARMING_OPTIONS.map((option) => {
           const isActive = selectedFarmingType === option.value;
           return (
@@ -51,7 +48,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               style={[
                 styles.segmentButton,
                 isActive && styles.segmentButtonActive,
-                isActive && isDark && styles.segmentButtonActiveDark,
               ]}
               accessibilityRole="button"
               accessibilityState={isActive ? { selected: true } : {}}
@@ -62,7 +58,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <Text
                 style={[
                   styles.segmentText,
-                  isDark && styles.segmentTextDark,
                   isActive && styles.segmentTextActive,
                 ]}
               >
@@ -88,9 +83,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               onPress={() => onSelectCategory(cat.label)}
               style={[
                 styles.categoryChip,
-                isDark && styles.categoryChipDark,
                 isCatActive && styles.categoryChipActive,
-                isCatActive && isDark && styles.categoryChipActiveDark,
               ]}
               accessibilityRole="button"
               accessibilityState={isCatActive ? { selected: true } : {}}
@@ -99,7 +92,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <Text
                 style={[
                   styles.categoryText,
-                  isDark && styles.categoryTextDark,
                   isCatActive && styles.categoryTextActive,
                 ]}
               >
@@ -127,11 +119,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 12,
   },
-  segmentedWrapperDark: {
-    backgroundColor: '#18271C',
-    borderWidth: 1,
-    borderColor: '#263B2B',
-  },
   segmentButton: {
     flex: 1,
     flexDirection: 'row',
@@ -149,9 +136,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  segmentButtonActiveDark: {
-    backgroundColor: '#284E30',
-  },
   segmentEmoji: {
     fontSize: 12,
   },
@@ -159,9 +143,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#556956',
-  },
-  segmentTextDark: {
-    color: '#98B39B',
   },
   segmentTextActive: {
     color: '#FFFFFF',
@@ -182,17 +163,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E1D7',
     gap: 5,
   },
-  categoryChipDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-  },
   categoryChipActive: {
     backgroundColor: '#26442A',
     borderColor: '#26442A',
-  },
-  categoryChipActiveDark: {
-    backgroundColor: '#284E30',
-    borderColor: '#3C7046',
   },
   categoryEmoji: {
     fontSize: 12,
@@ -201,9 +174,6 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     color: colors.buyer.textDark,
-  },
-  categoryTextDark: {
-    color: '#E2ECE3',
   },
   categoryTextActive: {
     color: '#FFFFFF',

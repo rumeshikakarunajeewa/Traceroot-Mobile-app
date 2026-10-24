@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDarkMode } from '../../../src/store/uiStore';
 
 interface ChatMessage {
   id: string;
@@ -24,7 +23,6 @@ interface ChatMessage {
 }
 
 export default function BuyerMessageDetailScreen() {
-  const [isDark] = useDarkMode();
   const params = useLocalSearchParams<{
     userId?: string;
     name?: string;
@@ -76,36 +74,23 @@ export default function BuyerMessageDetailScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isDark && styles.safeAreaDark]}
-      edges={['top', 'bottom']}
-    >
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#0E1710' : '#F4EFE6'}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
 
       {/* Header Bar */}
-      <View style={[styles.header, isDark && styles.headerDark]}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color={isDark ? '#F0F5F1' : '#162C1A'}
-          />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#162C1A" />
         </TouchableOpacity>
 
         <Image source={{ uri: recipientAvatar }} style={styles.avatar} resizeMode="cover" />
 
         <View style={styles.headerTextGroup}>
-          <Text
-            style={[styles.headerName, isDark && styles.headerNameDark]}
-            numberOfLines={1}
-          >
+          <Text style={styles.headerName} numberOfLines={1}>
             {recipientName}
           </Text>
           <View style={styles.statusBadgeRow}>
@@ -117,27 +102,16 @@ export default function BuyerMessageDetailScreen() {
             >
               <Text style={styles.categoryTagText}>{params.category || 'Request'}</Text>
             </View>
-            <Text
-              style={[
-                styles.onlineStatusText,
-                isDark && styles.onlineStatusTextDark,
-              ]}
-            >
-              • Active now
-            </Text>
+            <Text style={styles.onlineStatusText}>• Active now</Text>
           </View>
         </View>
 
         <TouchableOpacity
-          style={[styles.headerActionBtn, isDark && styles.headerActionBtnDark]}
+          style={styles.headerActionBtn}
           onPress={() => {}}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialCommunityIcons
-            name="phone-outline"
-            size={22}
-            color={isDark ? '#4ADE80' : '#162C1A'}
-          />
+          <MaterialCommunityIcons name="phone-outline" size={22} color="#162C1A" />
         </TouchableOpacity>
       </View>
 
@@ -147,16 +121,12 @@ export default function BuyerMessageDetailScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          style={[styles.messagesList, isDark && styles.messagesListDark]}
+          style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.dateStamp, isDark && styles.dateStampDark]}>
-            <Text
-              style={[styles.dateStampText, isDark && styles.dateStampTextDark]}
-            >
-              Today
-            </Text>
+          <View style={styles.dateStamp}>
+            <Text style={styles.dateStampText}>Today</Text>
           </View>
 
           {messages.map((item) => {
@@ -172,20 +142,13 @@ export default function BuyerMessageDetailScreen() {
                 <View
                   style={[
                     styles.messageBubble,
-                    isMe
-                      ? [styles.bubbleMeBg, isDark && styles.bubbleMeBgDark]
-                      : [styles.bubbleOtherBg, isDark && styles.bubbleOtherBgDark],
+                    isMe ? styles.bubbleMeBg : styles.bubbleOtherBg,
                   ]}
                 >
                   <Text
                     style={[
                       styles.messageText,
-                      isMe
-                        ? styles.messageTextMe
-                        : [
-                            styles.messageTextOther,
-                            isDark && styles.messageTextOtherDark,
-                          ],
+                      isMe ? styles.messageTextMe : styles.messageTextOther,
                     ]}
                   >
                     {item.text}
@@ -193,12 +156,7 @@ export default function BuyerMessageDetailScreen() {
                   <Text
                     style={[
                       styles.timestampText,
-                      isMe
-                        ? styles.timestampMe
-                        : [
-                            styles.timestampOther,
-                            isDark && styles.timestampOtherDark,
-                          ],
+                      isMe ? styles.timestampMe : styles.timestampOther,
                     ]}
                   >
                     {item.time}
@@ -210,11 +168,11 @@ export default function BuyerMessageDetailScreen() {
         </ScrollView>
 
         {/* Input Bar */}
-        <View style={[styles.inputContainer, isDark && styles.inputContainerDark]}>
+        <View style={styles.inputContainer}>
           <TextInput
-            style={[styles.textInput, isDark && styles.textInputDark]}
+            style={styles.textInput}
             placeholder="Type your message..."
-            placeholderTextColor={isDark ? '#768B78' : '#8C9E8D'}
+            placeholderTextColor="#8C9E8D"
             value={inputMessage}
             onChangeText={setInputMessage}
             multiline
@@ -222,9 +180,7 @@ export default function BuyerMessageDetailScreen() {
           <TouchableOpacity
             style={[
               styles.sendButton,
-              isDark && styles.sendButtonDark,
               inputMessage.trim().length > 0 && styles.sendButtonActive,
-              inputMessage.trim().length > 0 && isDark && styles.sendButtonActiveDark,
             ]}
             onPress={handleSend}
             disabled={!inputMessage.trim()}
@@ -232,7 +188,7 @@ export default function BuyerMessageDetailScreen() {
             <MaterialCommunityIcons
               name="send"
               size={18}
-              color={inputMessage.trim().length > 0 ? '#FFFFFF' : isDark ? '#4B634E' : '#8C9E8D'}
+              color={inputMessage.trim().length > 0 ? '#FFFFFF' : '#8C9E8D'}
             />
           </TouchableOpacity>
         </View>
@@ -246,9 +202,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F4EFE6',
   },
-  safeAreaDark: {
-    backgroundColor: '#0E1710',
-  },
   flexOne: {
     flex: 1,
   },
@@ -260,10 +213,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E6EAE2',
     backgroundColor: '#F4EFE6',
-  },
-  headerDark: {
-    backgroundColor: '#0E1710',
-    borderBottomColor: '#263B2B',
   },
   backButton: {
     paddingRight: 10,
@@ -282,9 +231,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#162C1A',
-  },
-  headerNameDark: {
-    color: '#F0F5F1',
   },
   statusBadgeRow: {
     flexDirection: 'row',
@@ -313,9 +259,6 @@ const styles = StyleSheet.create({
     color: '#4B7A50',
     fontWeight: '500',
   },
-  onlineStatusTextDark: {
-    color: '#4ADE80',
-  },
   headerActionBtn: {
     width: 38,
     height: 38,
@@ -324,17 +267,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerActionBtnDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-    borderWidth: 1,
-  },
   messagesList: {
     flex: 1,
     backgroundColor: '#F7F5EE',
-  },
-  messagesListDark: {
-    backgroundColor: '#0E1710',
   },
   messagesContent: {
     paddingHorizontal: 16,
@@ -348,18 +283,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
   },
-  dateStampDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-    borderWidth: 0.5,
-  },
   dateStampText: {
     fontSize: 11.5,
     color: '#657866',
     fontWeight: '500',
-  },
-  dateStampTextDark: {
-    color: '#98B39B',
   },
   messageBubbleContainer: {
     marginBottom: 14,
@@ -380,18 +307,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1D3724',
     borderBottomRightRadius: 4,
   },
-  bubbleMeBgDark: {
-    backgroundColor: '#204727',
-  },
   bubbleOtherBg: {
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     borderColor: '#E6EAE3',
-  },
-  bubbleOtherBgDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
   },
   messageText: {
     fontSize: 14,
@@ -402,9 +322,6 @@ const styles = StyleSheet.create({
   },
   messageTextOther: {
     color: '#162C1A',
-  },
-  messageTextOtherDark: {
-    color: '#F0F5F1',
   },
   timestampText: {
     fontSize: 10,
@@ -417,9 +334,6 @@ const styles = StyleSheet.create({
   timestampOther: {
     color: '#8A9A8C',
   },
-  timestampOtherDark: {
-    color: '#98B39B',
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -428,10 +342,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E6EAE3',
-  },
-  inputContainerDark: {
-    backgroundColor: '#142217',
-    borderTopColor: '#263B2B',
   },
   textInput: {
     flex: 1,
@@ -443,10 +353,6 @@ const styles = StyleSheet.create({
     color: '#162C1A',
     maxHeight: 90,
   },
-  textInputDark: {
-    backgroundColor: '#1B2E1F',
-    color: '#F0F5F1',
-  },
   sendButton: {
     width: 38,
     height: 38,
@@ -456,13 +362,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 10,
   },
-  sendButtonDark: {
-    backgroundColor: '#243B28',
-  },
   sendButtonActive: {
     backgroundColor: '#1D3724',
-  },
-  sendButtonActiveDark: {
-    backgroundColor: '#2EB854',
   },
 });

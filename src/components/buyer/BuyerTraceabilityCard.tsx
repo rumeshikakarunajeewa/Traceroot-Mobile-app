@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerTraceabilityCardProps {
   onOpenScanner: () => void;
@@ -10,10 +9,8 @@ interface BuyerTraceabilityCardProps {
 export const BuyerTraceabilityCard: React.FC<BuyerTraceabilityCardProps> = ({
   onOpenScanner,
 }) => {
-  const [isDark] = useDarkMode();
-
   return (
-    <View style={[styles.cardContainer, isDark && styles.cardContainerDark]}>
+    <View style={styles.cardContainer}>
       {/* Decorative Organic Background Watermark Rings */}
       <View style={styles.decorativeRingOuter} />
       <View style={styles.decorativeRingInner} />
@@ -65,11 +62,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
-  },
-  cardContainerDark: {
-    backgroundColor: '#142517',
-    borderWidth: 1,
-    borderColor: '#25422B',
   },
   decorativeRingOuter: {
     position: 'absolute',

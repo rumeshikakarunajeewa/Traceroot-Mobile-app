@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerMessageThread } from '../../types/buyer.types';
-import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerMessageCardProps {
   thread: BuyerMessageThread;
@@ -17,7 +16,6 @@ interface BuyerMessageCardProps {
 }
 
 export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({ thread, onPress }) => {
-  const [isDark] = useDarkMode();
   const isRequest = thread.category === 'Request';
 
   // Render the category tag (Request or Note)
@@ -66,11 +64,7 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({ thread, onPr
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={() => onPress(thread)}
-      style={[
-        styles.cardContainer,
-        isDark && styles.cardContainerDark,
-        thread.isUnread && (isDark ? styles.cardContainerUnreadDark : styles.cardContainerUnread),
-      ]}
+      style={styles.cardContainer}
       accessibilityRole="button"
       accessibilityLabel={`Conversation with ${thread.senderName}`}
     >
@@ -81,24 +75,17 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({ thread, onPr
           style={styles.avatarImage}
           resizeMode="cover"
         />
-        {thread.isOnline && (
-          <View style={[styles.onlineDot, isDark && styles.onlineDotDark]} />
-        )}
+        {thread.isOnline && <View style={styles.onlineDot} />}
       </View>
 
       {/* Right Column: Name, Time, Badges, and Preview Snippet */}
       <View style={styles.contentColumn}>
         {/* Top Row: Sender Name and Timestamp */}
         <View style={styles.topRow}>
-          <Text
-            style={[styles.senderName, isDark && styles.senderNameDark]}
-            numberOfLines={1}
-          >
+          <Text style={styles.senderName} numberOfLines={1}>
             {thread.senderName}
           </Text>
-          <Text style={[styles.timestamp, isDark && styles.timestampDark]}>
-            {thread.timestamp}
-          </Text>
+          <Text style={styles.timestamp}>{thread.timestamp}</Text>
         </View>
 
         {/* Badges Row: Category (Request / Note) + Status Indicator */}
@@ -108,10 +95,7 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({ thread, onPr
         </View>
 
         {/* Message Snippet Preview */}
-        <Text
-          style={[styles.messageSnippet, isDark && styles.messageSnippetDark]}
-          numberOfLines={2}
-        >
+        <Text style={styles.messageSnippet} numberOfLines={2}>
           {thread.messageSnippet}
         </Text>
       </View>
@@ -146,18 +130,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  cardContainerDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-  },
-  cardContainerUnread: {
-    borderColor: '#CDE3D0',
-    backgroundColor: '#FBFDFB',
-  },
-  cardContainerUnreadDark: {
-    borderColor: '#396340',
-    backgroundColor: '#1E3224',
-  },
   avatarWrapper: {
     position: 'relative',
     width: 52,
@@ -180,9 +152,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  onlineDotDark: {
-    borderColor: '#18271C',
-  },
   contentColumn: {
     flex: 1,
     marginLeft: 14,
@@ -202,38 +171,35 @@ const styles = StyleSheet.create({
     marginRight: 8,
     letterSpacing: -0.2,
   },
-  senderNameDark: {
-    color: '#F0F5F1',
-  },
   timestamp: {
     fontSize: 12,
     color: '#8A9A8C',
     fontWeight: '400',
   },
-  timestampDark: {
-    color: '#8CA390',
-  },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
     gap: 8,
-    marginBottom: 6,
   },
   categoryTag: {
     paddingHorizontal: 8,
     paddingVertical: 2.5,
-    borderRadius: 6,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryTagRequest: {
-    backgroundColor: '#E48F19', // Amber badge
+    backgroundColor: '#D9822B', // Pumpkin warm orange from design
   },
   categoryTagNote: {
-    backgroundColor: '#1A4D2E', // Dark green badge
+    backgroundColor: '#1E382B', // Deep forest green from design
   },
   categoryTagText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   statusRow: {
     flexDirection: 'row',
@@ -243,7 +209,7 @@ const styles = StyleSheet.create({
     marginRight: 3,
   },
   statusNewText: {
-    color: '#E48F19',
+    color: '#D9822B',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -258,11 +224,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   messageSnippet: {
-    fontSize: 13,
-    color: '#465648',
-    lineHeight: 18,
-  },
-  messageSnippetDark: {
-    color: '#BACEC0',
+    fontSize: 13.5,
+    lineHeight: 19.5,
+    color: '#4A5B4C',
+    fontWeight: '400',
   },
 });
