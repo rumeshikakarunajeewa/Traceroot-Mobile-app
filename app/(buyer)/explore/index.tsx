@@ -7,11 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   Platform,
-  StatusBar,
   Modal,
   Image,
   RefreshControl,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -132,7 +132,7 @@ export default function BuyerExploreScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F2EB" />
+      <StatusBar style="dark" />
 
       {/* Top Header */}
       <View style={styles.header}>

@@ -4,10 +4,10 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  StatusBar,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -99,7 +99,7 @@ export default function BuyerHomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F2EB" />
+      <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}

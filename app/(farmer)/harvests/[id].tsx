@@ -5,12 +5,12 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  StatusBar,
   Animated,
   Alert,
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -29,8 +29,8 @@ export default function CropFarmingJourneyScreen() {
   const { width: windowWidth } = useWindowDimensions();
 
   // Reactive shared crop store so photo changes and new records sync across all dashboard views and crops list
-  const { getFieldById, updateFieldPhoto, addRecordToCrop } = useCropsStore();
-  const field = getFieldById(id) || getFieldById('field-tomato');
+  const { fields, getFieldById, updateFieldPhoto, addRecordToCrop } = useCropsStore();
+  const field = id ? fields.find((f) => f.id === id) : getFieldById('field-tomato');
 
   // Photo change modal state
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
@@ -223,9 +223,41 @@ export default function CropFarmingJourneyScreen() {
   const growthPercentage = field?.growthPercentage ?? 60;
   const evidenceCount = field?.evidenceCount ?? 6;
 
+  if (!field) {
+    return (
+      <View style={[styles.screenContainer, { justifyContent: 'center', alignItems: 'center', padding: 24, paddingTop: insets.top }]}>
+        <StatusBar style="dark" />
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EAE6DD', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <Feather name="alert-circle" size={32} color="#1E3C25" />
+        </View>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: '#15321B', marginBottom: 8, textAlign: 'center' }}>
+          Crop Not Found
+        </Text>
+        <Text style={{ fontSize: 14, color: '#6B8270', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+          {id ? `The crop with ID "${id}" could not be found.` : 'No crop was specified.'}
+        </Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#1E3C25',
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderRadius: 24,
+          }}
+          activeOpacity={0.8}
+          onPress={() => router.back()}
+        >
+          <Feather name="arrow-left" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screenContainer}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar style="light" />
 
       {/* 1. PARALLAX HERO BACKGROUND LAYER */}
       <Animated.View
@@ -522,7 +554,7 @@ export default function CropFarmingJourneyScreen() {
             activeOpacity={0.8}
             onPress={() => {
               // TODO: Navigate to complete public tamper-proof audit trail / batch cert
-              router.push('/(farmer)/contracts');
+              router.push('/contracts');
             }}
           >
             <Ionicons name="git-network-outline" size={17} color="#2D5C35" style={{ marginRight: 8 }} />
