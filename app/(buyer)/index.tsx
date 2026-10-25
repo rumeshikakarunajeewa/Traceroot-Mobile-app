@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { colors } from '../../src/lib/theme';
+import { useDarkMode } from '../../src/store/uiStore';
 import { BuyerHeader } from '../../src/components/buyer/BuyerHeader';
 import { BuyerHeroBanner } from '../../src/components/buyer/BuyerHeroBanner';
 import { BuyerQuickActions } from '../../src/components/buyer/BuyerQuickActions';
@@ -31,6 +31,7 @@ import {
 import { ProduceListing, ActiveContractItem, QuickActionItem } from '../../src/types/buyer.types';
 
 export default function BuyerHomeScreen() {
+  const [isDark] = useDarkMode();
   const [searchQuery, setSearchQuery] = useState('');
   const [actions, setActions] = useState(mockQuickActions);
 
@@ -126,14 +127,22 @@ export default function BuyerHomeScreen() {
 
         {/* New Listings Section */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>New Listings</Text>
+          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+            New Listings
+          </Text>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleBrowseAllListings}
-            style={styles.pillButton}
+            style={[styles.pillButton, isDark && styles.pillButtonDark]}
           >
-            <Text style={styles.pillButtonText}>Browse All</Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color="#16301A" />
+            <Text style={[styles.pillButtonText, isDark && styles.pillButtonTextDark]}>
+              Browse All
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={16}
+              color={isDark ? '#4ADE80' : '#16301A'}
+            />
           </TouchableOpacity>
         </View>
 
@@ -147,22 +156,30 @@ export default function BuyerHomeScreen() {
           ))
         ) : (
           <View style={styles.emptySearchContainer}>
-            <Text style={styles.emptySearchText}>
-              No produce matching "{searchQuery}"
+            <Text style={[styles.emptySearchText, isDark && styles.emptySearchTextDark]}>
+              No produce matching &quot;{searchQuery}&quot;
             </Text>
           </View>
         )}
 
         {/* Active Contract Section */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Active Contract</Text>
+          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+            Active Contract
+          </Text>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleViewAllContracts}
-            style={styles.pillButton}
+            style={[styles.pillButton, isDark && styles.pillButtonDark]}
           >
-            <Text style={styles.pillButtonText}>View All</Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color="#16301A" />
+            <Text style={[styles.pillButtonText, isDark && styles.pillButtonTextDark]}>
+              View All
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={16}
+              color={isDark ? '#4ADE80' : '#16301A'}
+            />
           </TouchableOpacity>
         </View>
 
@@ -182,6 +199,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F5F2EB', // Warm cream background
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
   },
   scrollView: {
     flex: 1,
@@ -203,6 +223,9 @@ const styles = StyleSheet.create({
     color: '#16301A',
     letterSpacing: -0.2,
   },
+  sectionTitleDark: {
+    color: '#F0F5F1',
+  },
   pillButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -214,10 +237,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F2EB',
     gap: 2,
   },
+  pillButtonDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
   pillButtonText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#16301A',
+  },
+  pillButtonTextDark: {
+    color: '#4ADE80',
   },
   emptySearchContainer: {
     padding: 24,
@@ -226,6 +256,9 @@ const styles = StyleSheet.create({
   emptySearchText: {
     fontSize: 14,
     color: '#6E826F',
+  },
+  emptySearchTextDark: {
+    color: '#98B39B',
   },
   bottomSpacer: {
     height: 30,

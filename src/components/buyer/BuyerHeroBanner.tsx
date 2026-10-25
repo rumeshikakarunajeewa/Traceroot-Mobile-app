@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { BuyerStats } from '../../types/buyer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerHeroBannerProps {
   heroImageUrl: string;
@@ -26,6 +27,7 @@ export const BuyerHeroBanner: React.FC<BuyerHeroBannerProps> = ({
   onSearchChange,
   onSearchSubmit,
 }) => {
+  const [isDark] = useDarkMode();
   return (
     <View style={styles.cardWrapper}>
       <ImageBackground
@@ -50,17 +52,22 @@ export const BuyerHeroBanner: React.FC<BuyerHeroBannerProps> = ({
           </Text>
 
           {/* Pill Search Bar */}
-          <View style={styles.searchBarContainer}>
+          <View
+            style={[
+              styles.searchBarContainer,
+              isDark && styles.searchBarContainerDark,
+            ]}
+          >
             <MaterialCommunityIcons
               name="magnify"
               size={20}
-              color="#6E7E6E"
+              color={isDark ? '#8EA790' : '#6E7E6E'}
               style={styles.searchIcon}
             />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, isDark && styles.searchInputDark]}
               placeholder="Search verified crops..."
-              placeholderTextColor="#869686"
+              placeholderTextColor={isDark ? '#7E9481' : '#869686'}
               value={searchQuery}
               onChangeText={onSearchChange}
               onSubmitEditing={onSearchSubmit}
@@ -69,9 +76,13 @@ export const BuyerHeroBanner: React.FC<BuyerHeroBannerProps> = ({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={onSearchSubmit}
-              style={styles.searchButton}
+              style={[styles.searchButton, isDark && styles.searchButtonDark]}
             >
-              <Text style={styles.searchButtonText}>Search</Text>
+              <Text
+                style={[styles.searchButtonText, isDark && styles.searchButtonTextDark]}
+              >
+                Search
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -195,6 +206,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  searchBarContainerDark: {
+    backgroundColor: '#16281B',
+    borderColor: '#263E2C',
+    borderWidth: 1,
+  },
   searchIcon: {
     marginRight: 6,
   },
@@ -204,16 +220,25 @@ const styles = StyleSheet.create({
     color: '#16281A',
     paddingVertical: Platform.OS === 'ios' ? 7 : 4,
   },
+  searchInputDark: {
+    color: '#F0F5F1',
+  },
   searchButton: {
     backgroundColor: '#203924',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
+  searchButtonDark: {
+    backgroundColor: '#284C2F',
+  },
   searchButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  searchButtonTextDark: {
+    color: '#E8F5E9',
   },
   statsContainer: {
     flexDirection: 'row',
