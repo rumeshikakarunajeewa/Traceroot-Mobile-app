@@ -11,9 +11,9 @@ import {
   RefreshControl,
   Animated,
   Easing,
-  StatusBar,
   Alert,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, usePathname } from 'expo-router';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -170,7 +170,7 @@ export default function FarmerHomeScreen() {
 
   const handleAddRecord = () => {
     // Navigate to live photo evidence capture
-    router.push('/(farmer)/harvests/new');
+    router.push('/harvests/new');
   };
 
   const handleNotificationPress = () => {
@@ -252,9 +252,10 @@ export default function FarmerHomeScreen() {
   };
 
   const handleNavigateToJourney = (field: FieldItem) => {
+    const targetId = field?.id || 'field-tomato';
     router.push({
-      pathname: '/(farmer)/harvests/[id]',
-      params: { id: field.id },
+      pathname: '/harvests/[id]',
+      params: { id: targetId },
     });
   };
 
@@ -275,7 +276,7 @@ export default function FarmerHomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
+      <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}
@@ -300,7 +301,7 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={styles.avatarBorder}
               activeOpacity={0.8}
-              onPress={() => router.push('/(farmer)/profile')}
+              onPress={() => router.push('/profile')}
             >
               <Image
                 source={{ uri: mockFarmerProfile.avatarUrl }}
@@ -565,7 +566,7 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={styles.addFieldCard}
               activeOpacity={0.8}
-              onPress={() => router.push('/(farmer)/harvests/new')}
+              onPress={() => router.push('/harvests/new')}
             >
               <View style={styles.addFieldIconCircle}>
                 <Feather name="plus" size={24} color="#2D6B3C" />
@@ -591,7 +592,7 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={styles.seeAllPillBtn}
               activeOpacity={0.7}
-              onPress={() => router.push('/(farmer)/crops')}
+              onPress={() => router.push('/crops')}
             >
               <Text style={styles.seeAllPillText}>See All</Text>
               <Feather name="chevron-right" size={13} color="#5D7A65" />
@@ -662,7 +663,7 @@ export default function FarmerHomeScreen() {
               <TouchableOpacity
                 style={styles.emptyJourneyBtn}
                 activeOpacity={0.8}
-                onPress={() => router.push('/(farmer)/harvests/new')}
+                onPress={() => router.push('/harvests/new')}
               >
                 <Feather name="plus" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.emptyJourneyBtnText}>Start New Journey</Text>
@@ -686,7 +687,7 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={styles.seeAllPillBtn}
               activeOpacity={0.7}
-              onPress={() => router.push('/(farmer)/crops')}
+              onPress={() => router.push('/crops')}
             >
               <Text style={styles.seeAllPillText}>See All</Text>
               <Feather name="chevron-right" size={13} color="#5D7A65" />
@@ -704,7 +705,7 @@ export default function FarmerHomeScreen() {
                   // TODO: When a dedicated immutable record inspection screen is built, link to /(farmer)/records/[id]
                   if (record.cropId) {
                     router.push({
-                      pathname: '/(farmer)/harvests/[id]',
+                      pathname: '/harvests/[id]',
                       params: { id: record.cropId },
                     });
                   } else {
@@ -713,8 +714,8 @@ export default function FarmerHomeScreen() {
                 }}
                 onAddCorrectionPress={() => {
                   // Navigate to add new evidence / correction record
-                  // TODO: Pass correction query params to /(farmer)/harvests/new
-                  router.push('/(farmer)/harvests/new');
+                  // TODO: Pass correction query params to /harvests/new
+                  router.push('/harvests/new');
                 }}
               />
             ))
@@ -752,7 +753,7 @@ export default function FarmerHomeScreen() {
                   router.push(item.route as any);
                 } else if (item.cropId) {
                   router.push({
-                    pathname: '/(farmer)/harvests/[id]',
+                    pathname: '/harvests/[id]',
                     params: { id: item.cropId },
                   });
                 }

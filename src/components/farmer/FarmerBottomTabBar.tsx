@@ -3,9 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { router } from 'expo-router';
+
 export interface FarmerBottomTabBarProps {
-  state: any;
-  navigation: any;
+  state?: any;
+  navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
   descriptors?: Record<string, any>;
   onAddPress?: () => void;
   [key: string]: any;
@@ -19,18 +23,30 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
-  const currentRouteName = state.routes[state.index]?.name;
+  const currentRouteName = state?.routes?.[state?.index]?.name;
 
   const navigateTab = (routeName: string) => {
-    const routeIndex = state.routes.findIndex((r: any) => r.name === routeName);
-    if (routeIndex !== -1) {
-      const event = navigation.emit({
-        type: 'tabPress',
-        target: state.routes[routeIndex].key,
-        canPreventDefault: true,
-      });
-      if (currentRouteName !== routeName && !event.defaultPrevented) {
+    const route = state?.routes?.find((r: any) => r.name === routeName);
+    
+    let defaultPrevented = false;
+    if (route && navigation?.emit) {
+      try {
+        const event = navigation.emit({
+          type: 'tabPress',
+          target: route.key,
+          canPreventDefault: true,
+        });
+        defaultPrevented = !!event?.defaultPrevented;
+      } catch {
+        defaultPrevented = false;
+      }
+    }
+
+    if (!defaultPrevented) {
+      if (navigation?.navigate && route) {
         navigation.navigate(routeName);
+      } else {
+        router.push(`/${routeName === 'index' ? '' : routeName}` as any);
       }
     }
   };
@@ -39,6 +55,12 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   const isCropsFocused = currentRouteName === 'crops';
   const isOrdersFocused = currentRouteName === 'orders';
   const isMessagesFocused = currentRouteName === 'messages';
+
+  // Do not render floating tab bar on full-screen detail subroutes (e.g. harvests/[id], harvests/new)
+  const isTabScreen = ['index', 'crops', 'orders', 'messages'].includes(currentRouteName);
+  if (!isTabScreen) {
+    return null;
+  }
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">

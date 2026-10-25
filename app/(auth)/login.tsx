@@ -9,8 +9,8 @@ import {
   Platform,
   Animated,
   Easing,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton } from '../../src/components/common/AppButton';
@@ -130,7 +130,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar style="light" />
       <Animated.Image
         source={require('../../assets/images/auth_sprouts.jpg')}
         style={[styles.bgImage, { transform: [{ scale: bgScale }] }]}

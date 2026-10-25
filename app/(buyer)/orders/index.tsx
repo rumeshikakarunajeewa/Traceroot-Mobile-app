@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  StatusBar,
   Platform,
   Alert,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -91,14 +91,8 @@ export default function BuyerOrdersScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isDark && styles.safeAreaDark]}
-      edges={['top']}
-    >
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#0E1710' : '#F4EFE6'}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar style="dark" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

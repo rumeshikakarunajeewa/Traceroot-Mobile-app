@@ -7,16 +7,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDarkMode } from '../../store/uiStore';
 
 export interface BuyerBottomTabBarProps {
-  state: {
-    index: number;
-    routes: { key: string; name: string }[];
-  };
-  navigation: {
-    emit: (event: any) => any;
-    navigate: (name: string, params?: any) => void;
-  };
+  state?: any;
+  navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
   descriptors?: Record<string, any>;
   insets?: any;
+  [key: string]: any;
 }
 
 interface TabConfig {
@@ -133,7 +130,7 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
 
             if (!isFocused && !event.defaultPrevented) {
               if (matchingRoute) {
-                navigation.navigate(matchingRoute.name);
+                (navigation.navigate as any)(matchingRoute.name);
               } else {
                 router.push(tab.routePath as any);
               }
