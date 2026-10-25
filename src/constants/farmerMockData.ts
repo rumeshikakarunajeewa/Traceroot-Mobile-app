@@ -278,7 +278,7 @@ export const mockUpcomingItems: UpcomingItem[] = [
     iconColor: '#9C6339',
     iconBg: '#F9EDE3',
     cropId: 'field-tomato',
-    route: '/(farmer)/harvests/field-tomato',
+    route: '/harvests/field-tomato',
   },
   {
     id: 'up-msg-1',

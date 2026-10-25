@@ -229,7 +229,11 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
         </View>
 
         {/* 3. "NEXT STAGE" CALLOUT PANEL */}
-        <View style={styles.nextStageCard}>
+        <TouchableOpacity
+          style={styles.nextStageCard}
+          activeOpacity={0.85}
+          onPress={onPress}
+        >
           <View style={styles.nextStageTextGroup}>
             <Text style={styles.nextStageLabel}>Next stage</Text>
             <Text style={styles.nextStageDetails} numberOfLines={1}>
@@ -242,7 +246,7 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
           <View style={styles.nextStageArrowCircle}>
             <Feather name="arrow-up-right" size={18} color="#FFFFFF" />
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Bottom divider line */}
         <View style={styles.footerDivider} />

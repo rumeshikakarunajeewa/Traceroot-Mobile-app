@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
-  StatusBar,
   RefreshControl,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -107,19 +107,20 @@ export default function FarmerCropsScreen() {
   };
 
   const handleNavigateToJourney = (crop: FieldItem) => {
+    const targetId = crop?.id || 'field-tomato';
     router.push({
-      pathname: '/(farmer)/harvests/[id]',
-      params: { id: crop.id },
+      pathname: '/harvests/[id]',
+      params: { id: targetId },
     });
   };
 
   const handleAddNewCrop = () => {
-    router.push('/(farmer)/harvests/new');
+    router.push('/harvests/new');
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
+      <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}
