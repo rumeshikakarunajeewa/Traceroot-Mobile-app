@@ -4,6 +4,8 @@ import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useDarkMode } from '../../store/uiStore';
+
 export interface BuyerBottomTabBarProps {
   state: {
     index: number;
@@ -75,6 +77,7 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
   state,
   navigation,
 }) => {
+  const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
 
@@ -82,7 +85,13 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
-      <View style={[styles.barContainer, { marginBottom: bottomMargin }]}>
+      <View
+        style={[
+          styles.barContainer,
+          isDark && styles.barContainerDark,
+          { marginBottom: bottomMargin },
+        ]}
+      >
         {BUYER_TABS.map((tab) => {
           // Find matching route in navigator routes (e.g. 'explore', 'explore/index')
           const matchingRouteIndex = state.routes.findIndex((r: { name: string }) => {
@@ -209,6 +218,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 12,
     elevation: 8,
+  },
+  barContainerDark: {
+    backgroundColor: '#112215',
+    borderWidth: 1,
+    borderColor: '#223826',
+    shadowColor: '#000000',
+    shadowOpacity: 0.4,
   },
   tabItem: {
     flex: 1,

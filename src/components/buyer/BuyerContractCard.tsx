@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { ImageBackground, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ActiveContractItem } from '../../types/buyer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerContractCardProps {
   contract: ActiveContractItem;
@@ -12,11 +13,13 @@ export const BuyerContractCard: React.FC<BuyerContractCardProps> = ({
   contract,
   onPress,
 }) => {
+  const [isDark] = useDarkMode();
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => onPress(contract)}
-      style={styles.cardContainer}
+      style={[styles.cardContainer, isDark && styles.cardContainerDark]}
     >
       {/* Top Banner Image with Overlay */}
       <ImageBackground
@@ -30,9 +33,11 @@ export const BuyerContractCard: React.FC<BuyerContractCardProps> = ({
           {/* Top Row: Code and Status Pill */}
           <View style={styles.codeRow}>
             <Text style={styles.contractCode}>{contract.code}</Text>
-            <View style={styles.statusPill}>
+            <View style={[styles.statusPill, isDark && styles.statusPillDark]}>
               <View style={styles.greenDot} />
-              <Text style={styles.statusText}>{contract.status}</Text>
+              <Text style={[styles.statusText, isDark && styles.statusTextDark]}>
+                {contract.status}
+              </Text>
             </View>
           </View>
 
@@ -47,25 +52,37 @@ export const BuyerContractCard: React.FC<BuyerContractCardProps> = ({
       <View style={styles.bodyContent}>
         {/* Farmer and Due Date */}
         <View style={styles.farmerRow}>
-          <MaterialCommunityIcons name="account-outline" size={15} color="#6A7B6B" />
-          <Text style={styles.farmerText}>
+          <MaterialCommunityIcons
+            name="account-outline"
+            size={15}
+            color={isDark ? '#98B39B' : '#6A7B6B'}
+          />
+          <Text style={[styles.farmerText, isDark && styles.farmerTextDark]}>
             {contract.farmerName} • {contract.dueDate}
           </Text>
         </View>
 
         {/* Farming Progress Labels */}
         <View style={styles.progressLabelRow}>
-          <Text style={styles.progressLabel}>Farming progress</Text>
-          <Text style={styles.progressPercentage}>
+          <Text style={[styles.progressLabel, isDark && styles.progressLabelDark]}>
+            Farming progress
+          </Text>
+          <Text
+            style={[
+              styles.progressPercentage,
+              isDark && styles.progressPercentageDark,
+            ]}
+          >
             {contract.progressPercentage}%
           </Text>
         </View>
 
         {/* Progress Bar Track and Fill */}
-        <View style={styles.progressBarTrack}>
+        <View style={[styles.progressBarTrack, isDark && styles.progressBarTrackDark]}>
           <View
             style={[
               styles.progressBarFill,
+              isDark && styles.progressBarFillDark,
               { width: `${Math.min(Math.max(contract.progressPercentage, 0), 100)}%` },
             ]}
           />
@@ -89,6 +106,10 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 0.5,
     borderColor: '#ECE7DD',
+  },
+  cardContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
   },
   headerImage: {
     width: '100%',
@@ -128,6 +149,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 5,
   },
+  statusPillDark: {
+    backgroundColor: 'rgba(20, 35, 23, 0.92)',
+    borderWidth: 0.5,
+    borderColor: '#2E4432',
+  },
   greenDot: {
     width: 6,
     height: 6,
@@ -138,6 +164,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#16301A',
+  },
+  statusTextDark: {
+    color: '#A7F3D0',
   },
   cropTitle: {
     fontSize: 18,
@@ -162,6 +191,9 @@ const styles = StyleSheet.create({
     color: '#6A7B6B',
     fontWeight: '500',
   },
+  farmerTextDark: {
+    color: '#98B39B',
+  },
   progressLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -172,10 +204,16 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: '#768776',
   },
+  progressLabelDark: {
+    color: '#98B39B',
+  },
   progressPercentage: {
     fontSize: 13,
     fontWeight: '700',
     color: '#16301A',
+  },
+  progressPercentageDark: {
+    color: '#F0F5F1',
   },
   progressBarTrack: {
     width: '100%',
@@ -184,9 +222,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
   },
+  progressBarTrackDark: {
+    backgroundColor: '#243828',
+  },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#5D7C49', // Olive green progress fill
     borderRadius: 4,
+  },
+  progressBarFillDark: {
+    backgroundColor: '#4ADE80',
   },
 });
