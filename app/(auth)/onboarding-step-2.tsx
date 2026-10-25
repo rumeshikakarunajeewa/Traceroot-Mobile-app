@@ -58,7 +58,7 @@ export default function OnboardingStep2Screen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.onboardingBackground} />
+      <StatusBar style="light" />
       <View style={styles.container}>
         
         {/* Header */}

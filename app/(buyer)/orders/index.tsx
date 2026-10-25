@@ -91,8 +91,8 @@ export default function BuyerOrdersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

@@ -99,8 +99,11 @@ export default function BuyerHomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[styles.safeArea, isDark && styles.safeAreaDark]}
+      edges={['top', 'left', 'right']}
+    >
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       <ScrollView
         style={styles.scrollView}

@@ -129,8 +129,11 @@ export default function BuyerExploreScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[styles.container, isDark && styles.containerDark]}
+      edges={['top', 'left', 'right']}
+    >
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Top Header */}
       <View style={styles.header}>

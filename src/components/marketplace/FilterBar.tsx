@@ -15,13 +15,13 @@ interface FilterBarProps {
   activeCount?: number;
 }
 
-const FARMING_OPTIONS: Array<{ label: string; value: FarmingFilterOption; emoji?: string }> = [
+const FARMING_OPTIONS: { label: string; value: FarmingFilterOption; emoji?: string }[] = [
   { label: 'All Types', value: 'all' },
   { label: 'Greenhouse', value: 'greenhouse', emoji: '🏡' },
   { label: 'Open-field', value: 'open-field', emoji: '🌾' },
 ];
 
-const CATEGORIES: Array<{ label: CategoryFilterOption; emoji: string }> = [
+const CATEGORIES: { label: CategoryFilterOption; emoji: string }[] = [
   { label: 'All', emoji: '🥗' },
   { label: 'Vegetables', emoji: '🥬' },
   { label: 'Fruits', emoji: '🍓' },

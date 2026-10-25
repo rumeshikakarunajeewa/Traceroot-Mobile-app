@@ -13,6 +13,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerOrder } from '../../types/buyer.types';
 import { getOrderStatusConfig } from './BuyerOrderCard';
+import { useDarkMode } from '../../store/uiStore';
 
 interface OrderDetailModalProps {
   order: BuyerOrder | null;
@@ -27,6 +28,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onClose,
   onContactFarmer,
 }) => {
+  const [isDark] = useDarkMode();
   if (!order) return null;
 
   const statusConfig = getOrderStatusConfig(order.status);
@@ -73,12 +75,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, isDark && styles.modalContainerDark]}>
           {/* Header Bar */}
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isDark && styles.modalHeaderDark]}>
             <View>
               <View style={styles.titleRow}>
-                <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+                <Text style={[styles.orderNumber, isDark && styles.orderNumberDark]}>
+                  {order.orderNumber}
+                </Text>
                 <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
                   <View style={[styles.statusDot, { backgroundColor: statusConfig.dotColor }]} />
                   <Text style={[styles.statusText, { color: statusConfig.text }]}>
@@ -86,15 +90,21 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   </Text>
                 </View>
               </View>
-              <Text style={styles.orderDate}>Ordered on {order.createdAt}</Text>
+              <Text style={[styles.orderDate, isDark && styles.orderDateDark]}>
+                Ordered on {order.createdAt}
+              </Text>
             </View>
 
             <TouchableOpacity
               onPress={onClose}
-              style={styles.closeButton}
+              style={[styles.closeButton, isDark && styles.closeButtonDark]}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <MaterialCommunityIcons name="close" size={20} color="#16301A" />
+              <MaterialCommunityIcons
+                name="close"
+                size={20}
+                color={isDark ? '#F0F5F1' : '#16301A'}
+              />
             </TouchableOpacity>
           </View>
 
@@ -104,7 +114,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             contentContainerStyle={styles.scrollContent}
           >
             {/* Produce Banner Card */}
-            <View style={styles.produceCard}>
+            <View style={[styles.produceCard, isDark && styles.produceCardDark]}>
               <Image
                 source={{ uri: order.imageUrl }}
                 style={styles.produceImage}
@@ -112,7 +122,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               />
               <View style={styles.produceInfo}>
                 <View style={styles.cropTitleRow}>
-                  <Text style={styles.cropName}>{order.cropName}</Text>
+                  <Text style={[styles.cropName, isDark && styles.cropNameDark]}>
+                    {order.cropName}
+                  </Text>
                   <Text style={styles.cropEmoji}>{order.cropEmoji}</Text>
                 </View>
 
@@ -134,11 +146,23 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </View>
 
                 <View style={styles.farmerMeta}>
-                  <MaterialCommunityIcons name="account-outline" size={14} color="#6A7B6B" />
-                  <Text style={styles.farmerName}>{order.farmerName}</Text>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={14}
+                    color={isDark ? '#98B39B' : '#6A7B6B'}
+                  />
+                  <Text style={[styles.farmerName, isDark && styles.farmerNameDark]}>
+                    {order.farmerName}
+                  </Text>
                   <Text style={styles.metaBullet}>•</Text>
-                  <MaterialCommunityIcons name="map-marker-outline" size={14} color="#6A7B6B" />
-                  <Text style={styles.locationText}>{order.location}</Text>
+                  <MaterialCommunityIcons
+                    name="map-marker-outline"
+                    size={14}
+                    color={isDark ? '#98B39B' : '#6A7B6B'}
+                  />
+                  <Text style={[styles.locationText, isDark && styles.locationTextDark]}>
+                    {order.location}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -147,34 +171,52 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <TouchableOpacity
               activeOpacity={0.88}
               onPress={handleVerifyQR}
-              style={styles.traceCard}
+              style={[styles.traceCard, isDark && styles.traceCardDark]}
             >
               <View style={styles.traceHeader}>
-                <View style={styles.traceIconWrapper}>
-                  <MaterialCommunityIcons name="qrcode-scan" size={20} color="#1E3523" />
+                <View style={[styles.traceIconWrapper, isDark && styles.traceIconWrapperDark]}>
+                  <MaterialCommunityIcons
+                    name="qrcode-scan"
+                    size={20}
+                    color={isDark ? '#4ADE80' : '#1E3523'}
+                  />
                 </View>
                 <View style={styles.traceDetails}>
-                  <Text style={styles.traceTitle}>Farm-to-Table Traceability</Text>
-                  <Text style={styles.traceBatchId}>Batch: {order.batchId}</Text>
+                  <Text style={[styles.traceTitle, isDark && styles.traceTitleDark]}>
+                    Farm-to-Table Traceability
+                  </Text>
+                  <Text style={[styles.traceBatchId, isDark && styles.traceBatchIdDark]}>
+                    Batch: {order.batchId}
+                  </Text>
                 </View>
-                <View style={styles.recordsCountPill}>
+                <View style={[styles.recordsCountPill, isDark && styles.recordsCountPillDark]}>
                   <MaterialCommunityIcons name="shield-check" size={13} color="#2E7D32" />
                   <Text style={styles.recordsCountText}>{order.recordsCount} Records</Text>
                 </View>
               </View>
-              <View style={styles.traceHintRow}>
-                <Text style={styles.traceHintText}>
+              <View style={[styles.traceHintRow, isDark && styles.traceHintRowDark]}>
+                <Text style={[styles.traceHintText, isDark && styles.traceHintTextDark]}>
                   Cryptographically verified farm logbook. Tap to inspect audit seal.
                 </Text>
-                <MaterialCommunityIcons name="chevron-right" size={16} color="#556A55" />
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={16}
+                  color={isDark ? '#4ADE80' : '#556A55'}
+                />
               </View>
             </TouchableOpacity>
 
             {/* Tracking Milestones Timeline */}
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, isDark && styles.sectionCardDark]}>
               <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="routes" size={18} color="#16301A" />
-                <Text style={styles.sectionTitle}>Delivery Timeline</Text>
+                <MaterialCommunityIcons
+                  name="routes"
+                  size={18}
+                  color={isDark ? '#4ADE80' : '#16301A'}
+                />
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  Delivery Timeline
+                </Text>
               </View>
 
               <View style={styles.timelineContainer}>
@@ -205,6 +247,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             style={[
                               styles.timelineConnector,
                               isDone && styles.timelineConnectorDone,
+                              isDark && styles.timelineConnectorDark,
                             ]}
                           />
                         )}
@@ -216,16 +259,22 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           <Text
                             style={[
                               styles.milestoneTitle,
+                              isDark && styles.milestoneTitleDark,
                               (isDone || isCurrent) && styles.milestoneTitleActive,
+                              (isDone || isCurrent) && isDark && styles.milestoneTitleActiveDark,
                             ]}
                           >
                             {step.title}
                           </Text>
                           {step.timestamp && (
-                            <Text style={styles.milestoneTimestamp}>{step.timestamp}</Text>
+                            <Text style={[styles.milestoneTimestamp, isDark && styles.milestoneTimestampDark]}>
+                              {step.timestamp}
+                            </Text>
                           )}
                         </View>
-                        <Text style={styles.milestoneDescription}>{step.description}</Text>
+                        <Text style={[styles.milestoneDescription, isDark && styles.milestoneDescriptionDark]}>
+                          {step.description}
+                        </Text>
                       </View>
                     </View>
                   );
@@ -234,26 +283,48 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </View>
 
             {/* Logistics & Delivery Destination */}
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, isDark && styles.sectionCardDark]}>
               <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="truck-outline" size={18} color="#16301A" />
-                <Text style={styles.sectionTitle}>Logistics & Destination</Text>
+                <MaterialCommunityIcons
+                  name="truck-outline"
+                  size={18}
+                  color={isDark ? '#4ADE80' : '#16301A'}
+                />
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  Logistics & Destination
+                </Text>
               </View>
 
               <View style={styles.logisticsRow}>
-                <MaterialCommunityIcons name="map-marker-radius" size={18} color="#1E3523" />
+                <MaterialCommunityIcons
+                  name="map-marker-radius"
+                  size={18}
+                  color={isDark ? '#4ADE80' : '#1E3523'}
+                />
                 <View style={styles.logisticsTextContainer}>
-                  <Text style={styles.logisticsLabel}>Receiving Facility</Text>
-                  <Text style={styles.logisticsValue}>{order.deliveryAddress}</Text>
+                  <Text style={[styles.logisticsLabel, isDark && styles.logisticsLabelDark]}>
+                    Receiving Facility
+                  </Text>
+                  <Text style={[styles.logisticsValue, isDark && styles.logisticsValueDark]}>
+                    {order.deliveryAddress}
+                  </Text>
                 </View>
               </View>
 
               {order.courierName && (
                 <View style={[styles.logisticsRow, { marginTop: 12 }]}>
-                  <MaterialCommunityIcons name="shield-car" size={18} color="#1E3523" />
+                  <MaterialCommunityIcons
+                    name="shield-car"
+                    size={18}
+                    color={isDark ? '#4ADE80' : '#1E3523'}
+                  />
                   <View style={styles.logisticsTextContainer}>
-                    <Text style={styles.logisticsLabel}>Assigned Carrier</Text>
-                    <Text style={styles.logisticsValue}>{order.courierName}</Text>
+                    <Text style={[styles.logisticsLabel, isDark && styles.logisticsLabelDark]}>
+                      Assigned Carrier
+                    </Text>
+                    <Text style={[styles.logisticsValue, isDark && styles.logisticsValueDark]}>
+                      {order.courierName}
+                    </Text>
                   </View>
                   {order.courierPhone && (
                     <TouchableOpacity
@@ -269,40 +340,52 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </View>
 
             {/* Itemized Price Breakdown */}
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, isDark && styles.sectionCardDark]}>
               <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={18} color="#16301A" />
-                <Text style={styles.sectionTitle}>Payment & Escrow Details</Text>
+                <MaterialCommunityIcons
+                  name="receipt-text-outline"
+                  size={18}
+                  color={isDark ? '#4ADE80' : '#16301A'}
+                />
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  Payment & Escrow Details
+                </Text>
               </View>
 
               <View style={styles.billRow}>
-                <Text style={styles.billLabel}>
+                <Text style={[styles.billLabel, isDark && styles.billLabelDark]}>
                   {order.cropName} ({order.quantityKg} kg @ {order.currency} {order.pricePerKg})
                 </Text>
-                <Text style={styles.billValue}>
+                <Text style={[styles.billValue, isDark && styles.billValueDark]}>
                   {order.currency} {subtotal.toLocaleString()}
                 </Text>
               </View>
 
               <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Cold-Chain Logistics Fee</Text>
-                <Text style={styles.billValue}>
+                <Text style={[styles.billLabel, isDark && styles.billLabelDark]}>
+                  Cold-Chain Logistics Fee
+                </Text>
+                <Text style={[styles.billValue, isDark && styles.billValueDark]}>
                   {order.currency} {transportFee.toLocaleString()}
                 </Text>
               </View>
 
               <View style={styles.billRow}>
-                <Text style={styles.billLabel}>TraceRoot Escrow Guarantee</Text>
-                <Text style={styles.billValue}>
+                <Text style={[styles.billLabel, isDark && styles.billLabelDark]}>
+                  TraceRoot Escrow Guarantee
+                </Text>
+                <Text style={[styles.billValue, isDark && styles.billValueDark]}>
                   {order.currency} {platformFee.toLocaleString()}
                 </Text>
               </View>
 
-              <View style={styles.billDivider} />
+              <View style={[styles.billDivider, isDark && styles.billDividerDark]} />
 
               <View style={styles.totalBillRow}>
-                <Text style={styles.totalBillLabel}>Total Escrow Paid</Text>
-                <Text style={styles.totalBillValue}>
+                <Text style={[styles.totalBillLabel, isDark && styles.totalBillLabelDark]}>
+                  Total Escrow Paid
+                </Text>
+                <Text style={[styles.totalBillValue, isDark && styles.totalBillValueDark]}>
                   {order.currency} {grandTotal.toLocaleString()}
                 </Text>
               </View>
@@ -317,17 +400,23 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onClose();
                     onContactFarmer(order);
                   }}
-                  style={styles.chatFarmerBtn}
+                  style={[styles.chatFarmerBtn, isDark && styles.chatFarmerBtnDark]}
                 >
-                  <MaterialCommunityIcons name="chat-outline" size={18} color="#16301A" />
-                  <Text style={styles.chatFarmerBtnText}>Message Farmer</Text>
+                  <MaterialCommunityIcons
+                    name="chat-outline"
+                    size={18}
+                    color={isDark ? '#4ADE80' : '#16301A'}
+                  />
+                  <Text style={[styles.chatFarmerBtnText, isDark && styles.chatFarmerBtnTextDark]}>
+                    Message Farmer
+                  </Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={handleDownloadInvoice}
-                style={styles.downloadInvoiceBtn}
+                style={[styles.downloadInvoiceBtn, isDark && styles.downloadInvoiceBtnDark]}
               >
                 <MaterialCommunityIcons name="download-outline" size={18} color="#FFFFFF" />
                 <Text style={styles.downloadInvoiceBtnText}>Get Invoice & Seal</Text>
@@ -750,5 +839,109 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  modalContainerDark: {
+    backgroundColor: '#0E1710',
+  },
+  modalHeaderDark: {
+    backgroundColor: '#18271C',
+    borderBottomColor: '#263B2B',
+  },
+  orderNumberDark: {
+    color: '#F0F5F1',
+  },
+  orderDateDark: {
+    color: '#98B39B',
+  },
+  closeButtonDark: {
+    backgroundColor: '#263B2B',
+  },
+  produceCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  cropNameDark: {
+    color: '#F0F5F1',
+  },
+  farmerNameDark: {
+    color: '#98B39B',
+  },
+  locationTextDark: {
+    color: '#98B39B',
+  },
+  traceCardDark: {
+    backgroundColor: '#142517',
+    borderColor: '#233F29',
+  },
+  traceIconWrapperDark: {
+    backgroundColor: '#233F29',
+  },
+  traceTitleDark: {
+    color: '#4ADE80',
+  },
+  traceBatchIdDark: {
+    color: '#A2BBA6',
+  },
+  recordsCountPillDark: {
+    backgroundColor: '#18271C',
+  },
+  traceHintRowDark: {
+    borderTopColor: '#233F29',
+  },
+  traceHintTextDark: {
+    color: '#98B39B',
+  },
+  sectionCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  sectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  timelineConnectorDark: {
+    backgroundColor: '#263B2B',
+  },
+  milestoneTitleDark: {
+    color: '#768776',
+  },
+  milestoneTitleActiveDark: {
+    color: '#F0F5F1',
+  },
+  milestoneTimestampDark: {
+    color: '#98B39B',
+  },
+  milestoneDescriptionDark: {
+    color: '#98B39B',
+  },
+  logisticsLabelDark: {
+    color: '#98B39B',
+  },
+  logisticsValueDark: {
+    color: '#F0F5F1',
+  },
+  billLabelDark: {
+    color: '#98B39B',
+  },
+  billValueDark: {
+    color: '#F0F5F1',
+  },
+  billDividerDark: {
+    backgroundColor: '#263B2B',
+  },
+  totalBillLabelDark: {
+    color: '#F0F5F1',
+  },
+  totalBillValueDark: {
+    color: '#F0F5F1',
+  },
+  chatFarmerBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#4ADE80',
+  },
+  chatFarmerBtnTextDark: {
+    color: '#4ADE80',
+  },
+  downloadInvoiceBtnDark: {
+    backgroundColor: '#247038',
   },
 });
