@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { colors } from '../../src/lib/theme';
 import { useDarkMode } from '../../src/store/uiStore';
 import { BuyerHeader } from '../../src/components/buyer/BuyerHeader';
 import { BuyerHeroBanner } from '../../src/components/buyer/BuyerHeroBanner';
@@ -164,7 +163,7 @@ export default function BuyerHomeScreen() {
         ) : (
           <View style={styles.emptySearchContainer}>
             <Text style={[styles.emptySearchText, isDark && styles.emptySearchTextDark]}>
-              No produce matching "{searchQuery}"
+              No produce matching &quot;{searchQuery}&quot;
             </Text>
           </View>
         )}

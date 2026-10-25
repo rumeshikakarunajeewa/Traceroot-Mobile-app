@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -33,25 +33,21 @@ export default function BuyerExploreScreen() {
   const [isDark] = useDarkMode();
   const params = useLocalSearchParams<{ search?: string; crop?: string }>();
 
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('');
+  const paramSearch = params.search || params.crop || '';
+  const [searchQuery, setSearchQuery] = useState(paramSearch);
+  const [prevParam, setPrevParam] = useState(paramSearch);
+
   const [farmingType, setFarmingType] = useState<FarmingFilterOption>('all');
   const [category, setCategory] = useState<CategoryFilterOption>('All');
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Selected listing for detailed view modal
   const [selectedListing, setSelectedListing] = useState<ProduceListing | null>(null);
 
-  // Initialize search query from route parameters if present
-  useEffect(() => {
-    if (params.search) {
-      setSearchQuery(params.search);
-    } else if (params.crop) {
-      setSearchQuery(params.crop);
-    }
-  }, [params.search, params.crop]);
+  if (paramSearch !== prevParam) {
+    setPrevParam(paramSearch);
+    setSearchQuery(paramSearch);
+  }
 
   // Pull-to-refresh simulation
   const onRefresh = () => {
@@ -292,7 +288,7 @@ export default function BuyerExploreScreen() {
             <Text
               style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}
             >
-              We couldn't find any listings matching your search or filters.
+              We couldn&apos;t find any listings matching your search or filters.
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}

@@ -29,7 +29,7 @@ export const BuyerTraceabilityCard: React.FC<BuyerTraceabilityCardProps> = ({
 
         {/* Descriptive Text */}
         <Text style={styles.description}>
-          Scan any TraceRoot QR code to instantly view a crop's complete cultivation
+          Scan any TraceRoot QR code to instantly view a crop&apos;s complete cultivation
           journey and evidence.
         </Text>
 

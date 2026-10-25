@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~57.0.26",
     "@expo/vector-icons": "^15.1.1",
+    "@react-navigation/native": "^7.5.1",
     "expo": "~57.0.31",
     "expo-constants": "~57.0.21",
     "expo-device": "~57.0.2",

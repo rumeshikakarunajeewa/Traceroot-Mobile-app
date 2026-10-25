@@ -9,7 +9,7 @@ import { useDarkMode } from '../../store/uiStore';
 export interface BuyerBottomTabBarProps {
   state: {
     index: number;
-    routes: Array<{ key: string; name: string }>;
+    routes: { key: string; name: string }[];
   };
   navigation: {
     emit: (event: any) => any;
