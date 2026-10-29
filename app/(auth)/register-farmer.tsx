@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../src/lib/theme';
+import { authService } from '../../src/services/auth.service';
 
 interface FormState {
   farmName: string;
@@ -36,7 +37,8 @@ interface FormErrors {
 }
 
 export default function RegisterFarmerScreen() {
-  const params = useLocalSearchParams<{ name?: string; email?: string; role?: string }>();
+  const params = useLocalSearchParams<{ userId?: string; name?: string; email?: string; role?: string }>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form input state
   const [formData, setFormData] = useState<FormState>({
@@ -171,19 +173,22 @@ export default function RegisterFarmerScreen() {
     }).start();
   };
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     if (validate()) {
-      // TODO: Connect with Supabase to save farmer profile details
-      console.log('Farmer Profile Details Submitted:', {
-        user: {
-          name: params.name,
-          email: params.email,
-          role: params.role || 'farmer',
-        },
-        profile: formData,
-      });
+      setIsSubmitting(true);
+      const session = await authService.getSession();
+      const currentUserId = params.userId || session?.user?.id;
 
-      // TODO: Navigate to Farmer Dashboard / Home screen once created
+      if (currentUserId) {
+        await authService.saveFarmerProfile(currentUserId, {
+          farming_type: 'greenhouse',
+          farm_name: formData.farmName,
+          farm_location: formData.location,
+          description: `Size: ${formData.farmSize} acres, Crops: ${formData.mainCrops}, Experience: ${formData.experience}`,
+        });
+      }
+
+      setIsSubmitting(false);
       router.replace('/(farmer)');
     }
   };
