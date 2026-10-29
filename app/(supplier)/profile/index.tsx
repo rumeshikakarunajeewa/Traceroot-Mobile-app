@@ -19,9 +19,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  useSupplierProfile,
-} from '../../../src/store/supplierProfileStore';
+import { useLanguage } from '../../../src/i18n/languageStore';
+import { AppLanguage, SUPPORTED_LANGUAGES } from '../../../src/i18n/translations';
+import { useSupplierProfile } from '../../../src/store/supplierProfileStore';
 import { toggleDarkMode, useDarkMode } from '../../../src/store/uiStore';
 
 type ProfileTab = 'About' | 'Products' | 'Reviews' | 'Documents';
@@ -31,6 +31,7 @@ const GREENHOUSE_BG = require('../../../assets/images/supplier_profile_greenhous
 export default function SupplierProfileScreen() {
   const [isDark] = useDarkMode();
   const [profile, updateProfile] = useSupplierProfile();
+  const { language, setLanguage, t, currentOption } = useLanguage();
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<ProfileTab>('About');
@@ -42,6 +43,9 @@ export default function SupplierProfileScreen() {
   const [editEmail, setEditEmail] = useState(profile.email);
   const [editStore, setEditStore] = useState(profile.store);
   const [editBio, setEditBio] = useState(profile.bio);
+
+  // Language Picker Modal State
+  const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
 
   const handleOpenEdit = () => {
     setEditName(profile.name);
@@ -64,10 +68,10 @@ export default function SupplierProfileScreen() {
   };
 
   const handleLogOut = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out of your supplier account?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('logOutConfirmTitle'), t('logOutConfirmMessage'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Log out',
+        text: t('logOut'),
         style: 'destructive',
         onPress: () => {
           router.replace('/');
@@ -76,22 +80,10 @@ export default function SupplierProfileScreen() {
     ]);
   };
 
-  const handleLanguageToggle = () => {
-    Alert.alert('Language Settings', 'Select preferred display language:', [
-      {
-        text: 'English (Current)',
-        onPress: () => updateProfile({ language: 'English' }),
-      },
-      {
-        text: 'Sinhala (සිංහල)',
-        onPress: () => updateProfile({ language: 'Sinhala' }),
-      },
-      {
-        text: 'Tamil (தமிழ்)',
-        onPress: () => updateProfile({ language: 'Tamil' }),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const handleSelectLanguage = (code: AppLanguage) => {
+    setLanguage(code);
+    updateProfile({ language: code === 'en' ? 'English' : code === 'si' ? 'Sinhala' : 'Tamil' });
+    setIsLanguageModalVisible(false);
   };
 
   return (
@@ -131,7 +123,7 @@ export default function SupplierProfileScreen() {
                 isDark && styles.headerTaglineDark,
               ]}
             >
-              Your account 🌿
+              {t('yourAccount')}
             </Text>
 
             <View style={styles.headingRow}>
@@ -141,7 +133,7 @@ export default function SupplierProfileScreen() {
                   isDark && styles.headingMyTextDark,
                 ]}
               >
-                My{' '}
+                {t('my')}{' '}
               </Text>
               <View
                 style={[
@@ -155,7 +147,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.headingProfileTextDark,
                   ]}
                 >
-                  Profile
+                  {t('profile')}
                 </Text>
               </View>
             </View>
@@ -175,7 +167,7 @@ export default function SupplierProfileScreen() {
               color="#FFFFFF"
               style={{ marginRight: 5 }}
             />
-            <Text style={styles.editButtonText}>Edit</Text>
+            <Text style={styles.editButtonText}>{t('edit')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -223,7 +215,7 @@ export default function SupplierProfileScreen() {
                     color="#395E3F"
                     style={{ marginRight: 3 }}
                   />
-                  <Text style={styles.verifiedPillText}>Verified Supplier</Text>
+                  <Text style={styles.verifiedPillText}>{t('verifiedSupplier')}</Text>
                 </View>
 
                 {/* Company Name */}
@@ -243,7 +235,7 @@ export default function SupplierProfileScreen() {
                     {profile.district} ·{' '}
                   </Text>
                   <Text style={styles.partnerTagText}>
-                    {profile.partnerTag}
+                    {t('buyBackPartner')}
                   </Text>
                 </View>
               </View>
@@ -265,7 +257,7 @@ export default function SupplierProfileScreen() {
                   style={styles.statIcon}
                 />
                 <Text style={styles.statNumber}>{profile.productsCount}</Text>
-                <Text style={styles.statLabel}>Products</Text>
+                <Text style={styles.statLabel}>{t('products')}</Text>
               </View>
 
               <View style={styles.statDivider} />
@@ -279,7 +271,7 @@ export default function SupplierProfileScreen() {
                   style={styles.statIcon}
                 />
                 <Text style={styles.statNumber}>{profile.farmersCount}</Text>
-                <Text style={styles.statLabel}>Farmers</Text>
+                <Text style={styles.statLabel}>{t('farmers')}</Text>
               </View>
 
               <View style={styles.statDivider} />
@@ -293,7 +285,7 @@ export default function SupplierProfileScreen() {
                   style={styles.statIcon}
                 />
                 <Text style={styles.statNumber}>{profile.rating}</Text>
-                <Text style={styles.statLabel}>Rating</Text>
+                <Text style={styles.statLabel}>{t('rating')}</Text>
               </View>
             </View>
           </View>
@@ -315,14 +307,14 @@ export default function SupplierProfileScreen() {
 
           {/* Details Column */}
           <View style={styles.trustDetailsColumn}>
-            <Text style={styles.trustTagText}>Trust score</Text>
+            <Text style={styles.trustTagText}>{t('trustScore')}</Text>
             <Text
               style={[
                 styles.trustTitleText,
                 isDark && styles.trustTitleTextDark,
               ]}
             >
-              Highly trusted
+              {t('highlyTrusted')}
             </Text>
             <Text
               style={[
@@ -330,50 +322,53 @@ export default function SupplierProfileScreen() {
                 isDark && styles.trustSubtitleTextDark,
               ]}
             >
-              {profile.trustScoreSubtitle}
+              {t('trustSubtitle')}
             </Text>
           </View>
         </View>
 
         {/* 4. NAVIGATION TAB PILLS */}
         <View style={styles.tabsRow}>
-          {(['About', 'Products', 'Reviews', 'Documents'] as ProfileTab[]).map(
-            (tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  activeOpacity={0.8}
-                  onPress={() => setActiveTab(tab)}
+          {[
+            { key: 'About' as ProfileTab, label: t('tabAbout') },
+            { key: 'Products' as ProfileTab, label: t('tabProducts') },
+            { key: 'Reviews' as ProfileTab, label: t('tabReviews') },
+            { key: 'Documents' as ProfileTab, label: t('tabDocuments') },
+          ].map((item) => {
+            const isActive = activeTab === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                activeOpacity={0.8}
+                onPress={() => setActiveTab(item.key)}
+                style={[
+                  styles.tabPill,
+                  isActive
+                    ? isDark
+                      ? styles.tabPillActiveDark
+                      : styles.tabPillActive
+                    : isDark
+                    ? styles.tabPillInactiveDark
+                    : styles.tabPillInactive,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Tab ${item.label}`}
+              >
+                <Text
                   style={[
-                    styles.tabPill,
+                    styles.tabPillText,
                     isActive
-                      ? isDark
-                        ? styles.tabPillActiveDark
-                        : styles.tabPillActive
+                      ? styles.tabPillTextActive
                       : isDark
-                      ? styles.tabPillInactiveDark
-                      : styles.tabPillInactive,
+                      ? styles.tabPillTextInactiveDark
+                      : styles.tabPillTextInactive,
                   ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Tab ${tab}`}
                 >
-                  <Text
-                    style={[
-                      styles.tabPillText,
-                      isActive
-                        ? styles.tabPillTextActive
-                        : isDark
-                        ? styles.tabPillTextInactiveDark
-                        : styles.tabPillTextInactive,
-                    ]}
-                  >
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              );
-            }
-          )}
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* 5. CONTACT & BUSINESS DETAILS CARD */}
@@ -398,7 +393,7 @@ export default function SupplierProfileScreen() {
                 isDark && styles.detailsLabelDark,
               ]}
             >
-              Phone
+              {t('phone')}
             </Text>
             <Text
               style={[
@@ -435,7 +430,7 @@ export default function SupplierProfileScreen() {
                 isDark && styles.detailsLabelDark,
               ]}
             >
-              Email
+              {t('email')}
             </Text>
             <Text
               style={[
@@ -472,7 +467,7 @@ export default function SupplierProfileScreen() {
                 isDark && styles.detailsLabelDark,
               ]}
             >
-              Store
+              {t('store')}
             </Text>
             <Text
               style={[
@@ -509,7 +504,7 @@ export default function SupplierProfileScreen() {
                 isDark && styles.detailsLabelDark,
               ]}
             >
-              Licence
+              {t('licence')}
             </Text>
             <Text
               style={[
@@ -538,11 +533,11 @@ export default function SupplierProfileScreen() {
                 color="rgba(255,255,255,0.72)"
                 style={{ marginRight: 3 }}
               />
-              <Text style={styles.radarTagText}>Location</Text>
+              <Text style={styles.radarTagText}>{t('location')}</Text>
             </View>
 
             <Text style={styles.radarDistrictText}>{profile.district}</Text>
-            <Text style={styles.radarProvinceText}>{profile.province}</Text>
+            <Text style={styles.radarProvinceText}>{t('centralProvince')}</Text>
             <Text style={styles.radarCoordinatesText}>
               {profile.coordinates}
             </Text>
@@ -557,7 +552,7 @@ export default function SupplierProfileScreen() {
               isDark && styles.settingsSectionTitleDark,
             ]}
           >
-            Settings
+            {t('settings')}
           </Text>
 
           <View
@@ -588,7 +583,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.settingTitleDark,
                   ]}
                 >
-                  Dark mode
+                  {t('darkMode')}
                 </Text>
                 <Text
                   style={[
@@ -596,7 +591,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.settingSubtitleDark,
                   ]}
                 >
-                  {isDark ? 'On' : 'Off'}
+                  {isDark ? t('on') : t('off')}
                 </Text>
               </View>
 
@@ -640,7 +635,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.settingTitleDark,
                   ]}
                 >
-                  Notifications
+                  {t('notifications')}
                 </Text>
                 <Text
                   style={[
@@ -648,7 +643,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.settingSubtitleDark,
                   ]}
                 >
-                  Orders, contracts & alerts
+                  {t('notificationsSubtitle')}
                 </Text>
               </View>
 
@@ -672,8 +667,14 @@ export default function SupplierProfileScreen() {
               ]}
             />
 
-            {/* Setting 3: Language */}
-            <View style={styles.settingItemRow}>
+            {/* Setting 3: Language Button (interactive) */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => setIsLanguageModalVisible(true)}
+              style={styles.settingItemRow}
+              accessibilityRole="button"
+              accessibilityLabel="Change Language"
+            >
               <View
                 style={[
                   styles.settingIconCircle,
@@ -681,7 +682,7 @@ export default function SupplierProfileScreen() {
                 ]}
               >
                 <MaterialCommunityIcons
-                  name="chat-outline"
+                  name="translate"
                   size={18}
                   color={isDark ? '#8ED697' : '#395E3F'}
                 />
@@ -694,7 +695,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.settingTitleDark,
                   ]}
                 >
-                  Language
+                  {t('language')}
                 </Text>
                 <Text
                   style={[
@@ -702,13 +703,11 @@ export default function SupplierProfileScreen() {
                     isDark && styles.settingSubtitleDark,
                   ]}
                 >
-                  {profile.language}
+                  {currentOption.nativeName}
                 </Text>
               </View>
 
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleLanguageToggle}
+              <View
                 style={[
                   styles.languagePill,
                   isDark && styles.languagePillDark,
@@ -720,15 +719,15 @@ export default function SupplierProfileScreen() {
                     isDark && styles.languagePillTextDark,
                   ]}
                 >
-                  {profile.language}
+                  {currentOption.name}
                 </Text>
                 <MaterialCommunityIcons
                   name="chevron-down"
                   size={16}
                   color={isDark ? '#A2B9A5' : '#4D6250'}
                 />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -746,9 +745,150 @@ export default function SupplierProfileScreen() {
             color="#C25E28"
             style={{ marginRight: 2 }}
           />
-          <Text style={styles.logOutButtonText}>Log out</Text>
+          <Text style={styles.logOutButtonText}>{t('logOut')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* LANGUAGE SELECTION MODAL */}
+      <Modal
+        visible={isLanguageModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsLanguageModalVisible(false)}
+      >
+        <View style={styles.languageModalOverlay}>
+          <TouchableOpacity
+            style={styles.languageModalBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsLanguageModalVisible(false)}
+          />
+
+          <View
+            style={[
+              styles.languageModalSheet,
+              isDark && styles.languageModalSheetDark,
+            ]}
+          >
+            {/* Sheet Handle */}
+            <View
+              style={[
+                styles.sheetHandle,
+                isDark && styles.sheetHandleDark,
+              ]}
+            />
+
+            {/* Header */}
+            <View style={styles.languageModalHeader}>
+              <View>
+                <Text
+                  style={[
+                    styles.languageModalTitle,
+                    isDark && styles.languageModalTitleDark,
+                  ]}
+                >
+                  {t('selectLanguage')}
+                </Text>
+                <Text
+                  style={[
+                    styles.languageModalSubtitle,
+                    isDark && styles.languageModalSubtitleDark,
+                  ]}
+                >
+                  {t('chooseLanguageSubtitle')}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsLanguageModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={22}
+                  color={isDark ? '#F0F5F1' : '#162C1A'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Languages List */}
+            <View style={styles.languageOptionsList}>
+              {SUPPORTED_LANGUAGES.map((item) => {
+                const isSelected = language === item.code;
+                return (
+                  <TouchableOpacity
+                    key={item.code}
+                    activeOpacity={0.8}
+                    onPress={() => handleSelectLanguage(item.code)}
+                    style={[
+                      styles.languageOptionRow,
+                      isSelected &&
+                        (isDark
+                          ? styles.languageOptionRowSelectedDark
+                          : styles.languageOptionRowSelected),
+                      isDark && styles.languageOptionRowDark,
+                    ]}
+                  >
+                    <View style={styles.languageOptionLeft}>
+                      <View
+                        style={[
+                          styles.languageFlagCircle,
+                          isDark && styles.languageFlagCircleDark,
+                        ]}
+                      >
+                        <Text style={styles.languageCodeBadge}>
+                          {item.code.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ marginLeft: 12 }}>
+                        <Text
+                          style={[
+                            styles.languageOptionName,
+                            isSelected && styles.languageOptionNameSelected,
+                            isDark && styles.languageOptionNameDark,
+                          ]}
+                        >
+                          {item.name}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.languageOptionNative,
+                            isDark && styles.languageOptionNativeDark,
+                          ]}
+                        >
+                          {item.nativeName}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {isSelected ? (
+                      <View
+                        style={[
+                          styles.checkCircle,
+                          isDark && styles.checkCircleDark,
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={16}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.emptyCheckCircle,
+                          isDark && styles.emptyCheckCircleDark,
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* EDIT PROFILE MODAL */}
       <Modal
@@ -780,7 +920,7 @@ export default function SupplierProfileScreen() {
                   isDark && styles.modalHeaderTitleDark,
                 ]}
               >
-                Edit Supplier Profile
+                {t('editSupplierProfile')}
               </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -808,7 +948,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  Company Name
+                  {t('companyName')}
                 </Text>
                 <TextInput
                   value={editName}
@@ -830,7 +970,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  Phone Number
+                  {t('phoneNumber')}
                 </Text>
                 <TextInput
                   value={editPhone}
@@ -853,7 +993,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  Email Address
+                  {t('emailAddress')}
                 </Text>
                 <TextInput
                   value={editEmail}
@@ -876,7 +1016,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  Store Location
+                  {t('storeLocation')}
                 </Text>
                 <TextInput
                   value={editStore}
@@ -898,7 +1038,7 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  About & Description
+                  {t('aboutDescription')}
                 </Text>
                 <TextInput
                   value={editBio}
@@ -924,7 +1064,7 @@ export default function SupplierProfileScreen() {
                   isDark && styles.modalSaveButtonDark,
                 ]}
               >
-                <Text style={styles.modalSaveButtonText}>Save Changes</Text>
+                <Text style={styles.modalSaveButtonText}>{t('saveChanges')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -1559,6 +1699,153 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     fontWeight: '700',
     color: '#C25E28',
+  },
+
+  /* LANGUAGE MODAL */
+  languageModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  languageModalBackdrop: {
+    flex: 1,
+  },
+  languageModalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  languageModalSheetDark: {
+    backgroundColor: '#142417',
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#DDD6C8',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetHandleDark: {
+    backgroundColor: '#2F4834',
+  },
+  languageModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  languageModalTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+    marginBottom: 2,
+  },
+  languageModalTitleDark: {
+    color: '#F0F5F1',
+  },
+  languageModalSubtitle: {
+    fontSize: 13,
+    color: '#718573',
+  },
+  languageModalSubtitleDark: {
+    color: '#8EA491',
+  },
+  languageOptionsList: {
+    gap: 10,
+  },
+  languageOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F7F5EE',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: '#E8E3D7',
+  },
+  languageOptionRowDark: {
+    backgroundColor: '#182A1C',
+    borderColor: '#263E2B',
+  },
+  languageOptionRowSelected: {
+    borderColor: '#1C3723',
+    backgroundColor: '#EEF4EC',
+  },
+  languageOptionRowSelectedDark: {
+    borderColor: '#4ADE80',
+    backgroundColor: '#1D3523',
+  },
+  languageOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  languageFlagCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#E6EFE4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languageFlagCircleDark: {
+    backgroundColor: '#223826',
+  },
+  languageCodeBadge: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#284E2F',
+    letterSpacing: 0.5,
+  },
+  languageOptionName: {
+    fontSize: 15.5,
+    fontWeight: '600',
+    color: '#1C3723',
+    marginBottom: 1,
+  },
+  languageOptionNameDark: {
+    color: '#F0F5F1',
+  },
+  languageOptionNameSelected: {
+    fontWeight: '700',
+  },
+  languageOptionNative: {
+    fontSize: 12.5,
+    color: '#718573',
+  },
+  languageOptionNativeDark: {
+    color: '#8EA491',
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1C3723',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkCircleDark: {
+    backgroundColor: '#2F683A',
+  },
+  emptyCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#C7C0B2',
+  },
+  emptyCheckCircleDark: {
+    borderColor: '#3B5740',
   },
 
   /* MODAL */
