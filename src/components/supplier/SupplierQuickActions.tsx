@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SupplierQuickActionItem } from '../../types/supplier.types';
 import { useDarkMode } from '../../store/uiStore';
+import { useLanguage } from '../../i18n/languageStore';
 
 interface SupplierQuickActionsProps {
   actions: SupplierQuickActionItem[];
@@ -19,16 +20,33 @@ export const SupplierQuickActions: React.FC<SupplierQuickActionsProps> = ({
   onActionPress,
 }) => {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
+
+  const getActionTitle = (action: SupplierQuickActionItem) => {
+    switch (action.id) {
+      case 'catalogue':
+        return t('quickActionCatalogue');
+      case 'add_product':
+        return t('quickActionAddProduct');
+      case 'requests':
+        return t('quickActionRequests');
+      case 'buy_back':
+        return t('quickActionBuyBack');
+      default:
+        return action.title;
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-        Quick Actions
+        {t('quickActionsTitle')}
       </Text>
 
       <View style={styles.actionsRow}>
         {actions.map((action) => {
           const isPrimary = action.isPrimary;
+          const label = getActionTitle(action);
 
           return (
             <TouchableOpacity
@@ -45,7 +63,7 @@ export const SupplierQuickActions: React.FC<SupplierQuickActionsProps> = ({
                     ],
               ]}
               accessibilityRole="button"
-              accessibilityLabel={action.title}
+              accessibilityLabel={label}
             >
               {/* Inner Round Icon Badge */}
               <View
@@ -85,7 +103,7 @@ export const SupplierQuickActions: React.FC<SupplierQuickActionsProps> = ({
                       ],
                 ]}
               >
-                {action.title}
+                {label}
               </Text>
             </TouchableOpacity>
           );

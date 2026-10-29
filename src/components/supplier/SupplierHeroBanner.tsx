@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SupplierStats } from '../../types/supplier.types';
+import { useLanguage } from '../../i18n/languageStore';
 
 interface SupplierHeroBannerProps {
   stats: SupplierStats;
 }
 
 export const SupplierHeroBanner: React.FC<SupplierHeroBannerProps> = ({ stats }) => {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.bannerWrapper}>
       <ImageBackground
@@ -34,7 +37,7 @@ export const SupplierHeroBanner: React.FC<SupplierHeroBannerProps> = ({ stats })
           {/* Top Tag: Agricultural Raw Materials */}
           <View style={styles.tagRow}>
             <MaterialCommunityIcons name="leaf" size={14} color="#C4DFC6" />
-            <Text style={styles.tagText}>Agricultural Raw Materials</Text>
+            <Text style={styles.tagText}>{t('agriRawMaterials')}</Text>
           </View>
 
           {/* Elegant Headline with Italic Gold Accent */}
@@ -56,7 +59,7 @@ export const SupplierHeroBanner: React.FC<SupplierHeroBannerProps> = ({ stats })
                 style={styles.statIcon}
               />
               <Text style={styles.statValue}>{stats.productsCount}</Text>
-              <Text style={styles.statLabel}>Products</Text>
+              <Text style={styles.statLabel}>{t('dashboardProducts')}</Text>
             </View>
 
             <View style={styles.statDivider} />
@@ -70,7 +73,7 @@ export const SupplierHeroBanner: React.FC<SupplierHeroBannerProps> = ({ stats })
                 style={styles.statIcon}
               />
               <Text style={styles.statValue}>{stats.pendingOrdersCount}</Text>
-              <Text style={styles.statLabel}>Pending Orders</Text>
+              <Text style={styles.statLabel}>{t('dashboardPendingOrders')}</Text>
             </View>
 
             <View style={styles.statDivider} />
@@ -84,7 +87,7 @@ export const SupplierHeroBanner: React.FC<SupplierHeroBannerProps> = ({ stats })
                 style={styles.statIcon}
               />
               <Text style={styles.statValue}>{stats.activeFarmersCount}</Text>
-              <Text style={styles.statLabel}>Active Farmers</Text>
+              <Text style={styles.statLabel}>{t('dashboardActiveFarmers')}</Text>
             </View>
           </View>
         </LinearGradient>

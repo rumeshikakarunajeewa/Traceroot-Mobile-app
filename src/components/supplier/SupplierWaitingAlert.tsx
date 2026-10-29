@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WaitingAlertInfo } from '../../types/supplier.types';
+import { useLanguage } from '../../i18n/languageStore';
 
 interface SupplierWaitingAlertProps {
   alert: WaitingAlertInfo;
@@ -19,13 +20,19 @@ export const SupplierWaitingAlert: React.FC<SupplierWaitingAlertProps> = ({
   alert,
   onPress,
 }) => {
+  const { t } = useLanguage();
+  const titleText = `${alert.waitingCount} ${
+    alert.waitingCount === 1 ? t('farmerWaitingSingle') : t('farmersWaitingTitle')
+  }`;
+  const subtitleText = t('fulfilKeepCropsOnTrack');
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={onPress}
       style={styles.wrapper}
       accessibilityRole="button"
-      accessibilityLabel={`${alert.title}: ${alert.subtitle}`}
+      accessibilityLabel={`${titleText}: ${subtitleText}`}
     >
       <LinearGradient
         colors={['#173420', '#1C3B24', '#2F3C23']}
@@ -40,8 +47,8 @@ export const SupplierWaitingAlert: React.FC<SupplierWaitingAlertProps> = ({
 
         {/* Middle: Waiting Title & Prompt Subtitle */}
         <View style={styles.textContainer}>
-          <Text style={styles.title}>{alert.title}</Text>
-          <Text style={styles.subtitle}>{alert.subtitle}</Text>
+          <Text style={styles.title}>{titleText}</Text>
+          <Text style={styles.subtitle}>{subtitleText}</Text>
         </View>
 
         {/* Right: Up-Right Arrow Icon */}

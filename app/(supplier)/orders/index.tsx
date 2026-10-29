@@ -23,6 +23,7 @@ import {
   useSupplierOrders,
 } from '../../../src/store/supplierOrdersStore';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useLanguage } from '../../../src/i18n/languageStore';
 import { SupplierOrderRequest } from '../../../src/types/supplier.types';
 
 type FilterTab = 'All' | 'New' | 'Packing' | 'Completed';
@@ -31,6 +32,7 @@ const SHELF_BANNER_IMAGE = require('../../../assets/images/supplier_shelf_banner
 
 export default function SupplierOrdersScreen() {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
   const [orders, updateOrderStatus] = useSupplierOrders();
 
   // Search & Filter state
@@ -181,7 +183,7 @@ export default function SupplierOrdersScreen() {
                 isDark && styles.headerTaglineDark,
               ]}
             >
-              From the fields 🌾
+              {t('fromTheFieldsTag')}
             </Text>
 
             <View style={styles.headingRow}>
@@ -191,7 +193,7 @@ export default function SupplierOrdersScreen() {
                   isDark && styles.headingFarmerTextDark,
                 ]}
               >
-                Farmer{' '}
+                {t('farmerRequestsHeadingFarmer')}{' '}
               </Text>
               <View
                 style={[
@@ -205,7 +207,7 @@ export default function SupplierOrdersScreen() {
                     isDark && styles.headingRequestsTextDark,
                   ]}
                 >
-                  Requests
+                  {t('farmerRequestsHeadingRequests')}
                 </Text>
               </View>
             </View>
@@ -251,13 +253,13 @@ export default function SupplierOrdersScreen() {
                 color="rgba(255,255,255,0.85)"
                 style={{ marginRight: 5 }}
               />
-              <Text style={styles.seasonTagText}>Supply the season</Text>
+              <Text style={styles.seasonTagText}>{t('supplyTheSeason')}</Text>
             </View>
 
             {/* Headline */}
             <Text style={styles.heroHeadline}>
-              {newCount} farmer{newCount === 1 ? ' is' : 's are'}{' '}
-              <Text style={styles.heroHeadlineItalic}>waiting on you</Text>
+              {newCount} {newCount === 1 ? t('farmerWaitingSingle') : t('farmersWaitingTitle')}{' '}
+              <Text style={styles.heroHeadlineItalic}>{t('waitingOnYou')}</Text>
             </Text>
 
             {/* Glassmorphism Metrics Bar */}
@@ -271,7 +273,7 @@ export default function SupplierOrdersScreen() {
                   style={styles.metricIcon}
                 />
                 <Text style={styles.metricValue}>{newCount}</Text>
-                <Text style={styles.metricLabel}>New</Text>
+                <Text style={styles.metricLabel}>{t('metricNew')}</Text>
               </View>
 
               <View style={styles.metricDivider} />
@@ -285,7 +287,7 @@ export default function SupplierOrdersScreen() {
                   style={styles.metricIcon}
                 />
                 <Text style={styles.metricValue}>{packingCount}</Text>
-                <Text style={styles.metricLabel}>Packing</Text>
+                <Text style={styles.metricLabel}>{t('metricPacking')}</Text>
               </View>
 
               <View style={styles.metricDivider} />
@@ -299,7 +301,7 @@ export default function SupplierOrdersScreen() {
                   style={styles.metricIcon}
                 />
                 <Text style={styles.metricValue}>6.8k</Text>
-                <Text style={styles.metricLabel}>LKR earned</Text>
+                <Text style={styles.metricLabel}>{t('metricLkrEarned')}</Text>
               </View>
             </View>
           </View>
@@ -316,7 +318,7 @@ export default function SupplierOrdersScreen() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search farmer or request ID"
+            placeholder={t('searchFarmerOrReqId')}
             placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
             style={[styles.searchInput, isDark && styles.searchInputDark]}
           />
@@ -361,7 +363,7 @@ export default function SupplierOrdersScreen() {
                   : styles.filterTabTextInactive,
               ]}
             >
-              All
+              {t('filterAll')}
             </Text>
           </TouchableOpacity>
 
@@ -390,7 +392,7 @@ export default function SupplierOrdersScreen() {
                   : styles.filterTabTextInactive,
               ]}
             >
-              New{' '}
+              {t('filterNew')}{' '}
               <Text
                 style={
                   activeTab === 'New'
@@ -428,7 +430,7 @@ export default function SupplierOrdersScreen() {
                   : styles.filterTabTextInactive,
               ]}
             >
-              Packing{' '}
+              {t('filterPacking')}{' '}
               <Text
                 style={
                   activeTab === 'Packing'
@@ -466,7 +468,7 @@ export default function SupplierOrdersScreen() {
                   : styles.filterTabTextInactive,
               ]}
             >
-              Completed{' '}
+              {t('filterCompleted')}{' '}
               <Text
                 style={
                   activeTab === 'Completed'
@@ -495,7 +497,7 @@ export default function SupplierOrdersScreen() {
                   isDark && styles.emptyTitleDark,
                 ]}
               >
-                No requests found
+                {t('noRequestsFound')}
               </Text>
               <Text
                 style={[
@@ -504,8 +506,8 @@ export default function SupplierOrdersScreen() {
                 ]}
               >
                 {searchQuery
-                  ? 'Try modifying your search query'
-                  : 'Requests from farmers will appear here'}
+                  ? t('tryModifyingSearch')
+                  : t('requestsWillAppearHere')}
               </Text>
             </View>
           ) : (
@@ -600,7 +602,13 @@ export default function SupplierOrdersScreen() {
                             : styles.statusTextCompleted,
                         ]}
                       >
-                        {isCompleted ? 'Fulfilled' : order.status}
+                        {isCompleted
+                          ? t('statusFulfilled')
+                          : isNew
+                          ? t('tagNew')
+                          : isPacking
+                          ? t('metricPacking')
+                          : order.status}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -725,7 +733,7 @@ export default function SupplierOrdersScreen() {
                               isDark && styles.stepLabelActiveDark,
                             ]}
                           >
-                            Received
+                            {t('stepReceived')}
                           </Text>
                         </View>
 
@@ -774,7 +782,7 @@ export default function SupplierOrdersScreen() {
                                 styles.stepLabelActiveDark,
                             ]}
                           >
-                            Packing
+                            {t('stepPacking')}
                           </Text>
                         </View>
 
@@ -820,7 +828,7 @@ export default function SupplierOrdersScreen() {
                                 styles.stepLabelActiveDark,
                             ]}
                           >
-                            Delivered
+                            {t('stepDelivered')}
                           </Text>
                         </View>
                       </View>
@@ -847,7 +855,7 @@ export default function SupplierOrdersScreen() {
                                 isDark && styles.infoTileCaptionDark,
                               ]}
                             >
-                              Delivery
+                              {t('deliveryLabel')}
                             </Text>
                           </View>
                           <Text
@@ -856,7 +864,9 @@ export default function SupplierOrdersScreen() {
                               isDark && styles.infoTileValueDark,
                             ]}
                           >
-                            {order.deliveryMethod}
+                            {order.deliveryMethod === 'Farm delivery'
+                              ? t('farmDelivery')
+                              : order.deliveryMethod}
                           </Text>
                         </View>
 
@@ -885,7 +895,7 @@ export default function SupplierOrdersScreen() {
                                 { color: isDark ? '#8ED697' : '#395E3F' },
                               ]}
                             >
-                              Questions?
+                              {t('questionsLabel')}
                             </Text>
                           </View>
                           <Text
@@ -894,7 +904,7 @@ export default function SupplierOrdersScreen() {
                               { color: isDark ? '#BCEBC2' : '#284E2F' },
                             ]}
                           >
-                            Message farmer
+                            {t('messageFarmer')}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -918,7 +928,7 @@ export default function SupplierOrdersScreen() {
                                 isDark && styles.declineButtonTextDark,
                               ]}
                             >
-                              Decline
+                              {t('declineBtn')}
                             </Text>
                           </TouchableOpacity>
 
@@ -939,7 +949,7 @@ export default function SupplierOrdersScreen() {
                               style={{ marginRight: 6 }}
                             />
                             <Text style={styles.acceptButtonText}>
-                              Accept & Pack
+                              {t('acceptAndPackBtn')}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -963,7 +973,7 @@ export default function SupplierOrdersScreen() {
                             style={{ marginRight: 6 }}
                           />
                           <Text style={styles.acceptButtonText}>
-                            Mark as Delivered
+                            {t('markAsDeliveredBtn')}
                           </Text>
                         </TouchableOpacity>
                       )}

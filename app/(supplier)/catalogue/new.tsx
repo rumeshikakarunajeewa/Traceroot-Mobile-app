@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { addCatalogueProduct } from '../../../src/store/supplierCatalogueStore';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useLanguage } from '../../../src/i18n/languageStore';
 import { CatalogueProduct } from '../../../src/types/supplier.types';
 
 type CategoryType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Compost';
@@ -45,6 +46,41 @@ const DEFAULT_SEED_IMAGE = require('../../../assets/images/supplier_seed_sack.jp
 
 export default function SupplierNewProductScreen() {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
+
+  const getCategoryLabel = (cat: CategoryType) => {
+    switch (cat) {
+      case 'Seeds':
+        return t('catSeeds');
+      case 'Fertilizers':
+        return t('catFertilizers');
+      case 'Pesticides':
+        return t('catPesticides');
+      case 'Compost':
+        return t('catCompost');
+      default:
+        return cat;
+    }
+  };
+
+  const getCropLabel = (crop: string) => {
+    switch (crop) {
+      case 'Tomato':
+        return t('cropTomato');
+      case 'Rice':
+        return t('cropRice');
+      case 'Onion':
+        return t('cropOnion');
+      case 'Chilli':
+        return t('cropChilli');
+      case 'Cabbage':
+        return t('cropCabbage');
+      case 'Any':
+        return t('cropAny');
+      default:
+        return crop;
+    }
+  };
 
   // Form State
   const [category, setCategory] = useState<CategoryType>('Seeds');
@@ -218,8 +254,8 @@ export default function SupplierNewProductScreen() {
 
             {/* Title */}
             <Text style={[styles.successTitle, isDark && styles.successTitleDark]}>
-              Planted in your{' '}
-              <Text style={styles.successTitleItalic}>catalogue</Text>
+              {t('plantedInYour')}{' '}
+              <Text style={styles.successTitleItalic}>{t('catalogueItalic')}</Text>
             </Text>
 
             {/* Subtitle */}
@@ -229,10 +265,10 @@ export default function SupplierNewProductScreen() {
                 isDark && styles.successSubtitleDark,
               ]}
             >
-              Your product is now visible to farmers{'\n'}growing{' '}
+              {t('visibleToFarmersGrowing')}{' '}
               {suitableFor.includes('Any')
-                ? 'all crops'
-                : suitableFor.join(', ')}
+                ? t('cropAny')
+                : suitableFor.map(getCropLabel).join(', ')}
               .
             </Text>
 
@@ -246,7 +282,7 @@ export default function SupplierNewProductScreen() {
                   isDark && styles.addAnotherButtonDark,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Add another product"
+                accessibilityLabel={t('addAnotherBtn')}
               >
                 <Text
                   style={[
@@ -254,7 +290,7 @@ export default function SupplierNewProductScreen() {
                     isDark && styles.addAnotherButtonTextDark,
                   ]}
                 >
-                  Add another
+                  {t('addAnotherBtn')}
                 </Text>
               </TouchableOpacity>
 
@@ -263,9 +299,9 @@ export default function SupplierNewProductScreen() {
                 onPress={handleDone}
                 style={[styles.doneButton, isDark && styles.doneButtonDark]}
                 accessibilityRole="button"
-                accessibilityLabel="Done"
+                accessibilityLabel={t('doneBtn')}
               >
-                <Text style={styles.doneButtonText}>Done</Text>
+                <Text style={styles.doneButtonText}>{t('doneBtn')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -308,7 +344,7 @@ export default function SupplierNewProductScreen() {
                       isDark && styles.newListingTextDark,
                     ]}
                   >
-                    New listing 🌱
+                    {t('newListingBadge')}
                   </Text>
                 </View>
 
@@ -319,7 +355,7 @@ export default function SupplierNewProductScreen() {
                       isDark && styles.headingAddTextDark,
                     ]}
                   >
-                    Add{' '}
+                    {t('addProductTitleAdd')}{' '}
                   </Text>
                   <View
                     style={[
@@ -333,7 +369,7 @@ export default function SupplierNewProductScreen() {
                         isDark && styles.headingProductTextDark,
                       ]}
                     >
-                      Product
+                      {t('addProductTitleProduct')}
                     </Text>
                   </View>
                 </View>
@@ -385,7 +421,9 @@ export default function SupplierNewProductScreen() {
                     color="#FFFFFF"
                     style={{ marginRight: 5 }}
                   />
-                  <Text style={styles.categoryGlassText}>{category}</Text>
+                  <Text style={styles.categoryGlassText}>
+                    {getCategoryLabel(category)}
+                  </Text>
                 </View>
 
                 <TouchableOpacity
@@ -400,17 +438,19 @@ export default function SupplierNewProductScreen() {
                     size={16}
                     color="#2C402E"
                   />
-                  <Text style={styles.photoButtonText}>Photo</Text>
+                  <Text style={styles.photoButtonText}>
+                    {t('photoButtonText')}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Bottom Info: Live Farmer View */}
               <View style={styles.previewBottomInfo}>
                 <Text style={styles.previewCaption}>
-                  Preview · as farmers see it
+                  {t('previewAsFarmersSeeIt')}
                 </Text>
                 <Text style={styles.previewProductName} numberOfLines={1}>
-                  {productName.trim() || 'Product name'}
+                  {productName.trim() || t('defaultProductName')}
                 </Text>
 
                 <View style={styles.previewMetricsRow}>
@@ -437,7 +477,7 @@ export default function SupplierNewProductScreen() {
                       />
                     </View>
                     <Text style={styles.stockStatusText}>
-                      {stock.trim() ? stock : '0'} in stock
+                      {stock.trim() ? stock : '0'} {t('unitsInStock')}
                     </Text>
                   </View>
                 </View>
@@ -452,7 +492,7 @@ export default function SupplierNewProductScreen() {
                   isDark && styles.sectionTitleDark,
                 ]}
               >
-                Category
+                {t('categoryLabel')}
               </Text>
 
               <View style={styles.categoryCardsRow}>
@@ -475,7 +515,7 @@ export default function SupplierNewProductScreen() {
                       ]}
                       accessibilityRole="button"
                       accessibilityState={isSelected ? { selected: true } : {}}
-                      accessibilityLabel={`Category ${item.label}`}
+                      accessibilityLabel={`Category ${getCategoryLabel(item.key)}`}
                     >
                       <View
                         style={[
@@ -511,7 +551,7 @@ export default function SupplierNewProductScreen() {
                             : styles.categoryCardLabelUnselected,
                         ]}
                       >
-                        {item.label}
+                        {getCategoryLabel(item.key)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -529,12 +569,12 @@ export default function SupplierNewProductScreen() {
                     isDark && styles.fieldLabelDark,
                   ]}
                 >
-                  Product name
+                  {t('productNameLabel')}
                 </Text>
                 <TextInput
                   value={productName}
                   onChangeText={setProductName}
-                  placeholder="e.g. Hybrid Tomato Seeds"
+                  placeholder={t('productNamePlaceholder')}
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   style={[
                     styles.textInput,
@@ -552,7 +592,7 @@ export default function SupplierNewProductScreen() {
                       isDark && styles.fieldLabelDark,
                     ]}
                   >
-                    Price
+                    {t('priceLabel')}
                   </Text>
                   <TextInput
                     value={price}
@@ -574,7 +614,7 @@ export default function SupplierNewProductScreen() {
                       isDark && styles.fieldLabelDark,
                     ]}
                   >
-                    Stock
+                    {t('stockLabel')}
                   </Text>
                   <TextInput
                     value={stock}
@@ -598,7 +638,7 @@ export default function SupplierNewProductScreen() {
                     isDark && styles.fieldLabelDark,
                   ]}
                 >
-                  Sold per
+                  {t('soldPerLabel')}
                 </Text>
                 <View
                   style={[
@@ -649,7 +689,7 @@ export default function SupplierNewProductScreen() {
                     isDark && styles.fieldLabelDark,
                   ]}
                 >
-                  Description
+                  {t('descriptionLabel')}
                 </Text>
                 <TextInput
                   value={description}
@@ -657,7 +697,7 @@ export default function SupplierNewProductScreen() {
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
-                  placeholder="Germination rate, application guide, shelf life..."
+                  placeholder={t('descriptionPlaceholder')}
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   style={[
                     styles.textInput,
@@ -676,7 +716,7 @@ export default function SupplierNewProductScreen() {
                   isDark && styles.sectionTitleDark,
                 ]}
               >
-                Suitable for
+                {t('suitableForLabel')}
               </Text>
 
               <View style={styles.cropChipsWrapper}>
@@ -701,7 +741,7 @@ export default function SupplierNewProductScreen() {
                       accessibilityState={
                         isCropSelected ? { selected: true } : {}
                       }
-                      accessibilityLabel={`Suitable for ${crop}`}
+                      accessibilityLabel={`Suitable for ${getCropLabel(crop)}`}
                     >
                       <Text
                         style={[
@@ -713,7 +753,7 @@ export default function SupplierNewProductScreen() {
                             : styles.cropChipTextUnselected,
                         ]}
                       >
-                        {crop}
+                        {getCropLabel(crop)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -748,7 +788,7 @@ export default function SupplierNewProductScreen() {
                       isDark && styles.organicTitleDark,
                     ]}
                   >
-                    Organic certified
+                    {t('organicCertifiedTitle')}
                   </Text>
                   <Text
                     style={[
@@ -756,7 +796,7 @@ export default function SupplierNewProductScreen() {
                       isDark && styles.organicSubtitleDark,
                     ]}
                   >
-                    Shows a trust badge on your listing
+                    {t('organicCertifiedSubtitle')}
                   </Text>
                 </View>
               </View>
@@ -782,7 +822,7 @@ export default function SupplierNewProductScreen() {
                 isDark && styles.publishButtonDark,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Publish to Catalogue"
+              accessibilityLabel={t('publishToCatalogueBtn')}
             >
               <MaterialCommunityIcons
                 name="sprout"
@@ -791,7 +831,7 @@ export default function SupplierNewProductScreen() {
                 style={{ marginRight: 8 }}
               />
               <Text style={styles.publishButtonText}>
-                Publish to Catalogue
+                {t('publishToCatalogueBtn')}
               </Text>
             </TouchableOpacity>
           </ScrollView>

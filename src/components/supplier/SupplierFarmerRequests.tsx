@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { FarmerRequestItem } from '../../types/supplier.types';
 import { useDarkMode } from '../../store/uiStore';
+import { useLanguage } from '../../i18n/languageStore';
 
 interface SupplierFarmerRequestsProps {
   requests: FarmerRequestItem[];
@@ -22,13 +23,14 @@ export const SupplierFarmerRequests: React.FC<SupplierFarmerRequestsProps> = ({
   onViewAllPress,
 }) => {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
 
   return (
     <View style={styles.container}>
       {/* Header Row */}
       <View style={styles.headerRow}>
         <Text style={[styles.title, isDark && styles.titleDark]}>
-          Farmer Requests
+          {t('dashboardFarmerRequests')}
         </Text>
 
         <TouchableOpacity
@@ -36,10 +38,10 @@ export const SupplierFarmerRequests: React.FC<SupplierFarmerRequestsProps> = ({
           onPress={onViewAllPress}
           style={[styles.viewAllPill, isDark && styles.viewAllPillDark]}
           accessibilityRole="button"
-          accessibilityLabel="View all farmer requests"
+          accessibilityLabel={t('viewAll')}
         >
           <Text style={[styles.viewAllText, isDark && styles.viewAllTextDark]}>
-            View All
+            {t('viewAll')}
           </Text>
           <MaterialCommunityIcons
             name="chevron-right"
@@ -127,7 +129,7 @@ export const SupplierFarmerRequests: React.FC<SupplierFarmerRequestsProps> = ({
                       },
                     ]}
                   >
-                    {request.status}
+                    {isPending ? t('tagPending') : t('statusFulfilled')}
                   </Text>
                 </View>
               </View>
@@ -139,9 +141,9 @@ export const SupplierFarmerRequests: React.FC<SupplierFarmerRequestsProps> = ({
                   onPress={() => onFulfilPress(request)}
                   style={styles.fulfilButton}
                   accessibilityRole="button"
-                  accessibilityLabel={`Fulfil ${request.title}`}
+                  accessibilityLabel={`${t('fulfil')} ${request.title}`}
                 >
-                  <Text style={styles.fulfilButtonText}>Fulfil</Text>
+                  <Text style={styles.fulfilButtonText}>{t('fulfil')}</Text>
                 </TouchableOpacity>
               )}
             </View>
