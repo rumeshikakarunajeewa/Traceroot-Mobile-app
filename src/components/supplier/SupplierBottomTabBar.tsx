@@ -4,6 +4,8 @@ import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDarkMode } from '../../store/uiStore';
+import { useLanguage } from '../../i18n/languageStore';
+import { TranslationKey } from '../../i18n/translations';
 
 export interface SupplierBottomTabBarProps {
   state?: any;
@@ -15,7 +17,7 @@ export interface SupplierBottomTabBarProps {
 interface TabConfig {
   name: string;
   routePath: string;
-  label: string;
+  labelKey: TranslationKey;
   badge?: number;
   iconName: keyof typeof MaterialCommunityIcons.glyphMap;
   focusedIconName?: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -26,7 +28,7 @@ const SUPPLIER_TABS: TabConfig[] = [
   {
     name: 'index',
     routePath: '/(supplier)',
-    label: 'Home',
+    labelKey: 'tabHome',
     iconName: 'home',
     focusedIconName: 'home',
     size: 24,
@@ -34,7 +36,7 @@ const SUPPLIER_TABS: TabConfig[] = [
   {
     name: 'catalogue',
     routePath: '/(supplier)/catalogue',
-    label: 'Catalogue',
+    labelKey: 'tabCatalogue',
     iconName: 'book-open-outline',
     focusedIconName: 'book-open',
     size: 22,
@@ -42,7 +44,7 @@ const SUPPLIER_TABS: TabConfig[] = [
   {
     name: 'orders',
     routePath: '/(supplier)/orders',
-    label: 'Orders',
+    labelKey: 'tabOrders',
     badge: 3, // Shows the '3' badge from the Figma design!
     iconName: 'basket-outline',
     focusedIconName: 'basket',
@@ -51,7 +53,7 @@ const SUPPLIER_TABS: TabConfig[] = [
   {
     name: 'messages',
     routePath: '/(supplier)/messages',
-    label: 'Messages',
+    labelKey: 'tabMessages',
     iconName: 'chat-outline',
     focusedIconName: 'chat',
     size: 22,
@@ -59,7 +61,7 @@ const SUPPLIER_TABS: TabConfig[] = [
   {
     name: 'profile',
     routePath: '/(supplier)/profile',
-    label: 'Profile',
+    labelKey: 'tabProfile',
     iconName: 'account-cowboy-hat-outline',
     focusedIconName: 'account-cowboy-hat',
     size: 24,
@@ -71,6 +73,7 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
   navigation,
 }) => {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
 
@@ -139,7 +142,7 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
               key={tab.name}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={tab.label}
+              accessibilityLabel={t(tab.labelKey)}
               onPress={handlePress}
               activeOpacity={0.75}
               style={styles.tabItem}
@@ -169,7 +172,7 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
                   },
                 ]}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </Text>
 
               {/* Orange Active Indicator Dash Under Label */}

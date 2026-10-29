@@ -20,13 +20,28 @@ import {
   useSupplierMessages,
 } from '../../../src/store/supplierMessagesStore';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useLanguage } from '../../../src/i18n/languageStore';
 import { SupplierMessageThread } from '../../../src/types/supplier.types';
 
 type MessageFilterTab = 'All' | 'Requests' | 'Notes' | 'Unread';
 
 export default function SupplierMessagesScreen() {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
   const [threads, markAsRead, sendMessage] = useSupplierMessages();
+
+  const getTypeLabel = (type: string) => {
+    if (type === 'Request') return t('badgeRequest');
+    if (type === 'Note') return t('badgeNote');
+    return type;
+  };
+
+  const getStatusTagLabel = (tag?: string) => {
+    if (tag === 'New') return t('tagNew');
+    if (tag === 'Replied') return t('tagReplied');
+    if (tag === 'Pending') return t('tagPending');
+    return tag || '';
+  };
 
   // Active Filter Tab & Search State
   const [activeTab, setActiveTab] = useState<MessageFilterTab>('All');
@@ -122,7 +137,7 @@ export default function SupplierMessagesScreen() {
             </TouchableOpacity>
 
             <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
-              Messages
+              {t('messagesTitle')}
             </Text>
           </View>
 
@@ -193,7 +208,7 @@ export default function SupplierMessagesScreen() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search by sender or message..."
+              placeholder={t('searchMessagesPlaceholder')}
               placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
               style={[styles.searchInput, isDark && styles.searchInputDark]}
               autoFocus
@@ -240,7 +255,7 @@ export default function SupplierMessagesScreen() {
                   : styles.filterPillTextInactive,
               ]}
             >
-              All
+              {t('filterAll')}
             </Text>
           </TouchableOpacity>
 
@@ -269,7 +284,7 @@ export default function SupplierMessagesScreen() {
                   : styles.filterPillTextInactive,
               ]}
             >
-              Requests
+              {t('tabRequests')}
             </Text>
           </TouchableOpacity>
 
@@ -298,7 +313,7 @@ export default function SupplierMessagesScreen() {
                   : styles.filterPillTextInactive,
               ]}
             >
-              Notes
+              {t('tabNotes')}
             </Text>
           </TouchableOpacity>
 
@@ -327,7 +342,7 @@ export default function SupplierMessagesScreen() {
                   : styles.filterPillTextInactive,
               ]}
             >
-              Unread
+              {t('tabUnread')}
             </Text>
             {unreadCount > 0 && (
               <View
@@ -362,7 +377,7 @@ export default function SupplierMessagesScreen() {
                 isDark && styles.emptyTitleDark,
               ]}
             >
-              No messages found
+              {t('noMessagesFound')}
             </Text>
             <Text
               style={[
@@ -371,8 +386,8 @@ export default function SupplierMessagesScreen() {
               ]}
             >
               {searchQuery
-                ? 'Try modifying your search term'
-                : `No ${activeTab.toLowerCase()} messages in your inbox.`}
+                ? t('tryModifyingSearch')
+                : t('noMessagesInInbox')}
             </Text>
           </View>
         ) : (
@@ -445,7 +460,7 @@ export default function SupplierMessagesScreen() {
                       ]}
                     >
                       <Text style={styles.typeBadgeText}>
-                        {thread.type}
+                        {getTypeLabel(thread.type)}
                       </Text>
                     </View>
 
@@ -458,7 +473,7 @@ export default function SupplierMessagesScreen() {
                           color="#E59325"
                           style={{ marginRight: 3 }}
                         />
-                        <Text style={styles.statusNewText}>New</Text>
+                        <Text style={styles.statusNewText}>{t('tagNew')}</Text>
                       </View>
                     )}
 
@@ -470,7 +485,7 @@ export default function SupplierMessagesScreen() {
                           color="#348B52"
                           style={{ marginRight: 2 }}
                         />
-                        <Text style={styles.statusRepliedText}>Replied</Text>
+                        <Text style={styles.statusRepliedText}>{t('tagReplied')}</Text>
                       </View>
                     )}
 
@@ -482,7 +497,7 @@ export default function SupplierMessagesScreen() {
                           color="#3B82F6"
                           style={{ marginRight: 3 }}
                         />
-                        <Text style={styles.statusPendingText}>Pending</Text>
+                        <Text style={styles.statusPendingText}>{t('tagPending')}</Text>
                       </View>
                     )}
                   </View>
@@ -549,7 +564,7 @@ export default function SupplierMessagesScreen() {
                         isDark && styles.modalStatusDark,
                       ]}
                     >
-                      {activeThread.type} • {activeThread.statusTag}
+                      {getTypeLabel(activeThread.type)} • {getStatusTagLabel(activeThread.statusTag)}
                     </Text>
                   </View>
                 </View>
@@ -634,7 +649,7 @@ export default function SupplierMessagesScreen() {
                 <TextInput
                   value={replyText}
                   onChangeText={setReplyText}
-                  placeholder="Type a message..."
+                  placeholder={t('typeMessagePlaceholder')}
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   style={[
                     styles.replyInput,
@@ -650,6 +665,7 @@ export default function SupplierMessagesScreen() {
                     !replyText.trim() && styles.sendButtonDisabled,
                   ]}
                   disabled={!replyText.trim()}
+                  accessibilityLabel={t('send')}
                 >
                   <MaterialCommunityIcons
                     name="send"

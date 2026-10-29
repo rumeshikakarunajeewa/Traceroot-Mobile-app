@@ -19,13 +19,32 @@ import {
 } from '../../../src/constants/supplierCatalogueData';
 import { useSupplierCatalogue } from '../../../src/store/supplierCatalogueStore';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useLanguage } from '../../../src/i18n/languageStore';
 import { CatalogueCategory, CatalogueProduct } from '../../../src/types/supplier.types';
 
 export default function SupplierCatalogueScreen() {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<CatalogueCategory>('All');
   const [products] = useSupplierCatalogue();
   const [refreshing, setRefreshing] = useState(false);
+
+  const getCategoryLabel = (cat: CatalogueCategory) => {
+    switch (cat) {
+      case 'All':
+        return t('catAll');
+      case 'Seeds':
+        return t('catSeeds');
+      case 'Fertilizers':
+        return t('catFertilizers');
+      case 'Pesticides':
+        return t('catPesticides');
+      case 'Compost':
+        return t('catCompost');
+      default:
+        return cat;
+    }
+  };
 
   // Filter products based on selected tab
   const filteredProducts =
@@ -92,7 +111,7 @@ export default function SupplierCatalogueScreen() {
             onPress={handleBackToDashboard}
             style={[styles.backPill, isDark && styles.backPillDark]}
             accessibilityRole="button"
-            accessibilityLabel="Back to Dashboard"
+            accessibilityLabel={t('dashboardTitle')}
           >
             <MaterialCommunityIcons
               name="chevron-left"
@@ -100,7 +119,7 @@ export default function SupplierCatalogueScreen() {
               color={isDark ? '#DCE8DE' : '#2D4030'}
             />
             <Text style={[styles.backPillText, isDark && styles.backPillTextDark]}>
-              Dashboard
+              {t('dashboardTitle')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -114,13 +133,13 @@ export default function SupplierCatalogueScreen() {
             style={styles.taglineIcon}
           />
           <Text style={[styles.taglineText, isDark && styles.taglineTextDark]}>
-            Agricultural raw materials
+            {t('agriRawMaterials')}
           </Text>
         </View>
 
         {/* 3. Screen Title */}
         <Text style={[styles.screenTitle, isDark && styles.screenTitleDark]}>
-          Product Catalogue
+          {t('productCatalogue')}
         </Text>
 
         {/* 4. Category Filter Chips (Horizontal) */}
@@ -149,7 +168,7 @@ export default function SupplierCatalogueScreen() {
                 ]}
                 accessibilityRole="button"
                 accessibilityState={isSelected ? { selected: true } : {}}
-                accessibilityLabel={`${cat} filter`}
+                accessibilityLabel={`${getCategoryLabel(cat)} filter`}
               >
                 <Text
                   style={[
@@ -161,7 +180,7 @@ export default function SupplierCatalogueScreen() {
                       : styles.filterChipTextInactive,
                   ]}
                 >
-                  {cat}
+                  {getCategoryLabel(cat)}
                 </Text>
               </TouchableOpacity>
             );
@@ -172,7 +191,10 @@ export default function SupplierCatalogueScreen() {
         <View style={styles.countRow}>
           <View style={styles.countUnderlineWrapper}>
             <Text style={[styles.countTextBold, isDark && styles.countTextBoldDark]}>
-              {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'}
+              {filteredProducts.length}{' '}
+              {filteredProducts.length === 1
+                ? t('productUnitSingle')
+                : t('productUnitPlural')}
             </Text>
             <View
               style={[
@@ -182,7 +204,7 @@ export default function SupplierCatalogueScreen() {
             />
           </View>
           <Text style={[styles.countTextMuted, isDark && styles.countTextMutedDark]}>
-            {' '}listed
+            {' '}{t('listedText')}
           </Text>
         </View>
 
@@ -211,7 +233,7 @@ export default function SupplierCatalogueScreen() {
           onPress={handleAddNewProduct}
           style={[styles.addCard, isDark && styles.addCardDark]}
           accessibilityRole="button"
-          accessibilityLabel="Add New Product to your catalogue"
+          accessibilityLabel={`${t('addNewProductCardTitle')} - ${t('addToYourCatalogue')}`}
         >
           {/* Left Circular Plus Button */}
           <View style={[styles.plusCircle, isDark && styles.plusCircleDark]}>
@@ -221,7 +243,7 @@ export default function SupplierCatalogueScreen() {
           {/* Right Text Content */}
           <View style={styles.addCardContent}>
             <Text style={[styles.addCardTitle, isDark && styles.addCardTitleDark]}>
-              Add New Product
+              {t('addNewProductCardTitle')}
             </Text>
             <Text
               style={[
@@ -229,7 +251,7 @@ export default function SupplierCatalogueScreen() {
                 isDark && styles.addCardSubtitleDark,
               ]}
             >
-              Add to your catalogue
+              {t('addToYourCatalogue')}
             </Text>
           </View>
         </TouchableOpacity>

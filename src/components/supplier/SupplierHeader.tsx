@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SupplierProfile } from '../../types/supplier.types';
 import { useDarkMode } from '../../store/uiStore';
+import { useLanguage } from '../../i18n/languageStore';
 
 interface SupplierHeaderProps {
   profile: SupplierProfile;
@@ -22,6 +23,7 @@ export const SupplierHeader: React.FC<SupplierHeaderProps> = ({
   onNotificationPress,
 }) => {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
 
   return (
     <View style={styles.container}>
@@ -40,7 +42,7 @@ export const SupplierHeader: React.FC<SupplierHeaderProps> = ({
       <View style={styles.centerInfo}>
         <View style={styles.subtitleRow}>
           <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-            Supplier Dashboard
+            {t('supplierRoleCertified')}
           </Text>
           <Text style={styles.emojiWheat}>🌾</Text>
         </View>

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { TopProductItem } from '../../types/supplier.types';
 import { useDarkMode } from '../../store/uiStore';
+import { useLanguage } from '../../i18n/languageStore';
 
 interface SupplierTopProductsProps {
   products: TopProductItem[];
@@ -24,13 +25,14 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
   onManagePress,
 }) => {
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
 
   return (
     <View style={styles.container}>
       {/* Header Row */}
       <View style={styles.headerRow}>
         <Text style={[styles.title, isDark && styles.titleDark]}>
-          Top Products
+          {t('topProductsTitle')}
         </Text>
 
         <TouchableOpacity
@@ -38,10 +40,10 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
           onPress={onManagePress}
           style={[styles.managePill, isDark && styles.managePillDark]}
           accessibilityRole="button"
-          accessibilityLabel="Manage all products"
+          accessibilityLabel={t('manage')}
         >
           <Text style={[styles.manageText, isDark && styles.manageTextDark]}>
-            Manage
+            {t('manage')}
           </Text>
           <MaterialCommunityIcons
             name="chevron-right"
@@ -70,7 +72,7 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
               onPress={() => onProductPress?.(product)}
               style={[styles.productCard, isDark && styles.productCardDark]}
               accessibilityRole="button"
-              accessibilityLabel={`${product.title}, ${product.currency} ${product.price}, Stock ${product.stock}`}
+              accessibilityLabel={`${product.title}, ${product.currency} ${product.price}, ${t('stockLabel')} ${product.stock}`}
             >
               {/* Image Container with Badge */}
               <View style={styles.imageContainer}>
@@ -127,7 +129,7 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
 
                 {/* Stock Label */}
                 <Text style={[styles.stockText, isDark && styles.stockTextDark]}>
-                  Stock: {product.stock}
+                  {t('stockLabel')}: {product.stock}
                 </Text>
               </View>
             </TouchableOpacity>
