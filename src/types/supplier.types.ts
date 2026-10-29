@@ -49,3 +49,19 @@ export interface WaitingAlertInfo {
   title: string;
   subtitle: string;
 }
+
+export type CatalogueCategory = 'All' | 'Seeds' | 'Fertilizers' | 'Pesticides';
+
+export interface CatalogueProduct {
+  id: string;
+  title: string;
+  category: 'Seeds' | 'Fertilizers' | 'Pesticides';
+  packageSize: string;
+  price: number;
+  currency: string;
+  stock: number;
+  maxStock: number;
+  isLowStock?: boolean;
+  imageUrl: any;
+}
+
