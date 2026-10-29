@@ -23,6 +23,29 @@ export interface SupplierQuickActionItem {
 
 export type RequestStatus = 'Pending' | 'Fulfilled' | 'Cancelled';
 
+export type SupplierMessageType = 'Request' | 'Note';
+export type SupplierMessageStatus = 'New' | 'Replied' | 'Pending';
+
+export interface SupplierChatMessage {
+  id: string;
+  sender: 'user' | 'other';
+  text: string;
+  timestamp: string;
+}
+
+export interface SupplierMessageThread {
+  id: string;
+  senderName: string;
+  senderRole?: string;
+  avatarUrl: any;
+  type: SupplierMessageType;
+  statusTag: SupplierMessageStatus;
+  timestamp: string;
+  lastMessage: string;
+  isUnread?: boolean;
+  messages: SupplierChatMessage[];
+}
+
 export type SupplierOrderStatus = 'New' | 'Packing' | 'Completed' | 'Declined';
 
 export interface SupplierOrderItem {
