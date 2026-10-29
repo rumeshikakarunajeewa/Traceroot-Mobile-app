@@ -16,15 +16,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SupplierProductCatalogueCard } from '../../../src/components/supplier/SupplierProductCatalogueCard';
 import {
   CATALOGUE_CATEGORIES,
-  mockCatalogueProducts,
 } from '../../../src/constants/supplierCatalogueData';
+import { useSupplierCatalogue } from '../../../src/store/supplierCatalogueStore';
 import { useDarkMode } from '../../../src/store/uiStore';
 import { CatalogueCategory, CatalogueProduct } from '../../../src/types/supplier.types';
 
 export default function SupplierCatalogueScreen() {
   const [isDark] = useDarkMode();
   const [selectedCategory, setSelectedCategory] = useState<CatalogueCategory>('All');
-  const [products] = useState<CatalogueProduct[]>(mockCatalogueProducts);
+  const [products] = useSupplierCatalogue();
   const [refreshing, setRefreshing] = useState(false);
 
   // Filter products based on selected tab

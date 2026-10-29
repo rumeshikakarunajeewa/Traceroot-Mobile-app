@@ -5,6 +5,7 @@ export const CATALOGUE_CATEGORIES: CatalogueCategory[] = [
   'Seeds',
   'Fertilizers',
   'Pesticides',
+  'Compost',
 ];
 
 export const mockCatalogueProducts: CatalogueProduct[] = [

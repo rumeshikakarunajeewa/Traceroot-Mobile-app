@@ -50,12 +50,12 @@ export interface WaitingAlertInfo {
   subtitle: string;
 }
 
-export type CatalogueCategory = 'All' | 'Seeds' | 'Fertilizers' | 'Pesticides';
+export type CatalogueCategory = 'All' | 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Compost';
 
 export interface CatalogueProduct {
   id: string;
   title: string;
-  category: 'Seeds' | 'Fertilizers' | 'Pesticides';
+  category: 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Compost';
   packageSize: string;
   price: number;
   currency: string;
@@ -63,5 +63,9 @@ export interface CatalogueProduct {
   maxStock: number;
   isLowStock?: boolean;
   imageUrl: any;
+  soldPer?: string;
+  description?: string;
+  suitableFor?: string[];
+  isOrganicCertified?: boolean;
 }
 
