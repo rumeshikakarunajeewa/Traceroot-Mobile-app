@@ -23,6 +23,28 @@ export interface SupplierQuickActionItem {
 
 export type RequestStatus = 'Pending' | 'Fulfilled' | 'Cancelled';
 
+export type SupplierOrderStatus = 'New' | 'Packing' | 'Completed' | 'Declined';
+
+export interface SupplierOrderItem {
+  title: string;
+  quantity: string;
+  price: number;
+  imageUrl: any;
+}
+
+export interface SupplierOrderRequest {
+  id: string; // e.g. 'REQ-2041'
+  farmerName: string;
+  farmerAvatar: any;
+  district: string;
+  timeAgo: string;
+  status: SupplierOrderStatus;
+  items: SupplierOrderItem[];
+  totalAmount: number;
+  deliveryMethod: string;
+  stepperStage: 'Received' | 'Packing' | 'Delivered';
+}
+
 export interface FarmerRequestItem {
   id: string;
   title: string;
