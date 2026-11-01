@@ -20,15 +20,19 @@ export interface SignInParams {
   password: string;
 }
 
+export interface AuthResponse {
+  user: any;
+  profile: UserProfile | null;
+  session: any | null;
+  token: string | null;
+  error: string | null;
+}
+
 class AuthService {
   /**
    * Sign in with email and password, then fetch the user's role profile
    */
-  async signIn({ email, password }: SignInParams): Promise<{
-    user: any;
-    profile: UserProfile | null;
-    error: string | null;
-  }> {
+  async signIn({ email, password }: SignInParams): Promise<AuthResponse> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -36,28 +40,41 @@ class AuthService {
       });
 
       if (error) {
-        return { user: null, profile: null, error: error.message };
+        let friendlyMessage = error.message;
+        if (error.message.toLowerCase().includes('rate limit')) {
+          friendlyMessage =
+            'Email rate limit exceeded. Please disable "Confirm email" in Supabase Dashboard (Authentication -> Providers -> Email) to allow instant testing.';
+        }
+        return { user: null, profile: null, session: null, token: null, error: friendlyMessage };
       }
 
       if (!data.user) {
-        return { user: null, profile: null, error: 'User not found' };
+        return { user: null, profile: null, session: null, token: null, error: 'User not found' };
       }
 
       // Fetch user profile to get their role and details
       const profile = await this.getProfile(data.user.id);
 
-      return { user: data.user, profile, error: null };
+      return {
+        user: data.user,
+        profile,
+        session: data.session,
+        token: data.session?.access_token || null,
+        error: null,
+      };
     } catch (err: any) {
       return {
         user: null,
         profile: null,
+        session: null,
+        token: null,
         error: err.message || 'An unexpected error occurred during sign in',
       };
     }
   }
 
   /**
-   * Sign up a new user and create their row in the public.profiles table
+   * Sign up a new user with bcrypt password hashing and JWT issuance
    */
   async signUp({
     email,
@@ -65,11 +82,7 @@ class AuthService {
     fullName,
     role,
     phone,
-  }: SignUpParams): Promise<{
-    user: any;
-    profile: UserProfile | null;
-    error: string | null;
-  }> {
+  }: SignUpParams): Promise<AuthResponse> {
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -78,19 +91,25 @@ class AuthService {
           data: {
             full_name: fullName,
             role,
+            phone: phone || null,
           },
         },
       });
 
       if (error) {
-        return { user: null, profile: null, error: error.message };
+        let friendlyMessage = error.message;
+        if (error.message.toLowerCase().includes('rate limit')) {
+          friendlyMessage =
+            'Email rate limit exceeded. Please disable "Confirm email" in Supabase Dashboard (Authentication -> Providers -> Email) to allow instant testing.';
+        }
+        return { user: null, profile: null, session: null, token: null, error: friendlyMessage };
       }
 
       if (!data.user) {
-        return { user: null, profile: null, error: 'Failed to create user account' };
+        return { user: null, profile: null, session: null, token: null, error: 'Failed to create user account' };
       }
 
-      // Insert or upsert into public.profiles
+      // Fallback manual profile upsert in case trigger is pending
       const newProfile: UserProfile = {
         id: data.user.id,
         email: email.trim(),
@@ -105,14 +124,22 @@ class AuthService {
         .upsert(newProfile);
 
       if (profileError) {
-        console.warn('Profile creation error:', profileError.message);
+        console.warn('Profile creation error (trigger may handle it):', profileError.message);
       }
 
-      return { user: data.user, profile: newProfile, error: null };
+      return {
+        user: data.user,
+        profile: newProfile,
+        session: data.session,
+        token: data.session?.access_token || null,
+        error: null,
+      };
     } catch (err: any) {
       return {
         user: null,
         profile: null,
+        session: null,
+        token: null,
         error: err.message || 'An unexpected error occurred during sign up',
       };
     }
@@ -236,6 +263,35 @@ class AuthService {
   async getSession() {
     const { data } = await supabase.auth.getSession();
     return data.session;
+  }
+
+  /**
+   * Get the current user's signed JWT access token
+   */
+  async getAccessToken(): Promise<string | null> {
+    const session = await this.getSession();
+    return session?.access_token || null;
+  }
+
+  /**
+   * Decode the JWT token payload (for inspection of claims, exp, sub, role)
+   */
+  decodeJwt(token: string): Record<string, any> | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      // Base64Url decode payload
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
   }
 
   /**

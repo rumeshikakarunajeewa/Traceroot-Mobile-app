@@ -6,6 +6,7 @@ interface AuthStoreState {
   user: any | null;
   profile: UserProfile | null;
   session: any | null;
+  token: string | null;
   isLoading: boolean;
   isInitialized: boolean;
 }
@@ -14,6 +15,7 @@ let currentState: AuthStoreState = {
   user: null,
   profile: null,
   session: null,
+  token: null,
   isLoading: true,
   isInitialized: false,
 };
@@ -43,6 +45,7 @@ export async function initializeAuth() {
         user: session.user,
         profile,
         session,
+        token: session.access_token || null,
         isLoading: false,
         isInitialized: true,
       };
@@ -51,6 +54,7 @@ export async function initializeAuth() {
         user: null,
         profile: null,
         session: null,
+        token: null,
         isLoading: false,
         isInitialized: true,
       };
@@ -74,6 +78,7 @@ export async function initializeAuth() {
         user: session.user,
         profile,
         session,
+        token: session.access_token || null,
         isLoading: false,
       });
     } else {
@@ -81,6 +86,7 @@ export async function initializeAuth() {
         user: null,
         profile: null,
         session: null,
+        token: null,
         isLoading: false,
       });
     }
