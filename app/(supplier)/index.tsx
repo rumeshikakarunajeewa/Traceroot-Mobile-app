@@ -55,7 +55,7 @@ export default function SupplierDashboardScreen() {
 
   const handleQuickAction = (action: SupplierQuickActionItem) => {
     if (action.route) {
-      router.push(action.route as any);
+      router.navigate(action.route as any);
     }
   };
 
@@ -85,15 +85,15 @@ export default function SupplierDashboardScreen() {
   };
 
   const handleViewAllRequests = () => {
-    router.push('/(supplier)/orders');
+    router.navigate('/orders' as any);
   };
 
   const handleManageProducts = () => {
-    router.push('/(supplier)/catalogue');
+    router.navigate('/catalogue' as any);
   };
 
   const handleProductPress = (product: TopProductItem) => {
-    router.push(`/(supplier)/catalogue` as any);
+    router.navigate('/catalogue' as any);
   };
 
   const handleStorePress = () => {

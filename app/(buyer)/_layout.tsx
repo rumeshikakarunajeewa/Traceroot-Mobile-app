@@ -70,13 +70,13 @@ export default function BuyerTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="contracts/[id]"
+        name="contracts/new"
         options={{
           href: null,
         }}
       />
       <Tabs.Screen
-        name="contracts/new"
+        name="contracts/[id]"
         options={{
           href: null,
         }}

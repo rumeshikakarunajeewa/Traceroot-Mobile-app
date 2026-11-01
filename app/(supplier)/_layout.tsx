@@ -64,13 +64,13 @@ export default function SupplierLayout() {
 
       {/* Hidden subroutes */}
       <Tabs.Screen
-        name="catalogue/[id]"
+        name="catalogue/new"
         options={{
           href: null,
         }}
       />
       <Tabs.Screen
-        name="catalogue/new"
+        name="catalogue/[id]"
         options={{
           href: null,
         }}

@@ -233,7 +233,11 @@ export default function SupplierNewProductScreen() {
 
   // Done button handler
   const handleDone = () => {
-    router.replace('/(supplier)/catalogue');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.navigate('/catalogue' as any);
+    }
   };
 
   return (
@@ -323,7 +327,13 @@ export default function SupplierNewProductScreen() {
               {/* Circular Back Button */}
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => router.back()}
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.navigate('/catalogue' as any);
+                  }
+                }}
                 style={[styles.backCircle, isDark && styles.backCircleDark]}
                 accessibilityRole="button"
                 accessibilityLabel="Back to Catalogue"
