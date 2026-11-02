@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
@@ -127,25 +127,23 @@ export default function SupplierCatalogueScreen() {
             </Text>
           </TouchableOpacity>
 
-          <Link href="/catalogue/new" asChild>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleAddNewProduct}
-              style={[styles.headerAddBtn, isDark && styles.headerAddBtnDark]}
-              accessibilityRole="button"
-              accessibilityLabel={t('addNewProductCardTitle')}
-            >
-              <MaterialCommunityIcons
-                name="plus"
-                size={16}
-                color="#FFFFFF"
-                style={{ marginRight: 4 }}
-              />
-              <Text style={styles.headerAddBtnText}>
-                {t('addNewProductCardTitle')}
-              </Text>
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleAddNewProduct}
+            style={[styles.headerAddBtn, isDark && styles.headerAddBtnDark]}
+            accessibilityRole="button"
+            accessibilityLabel={t('addNewProductCardTitle')}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={16}
+              color="#FFFFFF"
+              style={{ marginRight: 4 }}
+            />
+            <Text style={styles.headerAddBtnText}>
+              {t('addNewProductCardTitle')}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* 2. Subtitle Tagline */}
@@ -252,35 +250,33 @@ export default function SupplierCatalogueScreen() {
         </View>
 
         {/* 7. "Add New Product" Action Card */}
-        <Link href="/catalogue/new" asChild>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleAddNewProduct}
-            style={[styles.addCard, isDark && styles.addCardDark]}
-            accessibilityRole="button"
-            accessibilityLabel={`${t('addNewProductCardTitle')} - ${t('addToYourCatalogue')}`}
-          >
-            {/* Left Circular Plus Button */}
-            <View style={[styles.plusCircle, isDark && styles.plusCircleDark]}>
-              <MaterialCommunityIcons name="plus" size={26} color="#FFFFFF" />
-            </View>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleAddNewProduct}
+          style={[styles.addCard, isDark && styles.addCardDark]}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('addNewProductCardTitle')} - ${t('addToYourCatalogue')}`}
+        >
+          {/* Left Circular Plus Button */}
+          <View style={[styles.plusCircle, isDark && styles.plusCircleDark]}>
+            <MaterialCommunityIcons name="plus" size={26} color="#FFFFFF" />
+          </View>
 
-            {/* Right Text Content */}
-            <View style={styles.addCardContent}>
-              <Text style={[styles.addCardTitle, isDark && styles.addCardTitleDark]}>
-                {t('addNewProductCardTitle')}
-              </Text>
-              <Text
-                style={[
-                  styles.addCardSubtitle,
-                  isDark && styles.addCardSubtitleDark,
-                ]}
-              >
-                {t('addToYourCatalogue')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </Link>
+          {/* Right Text Content */}
+          <View style={styles.addCardContent}>
+            <Text style={[styles.addCardTitle, isDark && styles.addCardTitleDark]}>
+              {t('addNewProductCardTitle')}
+            </Text>
+            <Text
+              style={[
+                styles.addCardSubtitle,
+                isDark && styles.addCardSubtitleDark,
+              ]}
+            >
+              {t('addToYourCatalogue')}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

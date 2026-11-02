@@ -81,7 +81,11 @@ export default function LoginScreen() {
     setIsLoading(true);
     setAuthError(null);
 
-    const result = await authService.signIn({ email, password });
+    const result = await authService.signIn({
+      email,
+      password,
+      selectedRole: role,
+    });
     setIsLoading(false);
 
     if (result.error) {
@@ -90,7 +94,7 @@ export default function LoginScreen() {
     }
 
     // Redirect to the correct role dashboard based on user's profile
-    const targetRole = (result.profile?.role as Role) || role;
+    const targetRole = (result.actualRole || result.profile?.role || role) as Role;
     navigateToRoleHome(targetRole);
   };
 
@@ -220,7 +224,7 @@ export default function LoginScreen() {
 
             {/* Primary Sign In Button */}
             <AppButton
-              title={role === 'buyer' ? 'SIGN IN AS BUYER' : 'SIGN IN'}
+              title={`SIGN IN AS ${role.toUpperCase()}`}
               variant="accent"
               loading={isLoading}
               onPress={handleSignIn}

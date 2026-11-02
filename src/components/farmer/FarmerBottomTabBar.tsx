@@ -18,6 +18,8 @@ export interface FarmerBottomTabBarProps {
 export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   state,
   navigation,
+  emitter,
+  navigateToTab,
   onAddPress,
 }) => {
   const insets = useSafeAreaInsets();
@@ -29,21 +31,32 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
     const route = state?.routes?.find((r: any) => r.name === routeName);
     
     let defaultPrevented = false;
-    if (route && navigation?.emit) {
+    if (route) {
       try {
-        const event = navigation.emit({
-          type: 'tabPress',
-          target: route.key,
-          canPreventDefault: true,
-        });
-        defaultPrevented = !!event?.defaultPrevented;
+        if (emitter?.emit) {
+          const event = emitter.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          defaultPrevented = !!event?.defaultPrevented;
+        } else if (navigation?.emit) {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          defaultPrevented = !!event?.defaultPrevented;
+        }
       } catch {
         defaultPrevented = false;
       }
     }
 
     if (!defaultPrevented) {
-      if (navigation?.navigate && route) {
+      if (navigateToTab && route?.key) {
+        navigateToTab(route.key);
+      } else if (navigation?.navigate && route) {
         navigation.navigate(routeName);
       } else {
         router.push(`/${routeName === 'index' ? '' : routeName}` as any);

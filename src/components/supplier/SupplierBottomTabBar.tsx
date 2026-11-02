@@ -10,6 +10,8 @@ import { TranslationKey } from '../../i18n/translations';
 export interface SupplierBottomTabBarProps {
   state?: any;
   navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
   descriptors?: Record<string, any>;
   [key: string]: any;
 }
@@ -71,13 +73,15 @@ const SUPPLIER_TABS: TabConfig[] = [
 export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
   state,
   navigation,
+  emitter,
+  navigateToTab,
 }) => {
   const [isDark] = useDarkMode();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
 
-  const currentRouteName = state?.routes?.[state.index]?.name || 'index';
+  const currentRouteName = state?.routes?.[state?.index]?.name || 'index';
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
@@ -102,7 +106,7 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
 
           const matchingRoute =
             matchingRouteIndex !== undefined && matchingRouteIndex >= 0
-              ? state.routes[matchingRouteIndex]
+              ? state?.routes?.[matchingRouteIndex]
               : null;
 
           const isFocused =
@@ -120,19 +124,57 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
             : tab.iconName;
 
           const handlePress = () => {
-            const event = matchingRoute
-              ? navigation?.emit({
-                  type: 'tabPress',
-                  target: matchingRoute.key,
-                  canPreventDefault: true,
-                })
-              : { defaultPrevented: false };
+            let defaultPrevented = false;
 
-            if (!isFocused && !event?.defaultPrevented) {
-              if (matchingRoute && navigation?.navigate) {
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  const event = emitter.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                } else if (navigation?.emit) {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                }
+              } catch {
+                defaultPrevented = false;
+              }
+            }
+
+            if (!isFocused && !defaultPrevented) {
+              if (navigateToTab && matchingRoute?.key) {
+                navigateToTab(matchingRoute.key);
+              } else if (matchingRoute && navigation?.navigate) {
                 navigation.navigate(matchingRoute.name);
               } else {
                 router.push(tab.routePath as any);
+              }
+            }
+          };
+
+          const handleLongPress = () => {
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  emitter.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                } else if (navigation?.emit) {
+                  navigation.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                }
+              } catch {
+                // Ignore
               }
             }
           };
@@ -144,6 +186,7 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={t(tab.labelKey)}
               onPress={handlePress}
+              onLongPress={handleLongPress}
               activeOpacity={0.75}
               style={styles.tabItem}
             >

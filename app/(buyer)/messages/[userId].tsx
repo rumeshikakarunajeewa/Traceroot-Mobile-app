@@ -9,12 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  StatusBar,
+
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { StatusBar } from 'expo-status-bar';
 
 interface ChatMessage {
   id: string;
@@ -81,8 +82,8 @@ export default function BuyerMessageDetailScreen() {
       edges={['top', 'bottom']}
     >
       <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#0E1710' : '#F4EFE6'}
+        style={isDark ? 'light' : 'dark'}
+
       />
 
       {/* Header Bar */}

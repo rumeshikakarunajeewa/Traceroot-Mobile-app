@@ -18,6 +18,7 @@ export interface SignUpParams {
 export interface SignInParams {
   email: string;
   password: string;
+  selectedRole?: UserRole;
 }
 
 export interface AuthResponse {
@@ -25,14 +26,17 @@ export interface AuthResponse {
   profile: UserProfile | null;
   session: any | null;
   token: string | null;
+  roleMismatch?: boolean;
+  actualRole?: UserRole;
   error: string | null;
 }
 
 class AuthService {
   /**
-   * Sign in with email and password, then fetch the user's role profile
+   * Sign in with email and password, verify credentials with Bcrypt,
+   * extract the user's role, and return signed JWT access token.
    */
-  async signIn({ email, password }: SignInParams): Promise<AuthResponse> {
+  async signIn({ email, password, selectedRole }: SignInParams): Promise<AuthResponse> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -41,25 +45,87 @@ class AuthService {
 
       if (error) {
         let friendlyMessage = error.message;
-        if (error.message.toLowerCase().includes('rate limit')) {
+        const lower = error.message.toLowerCase();
+
+        if (lower.includes('invalid login credentials')) {
+          friendlyMessage = 'Incorrect email or password. Please verify your credentials.';
+        } else if (lower.includes('email not confirmed')) {
           friendlyMessage =
-            'Email rate limit exceeded. Please disable "Confirm email" in Supabase Dashboard (Authentication -> Providers -> Email) to allow instant testing.';
+            'Email not confirmed. Please confirm your email or disable "Confirm email" in Supabase settings.';
+        } else if (lower.includes('rate limit')) {
+          friendlyMessage =
+            'Email rate limit exceeded. Please disable "Confirm email" in Supabase Dashboard (Authentication -> Providers -> Email).';
+        } else if (lower.includes('network') || lower.includes('fetch')) {
+          friendlyMessage = 'Unable to connect to Supabase. Please check your network connection.';
         }
-        return { user: null, profile: null, session: null, token: null, error: friendlyMessage };
+
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: friendlyMessage,
+        };
       }
 
       if (!data.user) {
-        return { user: null, profile: null, session: null, token: null, error: 'User not found' };
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: 'User account not found.',
+        };
       }
 
-      // Fetch user profile to get their role and details
-      const profile = await this.getProfile(data.user.id);
+      // Fetch user profile from public.profiles
+      let profile = await this.getProfile(data.user.id);
+
+      // Self-healing fallback: If trigger hasn't fired or profile row was missing,
+      // recover the profile from the user's metadata
+      if (!profile) {
+        const metaRole = (data.user.user_metadata?.role as UserRole) || selectedRole || 'farmer';
+        const metaName = data.user.user_metadata?.full_name || 'TraceRoot User';
+        profile = {
+          id: data.user.id,
+          email: data.user.email || email.trim(),
+          full_name: metaName,
+          role: metaRole,
+          phone: data.user.user_metadata?.phone || null,
+          is_verified: false,
+        };
+
+        // Write the recovered profile back to public.profiles
+        await supabase.from('profiles').upsert(profile);
+      }
+
+      const actualRole = profile.role;
+
+      // Enforce strict role matching: block login if selected tab doesn't match registered role
+      if (selectedRole && actualRole !== selectedRole) {
+        await supabase.auth.signOut();
+
+        const readableActual = actualRole.charAt(0).toUpperCase() + actualRole.slice(1);
+        const readableSelected = selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1);
+
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          roleMismatch: true,
+          actualRole,
+          error: `This account is registered as a ${readableActual}, not a ${readableSelected}. Please select "${readableActual}" above to sign in.`,
+        };
+      }
 
       return {
         user: data.user,
         profile,
         session: data.session,
         token: data.session?.access_token || null,
+        roleMismatch,
+        actualRole,
         error: null,
       };
     } catch (err: any) {
@@ -68,7 +134,7 @@ class AuthService {
         profile: null,
         session: null,
         token: null,
-        error: err.message || 'An unexpected error occurred during sign in',
+        error: err.message || 'An unexpected error occurred during sign in.',
       };
     }
   }

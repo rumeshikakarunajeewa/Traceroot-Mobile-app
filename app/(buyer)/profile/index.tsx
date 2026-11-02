@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  StatusBar,
+
   Platform,
   Alert,
   RefreshControl,
@@ -22,6 +22,7 @@ import { BuyerTrustScoreCard } from '../../../src/components/buyer/BuyerTrustSco
 import { BuyerProfileDetails } from '../../../src/components/buyer/BuyerProfileDetails';
 import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { StatusBar } from 'expo-status-bar';
 import { authService } from '../../../src/services/auth.service';
 import { setAuthState } from '../../../src/store/authStore';
 
@@ -121,8 +122,8 @@ export default function BuyerProfileScreen() {
       edges={['top']}
     >
       <StatusBar
-        barStyle={darkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={darkMode ? '#0E1710' : '#F5F2EB'}
+        style={darkMode ? 'light' : 'dark'}
+
       />
 
       {/* 1. Header Bar */}

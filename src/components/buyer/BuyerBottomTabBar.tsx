@@ -73,12 +73,14 @@ const BUYER_TABS: TabConfig[] = [
 export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
   state,
   navigation,
+  emitter,
+  navigateToTab,
 }) => {
   const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
 
-  const currentRouteName = state.routes[state.index]?.name || '';
+  const currentRouteName = state?.routes?.[state?.index]?.name || '';
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
@@ -91,7 +93,7 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
       >
         {BUYER_TABS.map((tab) => {
           // Find matching route in navigator routes (e.g. 'explore', 'explore/index')
-          const matchingRouteIndex = state.routes.findIndex((r: { name: string }) => {
+          const matchingRouteIndex = state?.routes?.findIndex((r: { name: string }) => {
             if (tab.name === 'index') {
               return r.name === 'index';
             }
@@ -102,7 +104,10 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
             );
           });
 
-          const matchingRoute = matchingRouteIndex >= 0 ? state.routes[matchingRouteIndex] : null;
+          const matchingRoute =
+            matchingRouteIndex !== undefined && matchingRouteIndex >= 0
+              ? state?.routes?.[matchingRouteIndex]
+              : null;
 
           // Check if this tab is currently the active tab
           const isFocused =
@@ -120,19 +125,57 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
             : tab.iconName;
 
           const handlePress = () => {
-            const event = matchingRoute
-              ? navigation.emit({
-                type: 'tabPress',
-                target: matchingRoute.key,
-                canPreventDefault: true,
-              })
-              : { defaultPrevented: false };
+            let defaultPrevented = false;
 
-            if (!isFocused && !event.defaultPrevented) {
-              if (matchingRoute) {
-                (navigation.navigate as any)(matchingRoute.name);
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  const event = emitter.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                } else if (navigation?.emit) {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                }
+              } catch {
+                defaultPrevented = false;
+              }
+            }
+
+            if (!isFocused && !defaultPrevented) {
+              if (navigateToTab && matchingRoute?.key) {
+                navigateToTab(matchingRoute.key);
+              } else if (navigation?.navigate && matchingRoute?.name) {
+                navigation.navigate(matchingRoute.name);
               } else {
                 router.push(tab.routePath as any);
+              }
+            }
+          };
+
+          const handleLongPress = () => {
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  emitter.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                } else if (navigation?.emit) {
+                  navigation.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                }
+              } catch {
+                // Ignore
               }
             }
           };
@@ -144,6 +187,7 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={tab.label}
               onPress={handlePress}
+              onLongPress={handleLongPress}
               activeOpacity={0.75}
               style={styles.tabItem}
             >

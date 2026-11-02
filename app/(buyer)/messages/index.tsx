@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   RefreshControl,
-  StatusBar,
+
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { mockBuyerMessages } from '../../../src/constants/buyerMockData';
 import { BuyerMessageThread } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { StatusBar } from 'expo-status-bar';
 
 type FilterTab = 'All' | 'Requests' | 'Notes' | 'Unread';
 
@@ -87,8 +88,8 @@ export default function BuyerMessagesScreen() {
       edges={['top']}
     >
       <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#0E1710' : '#F4EFE6'}
+        style={isDark ? 'light' : 'dark'}
+
       />
 
       {/* Header Container */}
