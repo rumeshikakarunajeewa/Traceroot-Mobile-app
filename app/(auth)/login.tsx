@@ -135,7 +135,10 @@ export default function LoginScreen() {
     return (
       <TouchableOpacity
         style={[styles.roleCard, isSelected && styles.roleCardSelected]}
-        onPress={() => setRole(type)}
+        onPress={() => {
+          setRole(type);
+          setAuthError(null);
+        }}
         activeOpacity={0.75}
       >
         <MaterialCommunityIcons

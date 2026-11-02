@@ -124,7 +124,7 @@ class AuthService {
         profile,
         session: data.session,
         token: data.session?.access_token || null,
-        roleMismatch,
+        roleMismatch: false,
         actualRole,
         error: null,
       };
