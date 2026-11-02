@@ -23,6 +23,8 @@ import { useLanguage } from '../../../src/i18n/languageStore';
 import { AppLanguage, SUPPORTED_LANGUAGES } from '../../../src/i18n/translations';
 import { useSupplierProfile } from '../../../src/store/supplierProfileStore';
 import { toggleDarkMode, useDarkMode } from '../../../src/store/uiStore';
+import { authService } from '../../../src/services/auth.service';
+import { setAuthState } from '../../../src/store/authStore';
 
 type ProfileTab = 'About' | 'Products' | 'Reviews' | 'Documents';
 
@@ -68,14 +70,37 @@ export default function SupplierProfileScreen() {
   };
 
   const handleLogOut = () => {
+    const performLogout = async () => {
+      try {
+        await authService.signOut();
+      } catch (err) {
+        console.warn('Error during signOut:', err);
+      } finally {
+        setAuthState({
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          isLoading: false,
+        });
+        router.replace('/(auth)/login' as any);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmText = `${t('logOutConfirmTitle')}\n\n${t('logOutConfirmMessage')}`;
+      if (typeof window !== 'undefined' && window.confirm && window.confirm(confirmText)) {
+        performLogout();
+      }
+      return;
+    }
+
     Alert.alert(t('logOutConfirmTitle'), t('logOutConfirmMessage'), [
       { text: t('cancel'), style: 'cancel' },
       {
         text: t('logOut'),
         style: 'destructive',
-        onPress: () => {
-          router.replace('/');
-        },
+        onPress: performLogout,
       },
     ]);
   };

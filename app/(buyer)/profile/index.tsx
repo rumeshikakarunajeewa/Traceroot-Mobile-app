@@ -22,6 +22,8 @@ import { BuyerTrustScoreCard } from '../../../src/components/buyer/BuyerTrustSco
 import { BuyerProfileDetails } from '../../../src/components/buyer/BuyerProfileDetails';
 import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { authService } from '../../../src/services/auth.service';
+import { setAuthState } from '../../../src/store/authStore';
 
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
@@ -61,6 +63,31 @@ export default function BuyerProfileScreen() {
   };
 
   const handleLogout = () => {
+    const performLogout = async () => {
+      try {
+        await authService.signOut();
+      } catch (err) {
+        console.warn('Error during signOut:', err);
+      } finally {
+        setAuthState({
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          isLoading: false,
+        });
+        router.replace('/(auth)/login' as any);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmText = 'Log Out\n\nAre you sure you want to log out of your TraceRoot account?';
+      if (typeof window !== 'undefined' && window.confirm && window.confirm(confirmText)) {
+        performLogout();
+      }
+      return;
+    }
+
     Alert.alert(
       'Log Out',
       'Are you sure you want to log out of your TraceRoot account?',
@@ -69,9 +96,7 @@ export default function BuyerProfileScreen() {
         {
           text: 'Log Out',
           style: 'destructive',
-          onPress: () => {
-            router.replace('/(auth)' as any);
-          },
+          onPress: performLogout,
         },
       ]
     );
