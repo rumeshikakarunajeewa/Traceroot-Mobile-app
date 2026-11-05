@@ -82,18 +82,25 @@ export default function StageDetailsScreen() {
   const stageDateText = useMemo(() => {
     if (!crop) return '';
     const cropCurrent = crop.currentStageIndex ?? 3;
+    const stageItem = crop.stages?.[activeStageNumber - 1];
+
+    if (
+      stageItem?.date &&
+      (stageItem.date.includes('–') || stageItem.date.includes('-')) &&
+      !stageItem.date.startsWith('Est')
+    ) {
+      return stageItem.date;
+    }
+
     if (activeStageNumber === cropCurrent) {
-      const currentStageItem = crop.stages?.[activeStageNumber - 1];
-      const start = currentStageItem?.date || '14 Sep';
+      const start = stageItem?.date || '14 Sep';
       return `${start} – Present`;
     } else if (activeStageNumber < cropCurrent) {
-      const stageItem = crop.stages?.[activeStageNumber - 1];
       const nextStageItem = crop.stages?.[activeStageNumber];
       const start = stageItem?.date || '15 Aug';
       const end = nextStageItem?.date || '1 Sep';
       return `${start} – ${end}`;
     } else {
-      const stageItem = crop.stages?.[activeStageNumber - 1];
       const start = stageItem?.date || '25 Sep';
       return start.includes('Est') ? start : `${start} – Present`;
     }
@@ -169,6 +176,8 @@ export default function StageDetailsScreen() {
           <Text style={styles.stageTitleText}>
             {activeStageDef.key === 'vegetative_growth'
               ? 'Vegetative Growth'
+              : activeStageDef.key === 'harvesting'
+              ? 'Harvest Stage'
               : `${activeStageDef.title} Stage`}
           </Text>
         </View>

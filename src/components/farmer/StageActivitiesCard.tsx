@@ -25,9 +25,10 @@ export const StageActivitiesCard: React.FC<StageActivitiesCardProps> = ({
       stageKey === 'planting' ||
       stageKey === 'vegetative_growth' ||
       stageKey === 'flowering' ||
-      stageKey === 'crop_maturity'
+      stageKey === 'crop_maturity' ||
+      stageKey === 'harvesting'
     ) {
-      // For Planting, Vegetative Growth, Flowering, and Crop Maturity stages, an activity is completed if a record exists with non-empty notes
+      // For all five stages, an activity is completed if a record exists with non-empty notes
       isCompleted = records.some((record) => {
         const matchesActivity =
           record.activityId === template.id ||

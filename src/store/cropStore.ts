@@ -197,6 +197,11 @@ export function saveActivityNotes(payload: SaveActivityNotesPayload): RecentReco
 
   const recordDate =
     payload.details?.date ||
+    payload.details?.harvestDate ||
+    payload.details?.measurementDate ||
+    payload.details?.sortingDate ||
+    payload.details?.packagingDate ||
+    payload.details?.storageStartDate ||
     payload.details?.firstFloweringDate ||
     payload.details?.wateringDate ||
     payload.details?.applicationDate ||

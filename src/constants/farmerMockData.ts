@@ -132,7 +132,7 @@ const createStages = (currentStageIndex: number) => [
     key: FarmingStageKey.HARVESTING,
     title: 'Harvesting',
     subtitle: 'Final picking and batch packaging',
-    date: 'Est. Oct',
+    date: '15 Oct – 18 Oct 2026',
     status: currentStageIndex > 5 ? ('done' as const) : currentStageIndex === 5 ? ('in_progress' as const) : ('upcoming' as const),
     iconName: 'basket',
     tags: [],

@@ -38,6 +38,7 @@ interface ActivityNotesFormProps {
   activity: StageActivityTemplate;
   cropName: string;
   stageName?: string;
+  batchId?: string;
   existingRecords: RecentRecordItem[];
   onClose: () => void;
   onSave: (
@@ -50,6 +51,61 @@ interface ActivityNotesFormProps {
 
 function formatDetailLabel(key: string): string {
   switch (key) {
+    // Harvest Stage
+    case 'harvestDate':
+      return 'Harvest Date';
+    case 'harvestTime':
+      return 'Harvest Time';
+    case 'harvestMethod':
+      return 'Harvest Method';
+    case 'harvestLocation':
+      return 'Location';
+    case 'cropCondition':
+      return 'Condition';
+    case 'harvestQuantity':
+      return 'Total Harvested';
+    case 'quantityUnit':
+      return 'Unit';
+    case 'numberContainers':
+      return 'Containers';
+    case 'rejectedQuantity':
+      return 'Rejected';
+    case 'qualityGrade':
+      return 'Quality Grade';
+    case 'gradingCriteria':
+      return 'Grading Criteria';
+    case 'sortingMethod':
+      return 'Sorting Method';
+    case 'cleaningMethod':
+      return 'Cleaning Method';
+    case 'quantityAccepted':
+      return 'Accepted';
+    case 'rejectionReason':
+      return 'Rejection Reason';
+    case 'packagingMaterial':
+      return 'Packaging Material';
+    case 'numberPackages':
+      return 'Packages';
+    case 'quantityPerPackage':
+      return 'Qty / Package';
+    case 'packagingMethod':
+      return 'Packaging Method';
+    case 'storageStartDate':
+      return 'Storage Start';
+    case 'storageLocation':
+      return 'Storage Location';
+    case 'storageMethod':
+      return 'Storage Method';
+    case 'storageDuration':
+      return 'Duration';
+    case 'harvestBatchId':
+      return 'Harvest Batch ID';
+    case 'cropBatchId':
+      return 'Crop Batch ID';
+    case 'batchQuantity':
+      return 'Batch Quantity';
+    case 'packagingReference':
+      return 'Ref / Lot';
     // Crop Maturity
     case 'cropDimensions':
       return 'Dimensions';
@@ -75,8 +131,6 @@ function formatDetailLabel(key: string): string {
       return 'Quality';
     case 'visibleDefects':
       return 'Defects / Damage';
-    case 'qualityGrade':
-      return 'Grade';
     case 'expectedHarvestDate':
       return 'Expected Harvest';
     case 'harvestReadiness':
@@ -108,8 +162,6 @@ function formatDetailLabel(key: string): string {
       return 'Fertilizer Name';
     case 'fertilizerType':
       return 'Fertilizer Type';
-    case 'quantityUnit':
-      return 'Quantity';
     case 'fertilizerQuantity':
       return 'Quantity';
     case 'applicationDate':
@@ -156,6 +208,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   activity,
   cropName,
   stageName,
+  batchId,
   existingRecords,
   onClose,
   onSave,
@@ -176,26 +229,75 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   const [notesError, setNotesError] = useState<string | null>(null);
   const [showAddAnother, setShowAddAnother] = useState(existingRecords.length === 0);
 
+  // ─── HARVEST STAGE ACTIVITIES ─────────────────────────────────────────────
+  // 1. Harvest Details
+  const [hvHarvestDate, setHvHarvestDate] = useState(todayDate);
+  const [hvHarvestTime, setHvHarvestTime] = useState('08:30 AM');
+  const [hvHarvestMethod, setHvHarvestMethod] = useState('Manual Picking');
+  const [hvHarvestLocation, setHvHarvestLocation] = useState('Kandy Farm · Field A');
+  const [hvCropCondition, setHvCropCondition] = useState('');
+
+  // 2. Harvest Quantity
+  const [hvMeasurementDate, setHvMeasurementDate] = useState(todayDate);
+  const [hvTotalQuantity, setHvTotalQuantity] = useState('150');
+  const [hvQuantityUnit, setHvQuantityUnit] = useState('kg');
+  const [hvNumberContainers, setHvNumberContainers] = useState('10 crates');
+  const [hvRejectedQuantity, setHvRejectedQuantity] = useState('');
+
+  // 3. Quality Grading
+  const [hvGradingDate, setHvGradingDate] = useState(todayDate);
+  const [hvQualityGrade, setHvQualityGrade] = useState('Grade A');
+  const [hvGradingCriteria, setHvGradingCriteria] = useState('');
+  const [hvGradingAppearance, setHvGradingAppearance] = useState('');
+  const [hvGradingDefects, setHvGradingDefects] = useState('');
+
+  // 4. Sorting & Cleaning
+  const [hvSortingDate, setHvSortingDate] = useState(todayDate);
+  const [hvSortingMethod, setHvSortingMethod] = useState('Manual Hand Sorting');
+  const [hvCleaningMethod, setHvCleaningMethod] = useState('Wipe Clean');
+  const [hvQuantityAccepted, setHvQuantityAccepted] = useState('145 kg');
+  const [hvQuantityRejected, setHvQuantityRejected] = useState('5 kg');
+  const [hvRejectionReason, setHvRejectionReason] = useState('');
+
+  // 5. Packaging
+  const [hvPackagingDate, setHvPackagingDate] = useState(todayDate);
+  const [hvPackagingMaterial, setHvPackagingMaterial] = useState('Ventilated Cartons');
+  const [hvNumberPackages, setHvNumberPackages] = useState('15 packages');
+  const [hvQuantityPerPackage, setHvQuantityPerPackage] = useState('10 kg/carton');
+  const [hvPackagingMethod, setHvPackagingMethod] = useState('Manual Packing');
+
+  // 6. Storage Conditions
+  const [hvStorageStartDate, setHvStorageStartDate] = useState(todayDate);
+  const [hvStorageLocation, setHvStorageLocation] = useState('Cold Room Bay 1');
+  const [hvStorageMethod, setHvStorageMethod] = useState('Controlled Cold Storage');
+  const [hvTemperature, setHvTemperature] = useState('12°C');
+  const [hvRelativeHumidity, setHvRelativeHumidity] = useState('85% RH');
+  const [hvStorageDuration, setHvStorageDuration] = useState('3-5 days');
+
+  // 7. Batch Identification
+  const [hvHarvestBatchId, setHvHarvestBatchId] = useState('HARV-TOM-2026-10');
+  const [hvCropBatchId, setHvCropBatchId] = useState(batchId || 'BATCH-TOM-2026-09');
+  const [hvBatchDate, setHvBatchDate] = useState(todayDate);
+  const [hvBatchLocation, setHvBatchLocation] = useState('Kandy Farm · Packhouse A');
+  const [hvBatchQuantity, setHvBatchQuantity] = useState('150 kg');
+  const [hvPackagingReference, setHvPackagingReference] = useState('CRATE-LOT-01..15, Bay B');
+
   // ─── CROP MATURITY ACTIVITIES ─────────────────────────────────────────────
-  // 1. Crop Growth & Development
   const [cmGrowthDate, setCmGrowthDate] = useState(todayDate);
   const [cmCropDimensions, setCmCropDimensions] = useState('');
   const [cmCropWeight, setCmCropWeight] = useState('');
   const [cmGrowthCondition, setCmGrowthCondition] = useState('Optimal Sizing');
 
-  // 2. Ripeness & Maturity Monitoring
   const [cmRipenessDate, setCmRipenessDate] = useState(todayDate);
   const [cmMaturityStage, setCmMaturityStage] = useState('Developing');
   const [cmColorAppearance, setCmColorAppearance] = useState('');
   const [cmRipenessPercentage, setCmRipenessPercentage] = useState('');
 
-  // 3. Watering & Irrigation (Maturity)
   const [cmWateringDate, setCmWateringDate] = useState(todayDate);
   const [cmIrrigationMethod, setCmIrrigationMethod] = useState('Drip');
   const [cmWaterQuantity, setCmWaterQuantity] = useState('');
   const [cmWateringFrequency, setCmWateringFrequency] = useState('');
 
-  // 4. Organic Fertilizer Application (Maturity)
   const [cmFertilizerName, setCmFertilizerName] = useState('');
   const [cmFertilizerType, setCmFertilizerType] = useState('Organic Potash');
   const [cmQuantityUnit, setCmQuantityUnit] = useState('');
@@ -203,21 +305,18 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   const [cmApplicationMethod, setCmApplicationMethod] = useState('');
   const [cmOrganicStatus, setCmOrganicStatus] = useState('');
 
-  // 5. Pest & Disease Management (Maturity)
   const [cmPestDate, setCmPestDate] = useState(todayDate);
   const [cmPestIdentified, setCmPestIdentified] = useState('');
   const [cmSymptoms, setCmSymptoms] = useState('');
   const [cmSeverityLevel, setCmSeverityLevel] = useState('None');
   const [cmTreatment, setCmTreatment] = useState('');
 
-  // 6. Crop Quality Assessment
   const [cmQualityDate, setCmQualityDate] = useState(todayDate);
   const [cmCropAppearance, setCmCropAppearance] = useState('');
   const [cmQualityCondition, setCmQualityCondition] = useState('Premium (Grade A)');
   const [cmVisibleDefects, setCmVisibleDefects] = useState('');
   const [cmQualityGrade, setCmQualityGrade] = useState('');
 
-  // 7. Harvest Readiness Assessment
   const [cmReadinessDate, setCmReadinessDate] = useState(todayDate);
   const [cmExpectedHarvestDate, setCmExpectedHarvestDate] = useState('2 Oct 2026');
   const [cmHarvestReadiness, setCmHarvestReadiness] = useState('1 Week Away');
@@ -284,6 +383,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   const actId = activity.id;
   const actName = activity.name;
 
+  // Harvest activities
+  const isHarvestDetails = actId === 'harvest_details' || actName === 'Harvest Details';
+  const isHarvestQuantity = actId === 'harvest_quantity' || actName === 'Harvest Quantity';
+  const isQualityGrading = actId === 'quality_grading' || actName === 'Quality Grading';
+  const isSortingCleaning = actId === 'sorting_cleaning' || actName === 'Sorting & Cleaning';
+  const isHarvestPackaging = actId === 'harvest_packaging' || actName === 'Packaging';
+  const isStorageConditions = actId === 'storage_conditions' || actName === 'Storage Conditions';
+  const isBatchIdentification = actId === 'batch_identification' || actName === 'Batch Identification';
+
   // Crop Maturity activities
   const isCropGrowth = actId === 'crop_growth_development' || actName === 'Crop Growth & Development';
   const isRipeness = actId === 'ripeness_maturity_monitoring' || actName === 'Ripeness & Maturity Monitoring';
@@ -347,8 +455,94 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
     const details: Record<string, string> = {};
     const inputs: string[] = [];
 
+    // ─── HARVEST STAGE ───
+    if (isHarvestDetails) {
+      if (hvHarvestDate.trim()) details['harvestDate'] = hvHarvestDate.trim();
+      if (hvHarvestTime.trim()) details['harvestTime'] = hvHarvestTime.trim();
+      if (hvHarvestMethod.trim()) {
+        details['harvestMethod'] = hvHarvestMethod.trim();
+        inputs.push(hvHarvestMethod.trim());
+      }
+      if (hvHarvestLocation.trim()) details['harvestLocation'] = hvHarvestLocation.trim();
+      if (hvCropCondition.trim()) details['cropCondition'] = hvCropCondition.trim();
+    } else if (isHarvestQuantity) {
+      if (hvMeasurementDate.trim()) details['measurementDate'] = hvMeasurementDate.trim();
+      if (hvTotalQuantity.trim()) {
+        details['harvestQuantity'] = `${hvTotalQuantity.trim()} ${hvQuantityUnit.trim()}`;
+        inputs.push(`${hvTotalQuantity.trim()} ${hvQuantityUnit.trim()}`);
+      }
+      if (hvQuantityUnit.trim()) details['quantityUnit'] = hvQuantityUnit.trim();
+      if (hvNumberContainers.trim()) {
+        details['numberContainers'] = hvNumberContainers.trim();
+        inputs.push(hvNumberContainers.trim());
+      }
+      if (hvRejectedQuantity.trim()) details['rejectedQuantity'] = hvRejectedQuantity.trim();
+    } else if (isQualityGrading) {
+      if (hvGradingDate.trim()) details['assessmentDate'] = hvGradingDate.trim();
+      if (hvQualityGrade.trim()) {
+        details['qualityGrade'] = hvQualityGrade.trim();
+        inputs.push(hvQualityGrade.trim());
+      }
+      if (hvGradingCriteria.trim()) details['gradingCriteria'] = hvGradingCriteria.trim();
+      if (hvGradingAppearance.trim()) details['cropAppearance'] = hvGradingAppearance.trim();
+      if (hvGradingDefects.trim()) details['visibleDefects'] = hvGradingDefects.trim();
+    } else if (isSortingCleaning) {
+      if (hvSortingDate.trim()) details['sortingDate'] = hvSortingDate.trim();
+      if (hvSortingMethod.trim()) {
+        details['sortingMethod'] = hvSortingMethod.trim();
+        inputs.push(hvSortingMethod.trim());
+      }
+      if (hvCleaningMethod.trim()) {
+        details['cleaningMethod'] = hvCleaningMethod.trim();
+        inputs.push(hvCleaningMethod.trim());
+      }
+      if (hvQuantityAccepted.trim()) details['quantityAccepted'] = hvQuantityAccepted.trim();
+      if (hvQuantityRejected.trim()) details['quantityRejected'] = hvQuantityRejected.trim();
+      if (hvRejectionReason.trim()) details['rejectionReason'] = hvRejectionReason.trim();
+    } else if (isHarvestPackaging) {
+      if (hvPackagingDate.trim()) details['packagingDate'] = hvPackagingDate.trim();
+      if (hvPackagingMaterial.trim()) {
+        details['packagingMaterial'] = hvPackagingMaterial.trim();
+        inputs.push(hvPackagingMaterial.trim());
+      }
+      if (hvNumberPackages.trim()) {
+        details['numberPackages'] = hvNumberPackages.trim();
+        inputs.push(hvNumberPackages.trim());
+      }
+      if (hvQuantityPerPackage.trim()) details['quantityPerPackage'] = hvQuantityPerPackage.trim();
+      if (hvPackagingMethod.trim()) details['packagingMethod'] = hvPackagingMethod.trim();
+    } else if (isStorageConditions) {
+      if (hvStorageStartDate.trim()) details['storageStartDate'] = hvStorageStartDate.trim();
+      if (hvStorageLocation.trim()) {
+        details['storageLocation'] = hvStorageLocation.trim();
+        inputs.push(hvStorageLocation.trim());
+      }
+      if (hvStorageMethod.trim()) details['storageMethod'] = hvStorageMethod.trim();
+      if (hvTemperature.trim()) {
+        details['temperature'] = hvTemperature.trim();
+        inputs.push(hvTemperature.trim());
+      }
+      if (hvRelativeHumidity.trim()) {
+        details['humidity'] = hvRelativeHumidity.trim();
+        inputs.push(hvRelativeHumidity.trim());
+      }
+      if (hvStorageDuration.trim()) details['storageDuration'] = hvStorageDuration.trim();
+    } else if (isBatchIdentification) {
+      if (hvHarvestBatchId.trim()) {
+        details['harvestBatchId'] = hvHarvestBatchId.trim();
+        inputs.push(hvHarvestBatchId.trim());
+      }
+      if (hvCropBatchId.trim()) details['cropBatchId'] = hvCropBatchId.trim();
+      if (hvBatchDate.trim()) details['harvestDate'] = hvBatchDate.trim();
+      if (hvBatchLocation.trim()) details['harvestLocation'] = hvBatchLocation.trim();
+      if (hvBatchQuantity.trim()) {
+        details['batchQuantity'] = hvBatchQuantity.trim();
+        inputs.push(hvBatchQuantity.trim());
+      }
+      if (hvPackagingReference.trim()) details['packagingReference'] = hvPackagingReference.trim();
+    }
     // ─── CROP MATURITY ───
-    if (isCropGrowth) {
+    else if (isCropGrowth) {
       if (cmGrowthDate.trim()) details['observationDate'] = cmGrowthDate.trim();
       if (cmCropDimensions.trim()) {
         details['cropDimensions'] = cmCropDimensions.trim();
@@ -584,7 +778,12 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   };
 
   const isCompleted = existingRecords.length > 0;
-  const stageDisplayLabel = stageName ? `${stageName} Stage` : 'Stage';
+  const stageDisplayLabel =
+    stageName?.toLowerCase() === 'harvesting' || stageName?.toLowerCase() === 'harvest'
+      ? 'Harvest Stage'
+      : stageName
+      ? `${stageName} Stage`
+      : 'Stage';
 
   return (
     <KeyboardAvoidingView
@@ -689,6 +888,581 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
           <View style={styles.formSection}>
             {existingRecords.length > 0 && (
               <Text style={styles.sectionHeading}>New Record</Text>
+            )}
+
+            {/* ─── HARVEST: 1. Harvest Details ─── */}
+            {isHarvestDetails && (
+              <>
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Harvest Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 15 Oct 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvHarvestDate}
+                      onChangeText={setHvHarvestDate}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Harvest Time (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 08:30 AM"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvHarvestTime}
+                      onChangeText={setHvHarvestTime}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Harvest Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Manual Picking', 'Mechanical Harvester'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.optionPill,
+                          hvHarvestMethod === m && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvHarvestMethod(m)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvHarvestMethod === m && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Harvest Location or Field</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Kandy Farm · Field A"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvHarvestLocation}
+                    onChangeText={setHvHarvestLocation}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Crop Condition at Harvest</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Fully ripe, firm, dry weather morning harvest"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvCropCondition}
+                    onChangeText={setHvCropCondition}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── HARVEST: 2. Harvest Quantity ─── */}
+            {isHarvestQuantity && (
+              <>
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Measurement Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 15 Oct 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvMeasurementDate}
+                      onChangeText={setHvMeasurementDate}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Total Harvested Quantity</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 150"
+                      keyboardType="numeric"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvTotalQuantity}
+                      onChangeText={setHvTotalQuantity}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quantity Unit</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['kg', 'tonnes', 'pieces', 'crates'].map((u) => (
+                      <TouchableOpacity
+                        key={u}
+                        style={[
+                          styles.optionPill,
+                          hvQuantityUnit === u && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvQuantityUnit(u)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvQuantityUnit === u && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {u}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Number of Containers (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 10 crates"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvNumberContainers}
+                      onChangeText={setHvNumberContainers}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Rejected Quantity (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 5 kg"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvRejectedQuantity}
+                      onChangeText={setHvRejectedQuantity}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── HARVEST: 3. Quality Grading ─── */}
+            {isQualityGrading && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Assessment Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 15 Oct 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvGradingDate}
+                    onChangeText={setHvGradingDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quality Grade</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Grade A', 'Grade B', 'Grade C', 'Ungraded'].map((g) => (
+                      <TouchableOpacity
+                        key={g}
+                        style={[
+                          styles.optionPill,
+                          hvQualityGrade === g && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvQualityGrade(g)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvQualityGrade === g && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {g}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quality Assessment Criteria</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Brix > 5.0, diameter 6-8cm, uniform color"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvGradingCriteria}
+                    onChangeText={setHvGradingCriteria}
+                  />
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Crop Appearance</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Glossy, blemish-free skin"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvGradingAppearance}
+                      onChangeText={setHvGradingAppearance}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Visible Defects or Damage</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Zero cracking, none"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvGradingDefects}
+                      onChangeText={setHvGradingDefects}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── HARVEST: 4. Sorting & Cleaning ─── */}
+            {isSortingCleaning && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Sorting Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 15 Oct 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvSortingDate}
+                    onChangeText={setHvSortingDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Sorting Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Manual Hand Sorting', 'Conveyor Table', 'Optical Sorter'].map((sm) => (
+                      <TouchableOpacity
+                        key={sm}
+                        style={[
+                          styles.optionPill,
+                          hvSortingMethod === sm && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvSortingMethod(sm)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvSortingMethod === sm && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {sm}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Cleaning Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Dry Brushing', 'Wipe Clean', 'Water Wash', 'No Cleaning (Not required)'].map((cm) => (
+                      <TouchableOpacity
+                        key={cm}
+                        style={[
+                          styles.optionPill,
+                          hvCleaningMethod === cm && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvCleaningMethod(cm)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvCleaningMethod === cm && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {cm}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Quantity Accepted (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 145 kg"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvQuantityAccepted}
+                      onChangeText={setHvQuantityAccepted}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Quantity Rejected (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 5 kg"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvQuantityRejected}
+                      onChangeText={setHvQuantityRejected}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Reason for Rejection (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Undersized, minor skin blemishes"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvRejectionReason}
+                    onChangeText={setHvRejectionReason}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── HARVEST: 5. Packaging ─── */}
+            {isHarvestPackaging && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Packaging Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 16 Oct 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvPackagingDate}
+                    onChangeText={setHvPackagingDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Packaging Material or Type</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Biodegradable Crates', 'Ventilated Cartons', 'Paper Bags', 'Organic Fiber Sacks'].map((pm) => (
+                      <TouchableOpacity
+                        key={pm}
+                        style={[
+                          styles.optionPill,
+                          hvPackagingMaterial === pm && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvPackagingMaterial(pm)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvPackagingMaterial === pm && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {pm}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Number of Packages</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 15 packages"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvNumberPackages}
+                      onChangeText={setHvNumberPackages}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Quantity per Package (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 10 kg/carton"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvQuantityPerPackage}
+                      onChangeText={setHvQuantityPerPackage}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Packaging Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Manual Packing', 'Eco Flow-Pack', 'Sealed Container'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.optionPill,
+                          hvPackagingMethod === m && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvPackagingMethod(m)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvPackagingMethod === m && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── HARVEST: 6. Storage Conditions ─── */}
+            {isStorageConditions && (
+              <>
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Storage Start Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 16 Oct 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvStorageStartDate}
+                      onChangeText={setHvStorageStartDate}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Storage Location</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Cold Room Bay 1"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvStorageLocation}
+                      onChangeText={setHvStorageLocation}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Storage Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Controlled Cold Storage', 'Ventilated Dry Store', 'Ambient Curing'].map((sm) => (
+                      <TouchableOpacity
+                        key={sm}
+                        style={[
+                          styles.optionPill,
+                          hvStorageMethod === sm && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setHvStorageMethod(sm)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            hvStorageMethod === sm && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {sm}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 6 }]}>
+                    <Text style={styles.inputLabel}>Temperature (Opt)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 12°C"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvTemperature}
+                      onChangeText={setHvTemperature}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
+                    <Text style={styles.inputLabel}>Humidity (Opt)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 85% RH"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvRelativeHumidity}
+                      onChangeText={setHvRelativeHumidity}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 6 }]}>
+                    <Text style={styles.inputLabel}>Duration (Opt)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 3-5 days"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvStorageDuration}
+                      onChangeText={setHvStorageDuration}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── HARVEST: 7. Batch Identification ─── */}
+            {isBatchIdentification && (
+              <>
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Harvest Batch ID</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. HARV-TOM-2026-10"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvHarvestBatchId}
+                      onChangeText={setHvHarvestBatchId}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Crop Batch ID</Text>
+                    <TextInput
+                      style={[styles.textInput, { backgroundColor: '#F0F4F0' }]}
+                      placeholder="e.g. BATCH-TOM-2026-09"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvCropBatchId}
+                      onChangeText={setHvCropBatchId}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Harvest Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 15 Oct 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvBatchDate}
+                      onChangeText={setHvBatchDate}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Batch Quantity</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 150 kg"
+                      placeholderTextColor="#9CB0A1"
+                      value={hvBatchQuantity}
+                      onChangeText={setHvBatchQuantity}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Harvest Location</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Kandy Farm · Packhouse A"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvBatchLocation}
+                    onChangeText={setHvBatchLocation}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Packaging or Storage Reference (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. CRATE-LOT-01..15, Bay B"
+                    placeholderTextColor="#9CB0A1"
+                    value={hvPackagingReference}
+                    onChangeText={setHvPackagingReference}
+                  />
+                </View>
+              </>
             )}
 
             {/* ─── CROP MATURITY: 1. Crop Growth & Development ─── */}
@@ -1894,6 +2668,7 @@ export const ActivityNotesModal: React.FC<ActivityNotesModalProps> = ({
               activity={activity}
               cropName={cropName}
               stageName={stageName}
+              batchId={batchId}
               existingRecords={existingRecords}
               onClose={onClose}
               onSave={onSave}
