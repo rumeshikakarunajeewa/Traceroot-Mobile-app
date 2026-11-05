@@ -6,12 +6,14 @@ import { FARMING_STAGES } from '../../constants/stages';
 interface StageProgressIndicatorProps {
   currentCropStageIndex: number; // The crop's actual current stage (1..5)
   activeViewingStageNumber: number; // The stage currently being viewed on this screen (1..5)
+  notApplicableStageNumbers?: number[];
   onSelectStage?: (stageNumber: number) => void;
 }
 
 export const StageProgressIndicator: React.FC<StageProgressIndicatorProps> = ({
   currentCropStageIndex,
   activeViewingStageNumber,
+  notApplicableStageNumbers = [],
   onSelectStage,
 }) => {
   return (
@@ -19,11 +21,12 @@ export const StageProgressIndicator: React.FC<StageProgressIndicatorProps> = ({
       <View style={styles.trackWrapper}>
         {FARMING_STAGES.map((stage, idx) => {
           const stageNum = stage.stageNumber;
-          const isCompleted = stageNum < currentCropStageIndex;
-          const isActualCurrent = stageNum === currentCropStageIndex;
+          const isNotApplicable = notApplicableStageNumbers.includes(stageNum);
+          const isCompleted = !isNotApplicable && stageNum < currentCropStageIndex;
+          const isActualCurrent = !isNotApplicable && stageNum === currentCropStageIndex;
           const isViewing = stageNum === activeViewingStageNumber;
           const isLast = idx === FARMING_STAGES.length - 1;
-          const nextIsCompleted = stageNum < currentCropStageIndex;
+          const nextIsCompleted = stageNum < currentCropStageIndex && !isNotApplicable;
 
           return (
             <React.Fragment key={stage.key}>
@@ -40,7 +43,11 @@ export const StageProgressIndicator: React.FC<StageProgressIndicatorProps> = ({
                     isViewing && styles.circleWrapperViewing,
                   ]}
                 >
-                  {isCompleted ? (
+                  {isNotApplicable ? (
+                    <View style={styles.circleNotApplicable}>
+                      <Feather name="minus" size={13} color="#6C8373" />
+                    </View>
+                  ) : isCompleted ? (
                     <View style={styles.circleCompleted}>
                       <Feather name="check" size={13} color="#FFFFFF" />
                     </View>
@@ -60,7 +67,11 @@ export const StageProgressIndicator: React.FC<StageProgressIndicatorProps> = ({
                   <Text
                     style={[
                       styles.stageLabelText,
-                      isViewing ? styles.stageLabelViewing : styles.stageLabelNormal,
+                      isViewing
+                        ? styles.stageLabelViewing
+                        : isNotApplicable
+                        ? styles.stageLabelNotApplicable
+                        : styles.stageLabelNormal,
                     ]}
                     numberOfLines={1}
                   >
@@ -153,6 +164,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8A9D8E',
   },
+  circleNotApplicable: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E7EDE9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#CCD6CE',
+  },
   connectorLine: {
     flex: 0.8,
     height: 2,
@@ -181,6 +202,10 @@ const styles = StyleSheet.create({
   stageLabelViewing: {
     color: '#15321B',
     fontWeight: '700',
+  },
+  stageLabelNotApplicable: {
+    color: '#90A395',
+    fontStyle: 'italic',
   },
   activeLabelBar: {
     width: '80%',

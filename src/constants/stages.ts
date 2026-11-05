@@ -92,7 +92,7 @@ export const FARMING_STAGES: readonly FarmingStageDefinition[] = [
     title: 'Crop Maturity',
     shortLabel: 'Crop Maturity',
     subtitle: 'Fruit sizing, ripening and cluster protection',
-    stageEmoji: '🍅',
+    stageEmoji: '🌾',
     iconName: 'fruit',
     color: '#74C69D',
     defaultTags: ['Monitoring', 'Protection'],
@@ -116,6 +116,11 @@ export interface StageActivityTemplate {
   id: string;
   name: string;
   matchKeywords: string[];
+  isCustom?: boolean;
+  description?: string;
+  date?: string;
+  status?: 'pending' | 'completed' | 'not_applicable';
+  notApplicableReason?: string;
 }
 
 export const STAGE_ACTIVITIES: Record<FarmingStageKeyType, StageActivityTemplate[]> = {
@@ -217,56 +222,76 @@ export const STAGE_ACTIVITIES: Record<FarmingStageKeyType, StageActivityTemplate
   ],
   crop_maturity: [
     {
-      id: 'act-m-1',
-      name: 'Crop development observations',
-      matchKeywords: ['crop dev', 'fruit', 'matur', 'sizing', 'observation', 'color'],
+      id: 'crop_growth_development',
+      name: 'Crop Growth & Development',
+      matchKeywords: ['crop growth & development', 'crop growth', 'development', 'fruit sizing', 'growth condition'],
     },
     {
-      id: 'act-m-2',
-      name: 'Watering recorded',
-      matchKeywords: ['water', 'irrigation', 'moisture'],
+      id: 'ripeness_maturity_monitoring',
+      name: 'Ripeness & Maturity Monitoring',
+      matchKeywords: ['ripeness & maturity monitoring', 'ripeness', 'maturity', 'ripening', 'color change'],
     },
     {
-      id: 'act-m-3',
-      name: 'Fertilizer application',
-      matchKeywords: ['fertiliz', 'potash', 'nutrient', 'feed'],
+      id: 'maturity_irrigation',
+      name: 'Watering & Irrigation',
+      matchKeywords: ['watering & irrigation', 'maturity irrigation', 'watering', 'irrigation', 'water'],
     },
     {
-      id: 'act-m-4',
-      name: 'Maturity assessment',
-      matchKeywords: ['brix', 'ripen', 'firmness', 'color', 'assess', 'maturity'],
+      id: 'maturity_fertilizer',
+      name: 'Organic Fertilizer Application',
+      matchKeywords: ['organic fertilizer application', 'maturity fertilizer', 'potash', 'fertilizer', 'organic fertilizer'],
     },
     {
-      id: 'act-m-5',
-      name: 'Pest and disease management',
-      matchKeywords: ['pest', 'spray', 'netting', 'protection', 'disease'],
+      id: 'maturity_pest_management',
+      name: 'Pest & Disease Management',
+      matchKeywords: ['pest & disease management', 'maturity pest', 'pest', 'disease', 'netting', 'protection'],
+    },
+    {
+      id: 'crop_quality_assessment',
+      name: 'Crop Quality Assessment',
+      matchKeywords: ['crop quality assessment', 'quality assessment', 'crop quality', 'quality grade', 'defects'],
+    },
+    {
+      id: 'harvest_readiness_assessment',
+      name: 'Harvest Readiness Assessment',
+      matchKeywords: ['harvest readiness assessment', 'harvest readiness', 'expected harvest', 'readiness'],
     },
   ],
   harvesting: [
     {
-      id: 'act-h-1',
-      name: 'Harvest collection',
-      matchKeywords: ['harvest', 'picking', 'collection', 'yield'],
+      id: 'harvest_details',
+      name: 'Harvest Details',
+      matchKeywords: ['harvest details', 'harvest collection', 'harvest method', 'picking', 'harvesting'],
     },
     {
-      id: 'act-h-2',
-      name: 'Quantity measurement',
-      matchKeywords: ['weight', 'quantity', 'kg', 'yield measurement'],
+      id: 'harvest_quantity',
+      name: 'Harvest Quantity',
+      matchKeywords: ['harvest quantity', 'quantity measurement', 'total quantity', 'kg', 'yield'],
     },
     {
-      id: 'act-h-3',
-      name: 'Quality grading',
-      matchKeywords: ['grading', 'quality', 'grade a', 'inspection'],
+      id: 'quality_grading',
+      name: 'Quality Grading',
+      matchKeywords: ['quality grading', 'grading', 'quality grade', 'grade a', 'grade b'],
     },
     {
-      id: 'act-h-4',
-      name: 'Sorting and packaging',
-      matchKeywords: ['sort', 'pack', 'crate', 'box', 'packaging'],
+      id: 'sorting_cleaning',
+      name: 'Sorting & Cleaning',
+      matchKeywords: ['sorting & cleaning', 'sorting and cleaning', 'sorting', 'cleaning', 'wash', 'sort'],
     },
     {
-      id: 'act-h-5',
-      name: 'Storage records',
-      matchKeywords: ['stor', 'cold', 'warehouse', 'temperature'],
+      id: 'harvest_packaging',
+      name: 'Packaging',
+      matchKeywords: ['packaging', 'harvest packaging', 'packing', 'crates', 'cartons', 'pack'],
+    },
+    {
+      id: 'storage_conditions',
+      name: 'Storage Conditions',
+      matchKeywords: ['storage conditions', 'storage records', 'cold room', 'warehouse', 'storage'],
+    },
+    {
+      id: 'batch_identification',
+      name: 'Batch Identification',
+      matchKeywords: ['batch identification', 'harvest batch', 'batch id', 'traceability', 'qr code'],
     },
   ],
 };
