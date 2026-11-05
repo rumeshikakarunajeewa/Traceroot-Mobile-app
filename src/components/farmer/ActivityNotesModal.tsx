@@ -50,6 +50,18 @@ interface ActivityNotesFormProps {
 
 function formatDetailLabel(key: string): string {
   switch (key) {
+    case 'firstFloweringDate':
+      return 'First Flowering Date';
+    case 'floweringProgress':
+      return 'Flowering Progress';
+    case 'approxFlowerCount':
+      return 'Flower Count';
+    case 'observationDate':
+      return 'Observation Date';
+    case 'pollinationMethod':
+      return 'Pollination Method';
+    case 'pollinatorObservations':
+      return 'Pollinators';
     case 'wateringDate':
       return 'Watering Date';
     case 'waterQuantity':
@@ -58,34 +70,43 @@ function formatDetailLabel(key: string): string {
       return 'Irrigation Method';
     case 'fertilizerName':
       return 'Fertilizer Name';
+    case 'fertilizerType':
+      return 'Fertilizer Type';
+    case 'quantityUnit':
+      return 'Quantity';
     case 'fertilizerQuantity':
       return 'Quantity';
     case 'applicationDate':
       return 'Application Date';
+    case 'organicCertStatus':
+      return 'Organic Status';
     case 'weedingDate':
       return 'Weeding Date';
     case 'weedingMethod':
       return 'Method';
     case 'soilCareActivities':
       return 'Soil Care';
-    case 'observationDate':
-      return 'Date';
     case 'pestIdentified':
       return 'Pest/Disease';
     case 'symptoms':
-      return 'Symptoms';
+      return 'Symptoms/Damage';
     case 'treatment':
       return 'Treatment';
+    case 'flowerHealthCondition':
+    case 'healthCondition':
+      return 'Flower Health';
+    case 'flowerDamageDrop':
+      return 'Damage / Dropping';
+    case 'possibleCauses':
+      return 'Possible Causes';
     case 'plantHeight':
       return 'Height';
     case 'leafDevelopment':
       return 'Leaves';
-    case 'healthCondition':
-      return 'Health';
     case 'recordingDate':
       return 'Recording Date';
     case 'temperature':
-      return 'Temp';
+      return 'Temperature';
     case 'humidity':
       return 'Humidity';
     case 'soilMoisture':
@@ -119,48 +140,91 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   const [notesError, setNotesError] = useState<string | null>(null);
   const [showAddAnother, setShowAddAnother] = useState(existingRecords.length === 0);
 
-  // 1. Watering & Irrigation fields
-  const [wateringDate, setWateringDate] = useState(todayDate);
-  const [waterQuantity, setWaterQuantity] = useState('');
-  const [irrigationMethod, setIrrigationMethod] = useState('');
+  // ─── FLOWERING STAGE ACTIVITIES ──────────────────────────────────────────
+  // 1. Flowering Observation
+  const [firstFloweringDate, setFirstFloweringDate] = useState(todayDate);
+  const [floweringProgress, setFloweringProgress] = useState('Early Bloom (10-25%)');
+  const [approxFlowerCount, setApproxFlowerCount] = useState('');
 
-  // 2. Organic Fertilizer Application fields
-  const [fertilizerName, setFertilizerName] = useState('');
-  const [fertilizerQuantity, setFertilizerQuantity] = useState('');
-  const [fertilizerDate, setFertilizerDate] = useState(todayDate);
+  // 2. Pollination Monitoring
+  const [pollinationObsDate, setPollinationObsDate] = useState(todayDate);
+  const [pollinationMethod, setPollinationMethod] = useState('Natural');
+  const [pollinatorObservations, setPollinatorObservations] = useState('');
 
-  // 3. Weeding & Soil Care fields
-  const [weedingDate, setWeedingDate] = useState(todayDate);
-  const [weedingMethod, setWeedingMethod] = useState('');
-  const [soilCareActivities, setSoilCareActivities] = useState('');
+  // 3. Flowering Watering & Irrigation
+  const [flWateringDate, setFlWateringDate] = useState(todayDate);
+  const [flIrrigationMethod, setFlIrrigationMethod] = useState('Drip');
+  const [flWaterQuantity, setFlWaterQuantity] = useState('');
 
-  // 4. Pest & Disease Monitoring fields
-  const [pestObservationDate, setPestObservationDate] = useState(todayDate);
-  const [pestIdentified, setPestIdentified] = useState('');
-  const [symptoms, setSymptoms] = useState('');
-  const [treatment, setTreatment] = useState('');
+  // 4. Flowering Organic Fertilizer Application
+  const [flFertilizerName, setFlFertilizerName] = useState('');
+  const [flFertilizerType, setFlFertilizerType] = useState('Liquid Foliar');
+  const [flQuantityUnit, setFlQuantityUnit] = useState('');
+  const [flFertilizerDate, setFlFertilizerDate] = useState(todayDate);
+  const [flOrganicCertStatus, setFlOrganicCertStatus] = useState('');
 
-  // 5. Plant Growth Observation fields
-  const [growthObservationDate, setGrowthObservationDate] = useState(todayDate);
-  const [plantHeight, setPlantHeight] = useState('');
-  const [leafDevelopment, setLeafDevelopment] = useState('');
-  const [healthCondition, setHealthCondition] = useState('');
+  // 5. Flowering Pest & Disease Management
+  const [flPestDate, setFlPestDate] = useState(todayDate);
+  const [flPestIdentified, setFlPestIdentified] = useState('');
+  const [flSymptoms, setFlSymptoms] = useState('');
+  const [flTreatment, setFlTreatment] = useState('');
 
-  // 6. Environmental Monitoring fields
-  const [envRecordingDate, setEnvRecordingDate] = useState(todayDate);
-  const [temperature, setTemperature] = useState('');
-  const [humidity, setHumidity] = useState('');
-  const [soilMoisture, setSoilMoisture] = useState('');
+  // 6. Flower Health Monitoring
+  const [flHealthDate, setFlHealthDate] = useState(todayDate);
+  const [flHealthCondition, setFlHealthCondition] = useState('Good / Healthy');
+  const [flDamageDrop, setFlDamageDrop] = useState('Zero Drop');
+  const [flPossibleCauses, setFlPossibleCauses] = useState('');
 
-  // Detect which activity-specific fields to display
-  const actNameLower = activity.name.toLowerCase();
-  const actIdLower = activity.id.toLowerCase();
-  const isWatering = actIdLower.includes('watering') || actNameLower.includes('watering');
-  const isFertilizer = actIdLower.includes('fertilizer') || actNameLower.includes('fertilizer');
-  const isWeeding = actIdLower.includes('weeding') || actNameLower.includes('weeding');
-  const isPest = actIdLower.includes('pest') || actNameLower.includes('pest');
-  const isGrowth = actIdLower.includes('growth') || actNameLower.includes('growth');
-  const isEnv = actIdLower.includes('env') || actNameLower.includes('environmental');
+  // ─── VEGETATIVE GROWTH ACTIVITIES ────────────────────────────────────────
+  const [vgWateringDate, setVgWateringDate] = useState(todayDate);
+  const [vgWaterQuantity, setVgWaterQuantity] = useState('');
+  const [vgIrrigationMethod, setVgIrrigationMethod] = useState('');
+
+  const [vgFertilizerName, setVgFertilizerName] = useState('');
+  const [vgFertilizerQuantity, setVgFertilizerQuantity] = useState('');
+  const [vgFertilizerDate, setVgFertilizerDate] = useState(todayDate);
+
+  const [vgWeedingDate, setVgWeedingDate] = useState(todayDate);
+  const [vgWeedingMethod, setVgWeedingMethod] = useState('');
+  const [vgSoilCareActivities, setVgSoilCareActivities] = useState('');
+
+  const [vgPestDate, setVgPestDate] = useState(todayDate);
+  const [vgPestIdentified, setVgPestIdentified] = useState('');
+  const [vgSymptoms, setVgSymptoms] = useState('');
+  const [vgTreatment, setVgTreatment] = useState('');
+
+  const [vgGrowthDate, setVgGrowthDate] = useState(todayDate);
+  const [vgPlantHeight, setVgPlantHeight] = useState('');
+  const [vgLeafDevelopment, setVgLeafDevelopment] = useState('');
+  const [vgHealthCondition, setVgHealthCondition] = useState('');
+
+  const [vgEnvDate, setVgEnvDate] = useState(todayDate);
+  const [vgTemperature, setVgTemperature] = useState('');
+  const [vgHumidity, setVgHumidity] = useState('');
+  const [vgSoilMoisture, setVgSoilMoisture] = useState('');
+
+  // ─── Activity Identity Matching ──────────────────────────────────────────
+  const actId = activity.id;
+  const actName = activity.name;
+
+  // Flowering activities
+  const isFloweringObs = actId === 'flowering_observation' || actName === 'Flowering Observation';
+  const isPollination = actId === 'pollination_monitoring' || actName === 'Pollination Monitoring';
+  const isFloweringIrrigation = actId === 'flowering_irrigation';
+  const isFloweringFertilizer = actId === 'flowering_fertilizer';
+  const isFloweringPest = actId === 'flowering_pest_management';
+  const isFlowerHealth = actId === 'flower_health_monitoring' || actName === 'Flower Health Monitoring';
+
+  // Vegetative Growth activities
+  const isVgWatering =
+    actId === 'act-vg-watering' || (!isFloweringIrrigation && actName === 'Watering & Irrigation' && stageName?.toLowerCase().includes('vegetative'));
+  const isVgFertilizer =
+    actId === 'act-vg-fertilizer' || (!isFloweringFertilizer && actName === 'Organic Fertilizer Application' && stageName?.toLowerCase().includes('vegetative'));
+  const isVgWeeding = actId === 'act-vg-weeding' || actName === 'Weeding & Soil Care';
+  const isVgPest =
+    actId === 'act-vg-pest' || (!isFloweringPest && actName.toLowerCase().includes('pest') && stageName?.toLowerCase().includes('vegetative'));
+  const isVgGrowth = actId === 'act-vg-growth' || actName === 'Plant Growth Observation';
+  const isVgEnv = actId === 'act-vg-env' || actName === 'Environmental Monitoring';
 
   const handlePickPhoto = async () => {
     try {
@@ -194,66 +258,155 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
     const details: Record<string, string> = {};
     const inputs: string[] = [];
 
-    if (isWatering) {
-      if (wateringDate.trim()) details['wateringDate'] = wateringDate.trim();
-      if (waterQuantity.trim()) {
-        details['waterQuantity'] = waterQuantity.trim();
-        inputs.push(waterQuantity.trim());
+    // Flowering: 1. Flowering Observation
+    if (isFloweringObs) {
+      if (firstFloweringDate.trim()) details['firstFloweringDate'] = firstFloweringDate.trim();
+      if (floweringProgress.trim()) {
+        details['floweringProgress'] = floweringProgress.trim();
+        inputs.push(floweringProgress.trim());
       }
-      if (irrigationMethod.trim()) {
-        details['irrigationMethod'] = irrigationMethod.trim();
-        inputs.push(irrigationMethod.trim());
+      if (approxFlowerCount.trim()) {
+        details['approxFlowerCount'] = approxFlowerCount.trim();
+        inputs.push(approxFlowerCount.trim());
       }
-    } else if (isFertilizer) {
-      if (fertilizerName.trim()) details['fertilizerName'] = fertilizerName.trim();
-      if (fertilizerQuantity.trim()) details['fertilizerQuantity'] = fertilizerQuantity.trim();
-      if (fertilizerDate.trim()) details['applicationDate'] = fertilizerDate.trim();
-      if (fertilizerName.trim() && fertilizerQuantity.trim()) {
-        inputs.push(`${fertilizerName.trim()} ${fertilizerQuantity.trim()}`);
-      } else if (fertilizerName.trim()) {
-        inputs.push(fertilizerName.trim());
+    }
+    // Flowering: 2. Pollination Monitoring
+    else if (isPollination) {
+      if (pollinationObsDate.trim()) details['observationDate'] = pollinationObsDate.trim();
+      if (pollinationMethod.trim()) {
+        details['pollinationMethod'] = pollinationMethod.trim();
+        inputs.push(pollinationMethod.trim());
       }
-    } else if (isWeeding) {
-      if (weedingDate.trim()) details['weedingDate'] = weedingDate.trim();
-      if (weedingMethod.trim()) {
-        details['weedingMethod'] = weedingMethod.trim();
-        inputs.push(weedingMethod.trim());
+      if (pollinatorObservations.trim()) {
+        details['pollinatorObservations'] = pollinatorObservations.trim();
       }
-      if (soilCareActivities.trim()) {
-        details['soilCareActivities'] = soilCareActivities.trim();
+    }
+    // Flowering: 3. Watering & Irrigation
+    else if (isFloweringIrrigation) {
+      if (flWateringDate.trim()) details['wateringDate'] = flWateringDate.trim();
+      if (flIrrigationMethod.trim()) {
+        details['irrigationMethod'] = flIrrigationMethod.trim();
+        inputs.push(flIrrigationMethod.trim());
       }
-    } else if (isPest) {
-      if (pestObservationDate.trim()) details['observationDate'] = pestObservationDate.trim();
-      if (pestIdentified.trim()) {
-        details['pestIdentified'] = pestIdentified.trim();
-        inputs.push(pestIdentified.trim());
+      if (flWaterQuantity.trim()) {
+        details['waterQuantity'] = flWaterQuantity.trim();
+        inputs.push(flWaterQuantity.trim());
       }
-      if (symptoms.trim()) details['symptoms'] = symptoms.trim();
-      if (treatment.trim()) details['treatment'] = treatment.trim();
-    } else if (isGrowth) {
-      if (growthObservationDate.trim()) details['observationDate'] = growthObservationDate.trim();
-      if (plantHeight.trim()) {
-        details['plantHeight'] = plantHeight.trim();
-        inputs.push(`Height: ${plantHeight.trim()}`);
+    }
+    // Flowering: 4. Organic Fertilizer Application
+    else if (isFloweringFertilizer) {
+      if (flFertilizerName.trim()) details['fertilizerName'] = flFertilizerName.trim();
+      if (flFertilizerType.trim()) details['fertilizerType'] = flFertilizerType.trim();
+      if (flQuantityUnit.trim()) {
+        details['quantityUnit'] = flQuantityUnit.trim();
+        if (flFertilizerName.trim()) {
+          inputs.push(`${flFertilizerName.trim()} ${flQuantityUnit.trim()}`);
+        } else {
+          inputs.push(flQuantityUnit.trim());
+        }
+      } else if (flFertilizerName.trim()) {
+        inputs.push(flFertilizerName.trim());
       }
-      if (leafDevelopment.trim()) details['leafDevelopment'] = leafDevelopment.trim();
-      if (healthCondition.trim()) {
-        details['healthCondition'] = healthCondition.trim();
-        inputs.push(healthCondition.trim());
+      if (flFertilizerDate.trim()) details['applicationDate'] = flFertilizerDate.trim();
+      if (flOrganicCertStatus.trim()) {
+        details['organicCertStatus'] = flOrganicCertStatus.trim();
+        inputs.push(flOrganicCertStatus.trim());
       }
-    } else if (isEnv) {
-      if (envRecordingDate.trim()) details['recordingDate'] = envRecordingDate.trim();
-      if (temperature.trim()) {
-        details['temperature'] = temperature.trim();
-        inputs.push(temperature.trim());
+    }
+    // Flowering: 5. Pest & Disease Management
+    else if (isFloweringPest) {
+      if (flPestDate.trim()) details['observationDate'] = flPestDate.trim();
+      if (flPestIdentified.trim()) {
+        details['pestIdentified'] = flPestIdentified.trim();
+        inputs.push(flPestIdentified.trim());
       }
-      if (humidity.trim()) {
-        details['humidity'] = humidity.trim();
-        inputs.push(humidity.trim());
+      if (flSymptoms.trim()) details['symptoms'] = flSymptoms.trim();
+      if (flTreatment.trim()) details['treatment'] = flTreatment.trim();
+    }
+    // Flowering: 6. Flower Health Monitoring
+    else if (isFlowerHealth) {
+      if (flHealthDate.trim()) details['observationDate'] = flHealthDate.trim();
+      if (flHealthCondition.trim()) {
+        details['flowerHealthCondition'] = flHealthCondition.trim();
+        inputs.push(flHealthCondition.trim());
       }
-      if (soilMoisture.trim()) {
-        details['soilMoisture'] = soilMoisture.trim();
-        inputs.push(`Moisture: ${soilMoisture.trim()}`);
+      if (flDamageDrop.trim()) {
+        details['flowerDamageDrop'] = flDamageDrop.trim();
+        inputs.push(flDamageDrop.trim());
+      }
+      if (flPossibleCauses.trim()) details['possibleCauses'] = flPossibleCauses.trim();
+    }
+    // Vegetative Growth: 1. Watering & Irrigation
+    else if (isVgWatering) {
+      if (vgWateringDate.trim()) details['wateringDate'] = vgWateringDate.trim();
+      if (vgWaterQuantity.trim()) {
+        details['waterQuantity'] = vgWaterQuantity.trim();
+        inputs.push(vgWaterQuantity.trim());
+      }
+      if (vgIrrigationMethod.trim()) {
+        details['irrigationMethod'] = vgIrrigationMethod.trim();
+        inputs.push(vgIrrigationMethod.trim());
+      }
+    }
+    // Vegetative Growth: 2. Organic Fertilizer Application
+    else if (isVgFertilizer) {
+      if (vgFertilizerName.trim()) details['fertilizerName'] = vgFertilizerName.trim();
+      if (vgFertilizerQuantity.trim()) details['fertilizerQuantity'] = vgFertilizerQuantity.trim();
+      if (vgFertilizerDate.trim()) details['applicationDate'] = vgFertilizerDate.trim();
+      if (vgFertilizerName.trim() && vgFertilizerQuantity.trim()) {
+        inputs.push(`${vgFertilizerName.trim()} ${vgFertilizerQuantity.trim()}`);
+      } else if (vgFertilizerName.trim()) {
+        inputs.push(vgFertilizerName.trim());
+      }
+    }
+    // Vegetative Growth: 3. Weeding & Soil Care
+    else if (isVgWeeding) {
+      if (vgWeedingDate.trim()) details['weedingDate'] = vgWeedingDate.trim();
+      if (vgWeedingMethod.trim()) {
+        details['weedingMethod'] = vgWeedingMethod.trim();
+        inputs.push(vgWeedingMethod.trim());
+      }
+      if (vgSoilCareActivities.trim()) {
+        details['soilCareActivities'] = vgSoilCareActivities.trim();
+      }
+    }
+    // Vegetative Growth: 4. Pest & Disease Monitoring
+    else if (isVgPest) {
+      if (vgPestDate.trim()) details['observationDate'] = vgPestDate.trim();
+      if (vgPestIdentified.trim()) {
+        details['pestIdentified'] = vgPestIdentified.trim();
+        inputs.push(vgPestIdentified.trim());
+      }
+      if (vgSymptoms.trim()) details['symptoms'] = vgSymptoms.trim();
+      if (vgTreatment.trim()) details['treatment'] = vgTreatment.trim();
+    }
+    // Vegetative Growth: 5. Plant Growth Observation
+    else if (isVgGrowth) {
+      if (vgGrowthDate.trim()) details['observationDate'] = vgGrowthDate.trim();
+      if (vgPlantHeight.trim()) {
+        details['plantHeight'] = vgPlantHeight.trim();
+        inputs.push(`Height: ${vgPlantHeight.trim()}`);
+      }
+      if (vgLeafDevelopment.trim()) details['leafDevelopment'] = vgLeafDevelopment.trim();
+      if (vgHealthCondition.trim()) {
+        details['healthCondition'] = vgHealthCondition.trim();
+        inputs.push(vgHealthCondition.trim());
+      }
+    }
+    // Vegetative Growth: 6. Environmental Monitoring
+    else if (isVgEnv) {
+      if (vgEnvDate.trim()) details['recordingDate'] = vgEnvDate.trim();
+      if (vgTemperature.trim()) {
+        details['temperature'] = vgTemperature.trim();
+        inputs.push(vgTemperature.trim());
+      }
+      if (vgHumidity.trim()) {
+        details['humidity'] = vgHumidity.trim();
+        inputs.push(vgHumidity.trim());
+      }
+      if (vgSoilMoisture.trim()) {
+        details['soilMoisture'] = vgSoilMoisture.trim();
+        inputs.push(`Moisture: ${vgSoilMoisture.trim()}`);
       }
     }
 
@@ -377,8 +530,365 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
               <Text style={styles.sectionHeading}>New Record</Text>
             )}
 
-            {/* 1. Watering & Irrigation Specific Fields */}
-            {isWatering && (
+            {/* ─── FLOWERING: 1. Flowering Observation ─── */}
+            {isFloweringObs && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>First Flowering Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 14 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={firstFloweringDate}
+                    onChangeText={setFirstFloweringDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Flowering Progress</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Early Bloom (10-25%)', 'Mid Bloom (25-50%)', 'Full Bloom (50-75%)', 'Peak Flowering (75%+)'].map((prog) => (
+                      <TouchableOpacity
+                        key={prog}
+                        style={[
+                          styles.optionPill,
+                          floweringProgress === prog && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setFloweringProgress(prog)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            floweringProgress === prog && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {prog}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Approximate Flower Count (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 14 per truss or 25 total"
+                    placeholderTextColor="#9CB0A1"
+                    value={approxFlowerCount}
+                    onChangeText={setApproxFlowerCount}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── FLOWERING: 2. Pollination Monitoring ─── */}
+            {isPollination && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observation Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 14 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={pollinationObsDate}
+                    onChangeText={setPollinationObsDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Pollination Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Natural', 'Manual', 'Assisted', 'Unknown'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.optionPill,
+                          pollinationMethod === m && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setPollinationMethod(m)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            pollinationMethod === m && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Pollinator Observations</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Bees visiting flowers during morning hours"
+                    placeholderTextColor="#9CB0A1"
+                    value={pollinatorObservations}
+                    onChangeText={setPollinatorObservations}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── FLOWERING: 3. Watering & Irrigation ─── */}
+            {isFloweringIrrigation && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Watering Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 14 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={flWateringDate}
+                    onChangeText={setFlWateringDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Irrigation Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Drip', 'Sprinkler', 'Manual furrow', 'Sub-surface'].map((method) => (
+                      <TouchableOpacity
+                        key={method}
+                        style={[
+                          styles.optionPill,
+                          flIrrigationMethod === method && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setFlIrrigationMethod(method)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            flIrrigationMethod === method && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {method}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Water Quantity (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 5L, 10L/plant, 15mm"
+                    placeholderTextColor="#9CB0A1"
+                    value={flWaterQuantity}
+                    onChangeText={setFlWaterQuantity}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── FLOWERING: 4. Organic Fertilizer Application ─── */}
+            {isFloweringFertilizer && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Fertilizer Name</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Organic Bloom Booster, Bone Meal, Fish Hydrolysate"
+                    placeholderTextColor="#9CB0A1"
+                    value={flFertilizerName}
+                    onChangeText={setFlFertilizerName}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Fertilizer Type</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Liquid Foliar', 'Granular Soil', 'Compost Tea', 'Bio-fertilizer'].map((ft) => (
+                      <TouchableOpacity
+                        key={ft}
+                        style={[
+                          styles.optionPill,
+                          flFertilizerType === ft && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setFlFertilizerType(ft)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            flFertilizerType === ft && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {ft}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Quantity and Unit</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 2 kg, 500 ml"
+                      placeholderTextColor="#9CB0A1"
+                      value={flQuantityUnit}
+                      onChangeText={setFlQuantityUnit}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Application Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 14 Sep 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={flFertilizerDate}
+                      onChangeText={setFlFertilizerDate}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Organic Certification / Status (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Certified Organic (OMRI), Bio-Gro verified"
+                    placeholderTextColor="#9CB0A1"
+                    value={flOrganicCertStatus}
+                    onChangeText={setFlOrganicCertStatus}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── FLOWERING: 5. Pest & Disease Management ─── */}
+            {isFloweringPest && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observation Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 14 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={flPestDate}
+                    onChangeText={setFlPestDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Pest or Disease Identified</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Thrips, Blossom blight, None detected"
+                    placeholderTextColor="#9CB0A1"
+                    value={flPestIdentified}
+                    onChangeText={setFlPestIdentified}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Symptoms or Damage</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Flower browning, petal distortion, no damage"
+                    placeholderTextColor="#9CB0A1"
+                    value={flSymptoms}
+                    onChangeText={setFlSymptoms}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Treatment Applied (Optional — Monitoring only if blank)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Optional — e.g. Organic Neem spray, or leave blank"
+                    placeholderTextColor="#9CB0A1"
+                    value={flTreatment}
+                    onChangeText={setFlTreatment}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── FLOWERING: 6. Flower Health Monitoring ─── */}
+            {isFlowerHealth && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observation Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 14 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={flHealthDate}
+                    onChangeText={setFlHealthDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Flower Health Condition</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Optimal', 'Good / Healthy', 'Moderate', 'Poor / Stressed'].map((cond) => (
+                      <TouchableOpacity
+                        key={cond}
+                        style={[
+                          styles.optionPill,
+                          flHealthCondition === cond && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setFlHealthCondition(cond)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            flHealthCondition === cond && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {cond}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Flower Damage or Dropping</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Zero Drop', 'Minor (<5%)', 'Moderate (5-15%)', 'High (>15%)'].map((drop) => (
+                      <TouchableOpacity
+                        key={drop}
+                        style={[
+                          styles.optionPill,
+                          flDamageDrop === drop && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setFlDamageDrop(drop)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            flDamageDrop === drop && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {drop}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Possible Causes (If known)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Temperature fluctuation, dry wind, low humidity"
+                    placeholderTextColor="#9CB0A1"
+                    value={flPossibleCauses}
+                    onChangeText={setFlPossibleCauses}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── VEGETATIVE GROWTH: 1. Watering & Irrigation Specific Fields ─── */}
+            {isVgWatering && (
               <>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Watering Date</Text>
@@ -386,8 +896,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. 18 Sep 2026"
                     placeholderTextColor="#9CB0A1"
-                    value={wateringDate}
-                    onChangeText={setWateringDate}
+                    value={vgWateringDate}
+                    onChangeText={setVgWateringDate}
                   />
                 </View>
                 <View style={styles.inputRow}>
@@ -397,8 +907,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 15L or 20mm"
                       placeholderTextColor="#9CB0A1"
-                      value={waterQuantity}
-                      onChangeText={setWaterQuantity}
+                      value={vgWaterQuantity}
+                      onChangeText={setVgWaterQuantity}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -407,16 +917,16 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. Drip, Sprinkler"
                       placeholderTextColor="#9CB0A1"
-                      value={irrigationMethod}
-                      onChangeText={setIrrigationMethod}
+                      value={vgIrrigationMethod}
+                      onChangeText={setVgIrrigationMethod}
                     />
                   </View>
                 </View>
               </>
             )}
 
-            {/* 2. Organic Fertilizer Application Specific Fields */}
-            {isFertilizer && (
+            {/* ─── VEGETATIVE GROWTH: 2. Organic Fertilizer Application Specific Fields ─── */}
+            {isVgFertilizer && (
               <>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Fertilizer Name</Text>
@@ -424,8 +934,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. Organic Compost, Vermicompost, Neem Cake"
                     placeholderTextColor="#9CB0A1"
-                    value={fertilizerName}
-                    onChangeText={setFertilizerName}
+                    value={vgFertilizerName}
+                    onChangeText={setVgFertilizerName}
                   />
                 </View>
                 <View style={styles.inputRow}>
@@ -435,8 +945,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 5kg, 2L"
                       placeholderTextColor="#9CB0A1"
-                      value={fertilizerQuantity}
-                      onChangeText={setFertilizerQuantity}
+                      value={vgFertilizerQuantity}
+                      onChangeText={setVgFertilizerQuantity}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -445,16 +955,16 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 18 Sep 2026"
                       placeholderTextColor="#9CB0A1"
-                      value={fertilizerDate}
-                      onChangeText={setFertilizerDate}
+                      value={vgFertilizerDate}
+                      onChangeText={setVgFertilizerDate}
                     />
                   </View>
                 </View>
               </>
             )}
 
-            {/* 3. Weeding & Soil Care Specific Fields */}
-            {isWeeding && (
+            {/* ─── VEGETATIVE GROWTH: 3. Weeding & Soil Care Specific Fields ─── */}
+            {isVgWeeding && (
               <>
                 <View style={styles.inputRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
@@ -463,8 +973,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 18 Sep 2026"
                       placeholderTextColor="#9CB0A1"
-                      value={weedingDate}
-                      onChangeText={setWeedingDate}
+                      value={vgWeedingDate}
+                      onChangeText={setVgWeedingDate}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -473,8 +983,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. Hand weeding, Hoeing"
                       placeholderTextColor="#9CB0A1"
-                      value={weedingMethod}
-                      onChangeText={setWeedingMethod}
+                      value={vgWeedingMethod}
+                      onChangeText={setVgWeedingMethod}
                     />
                   </View>
                 </View>
@@ -484,15 +994,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. Aeration, Bed earthing, Organic mulching"
                     placeholderTextColor="#9CB0A1"
-                    value={soilCareActivities}
-                    onChangeText={setSoilCareActivities}
+                    value={vgSoilCareActivities}
+                    onChangeText={setVgSoilCareActivities}
                   />
                 </View>
               </>
             )}
 
-            {/* 4. Pest & Disease Monitoring Specific Fields */}
-            {isPest && (
+            {/* ─── VEGETATIVE GROWTH: 4. Pest & Disease Monitoring Specific Fields ─── */}
+            {isVgPest && (
               <>
                 <View style={styles.inputRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
@@ -501,8 +1011,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 18 Sep 2026"
                       placeholderTextColor="#9CB0A1"
-                      value={pestObservationDate}
-                      onChangeText={setPestObservationDate}
+                      value={vgPestDate}
+                      onChangeText={setVgPestDate}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -511,8 +1021,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. Aphids, None detected"
                       placeholderTextColor="#9CB0A1"
-                      value={pestIdentified}
-                      onChangeText={setPestIdentified}
+                      value={vgPestIdentified}
+                      onChangeText={setVgPestIdentified}
                     />
                   </View>
                 </View>
@@ -522,8 +1032,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. Minor leaf curling on lower branches"
                     placeholderTextColor="#9CB0A1"
-                    value={symptoms}
-                    onChangeText={setSymptoms}
+                    value={vgSymptoms}
+                    onChangeText={setVgSymptoms}
                   />
                 </View>
                 <View style={styles.inputGroup}>
@@ -532,15 +1042,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. Organic Neem oil spray, Bio-pesticide"
                     placeholderTextColor="#9CB0A1"
-                    value={treatment}
-                    onChangeText={setTreatment}
+                    value={vgTreatment}
+                    onChangeText={setVgTreatment}
                   />
                 </View>
               </>
             )}
 
-            {/* 5. Plant Growth Observation Specific Fields */}
-            {isGrowth && (
+            {/* ─── VEGETATIVE GROWTH: 5. Plant Growth Observation Specific Fields ─── */}
+            {isVgGrowth && (
               <>
                 <View style={styles.inputRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
@@ -549,8 +1059,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 18 Sep 2026"
                       placeholderTextColor="#9CB0A1"
-                      value={growthObservationDate}
-                      onChangeText={setGrowthObservationDate}
+                      value={vgGrowthDate}
+                      onChangeText={setVgGrowthDate}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -559,8 +1069,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 45 cm, 1.5 ft"
                       placeholderTextColor="#9CB0A1"
-                      value={plantHeight}
-                      onChangeText={setPlantHeight}
+                      value={vgPlantHeight}
+                      onChangeText={setVgPlantHeight}
                     />
                   </View>
                 </View>
@@ -570,8 +1080,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. 8-10 healthy leaves, vigorous canopy"
                     placeholderTextColor="#9CB0A1"
-                    value={leafDevelopment}
-                    onChangeText={setLeafDevelopment}
+                    value={vgLeafDevelopment}
+                    onChangeText={setVgLeafDevelopment}
                   />
                 </View>
                 <View style={styles.inputGroup}>
@@ -580,15 +1090,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. Optimal vigor, Healthy green"
                     placeholderTextColor="#9CB0A1"
-                    value={healthCondition}
-                    onChangeText={setHealthCondition}
+                    value={vgHealthCondition}
+                    onChangeText={setVgHealthCondition}
                   />
                 </View>
               </>
             )}
 
-            {/* 6. Environmental Monitoring Specific Fields */}
-            {isEnv && (
+            {/* ─── VEGETATIVE GROWTH: 6. Environmental Monitoring Specific Fields ─── */}
+            {isVgEnv && (
               <>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Recording Date</Text>
@@ -596,8 +1106,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                     style={styles.textInput}
                     placeholder="e.g. 18 Sep 2026"
                     placeholderTextColor="#9CB0A1"
-                    value={envRecordingDate}
-                    onChangeText={setEnvRecordingDate}
+                    value={vgEnvDate}
+                    onChangeText={setVgEnvDate}
                   />
                 </View>
                 <View style={styles.inputRow}>
@@ -607,8 +1117,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 27°C"
                       placeholderTextColor="#9CB0A1"
-                      value={temperature}
-                      onChangeText={setTemperature}
+                      value={vgTemperature}
+                      onChangeText={setVgTemperature}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
@@ -617,8 +1127,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 68%"
                       placeholderTextColor="#9CB0A1"
-                      value={humidity}
-                      onChangeText={setHumidity}
+                      value={vgHumidity}
+                      onChangeText={setVgHumidity}
                     />
                   </View>
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 6 }]}>
@@ -627,15 +1137,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                       style={styles.textInput}
                       placeholder="e.g. 42%"
                       placeholderTextColor="#9CB0A1"
-                      value={soilMoisture}
-                      onChangeText={setSoilMoisture}
+                      value={vgSoilMoisture}
+                      onChangeText={setVgSoilMoisture}
                     />
                   </View>
                 </View>
               </>
             )}
 
-            {/* Multiline Notes Area */}
+            {/* Multiline Notes Area (Common to all) */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>
                 Activity Notes <Text style={{ color: '#D9534F' }}>*</Text>
@@ -655,7 +1165,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
               {notesError && <Text style={styles.errorText}>{notesError}</Text>}
             </View>
 
-            {/* Photo Evidence */}
+            {/* Photo Evidence (Common to all) */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Photo Evidence (Optional)</Text>
               {photoUri ? (
@@ -930,6 +1440,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2B4A33',
     marginBottom: 6,
+  },
+  optionPillGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  optionPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: '#F0F4F0',
+    borderWidth: 1,
+    borderColor: '#D4E2D6',
+  },
+  optionPillSelected: {
+    backgroundColor: '#1E3C25',
+    borderColor: '#1E3C25',
+  },
+  optionPillText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#34523B',
+  },
+  optionPillTextSelected: {
+    color: '#FFFFFF',
   },
   textInput: {
     backgroundColor: '#F8FAF8',

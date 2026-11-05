@@ -106,7 +106,7 @@ const createStages = (currentStageIndex: number) => [
     key: FarmingStageKey.FLOWERING,
     title: 'Flowering',
     subtitle: 'Blossom set and pollination check',
-    date: '17 Sep',
+    date: '14 Sep',
     status: currentStageIndex > 3 ? ('done' as const) : currentStageIndex === 3 ? ('in_progress' as const) : ('upcoming' as const),
     iconName: 'flower',
     tags: ['Observation', 'Fertilizer'],
