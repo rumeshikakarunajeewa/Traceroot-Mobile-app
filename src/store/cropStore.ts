@@ -105,6 +105,8 @@ export interface SaveActivityNotesPayload {
   activityName: string;
   notes: string;
   photoUri?: string;
+  details?: Record<string, any>;
+  inputs?: string[];
 }
 
 export function addRecordToCrop(fieldId: string, payload: NewRecordPayload) {
@@ -193,15 +195,25 @@ export function saveActivityNotes(payload: SaveActivityNotesPayload): RecentReco
 
   const recordCode = `TR-${String(50 + currentRecords.length + 1).padStart(4, '0')}`;
 
+  const recordDate =
+    payload.details?.date ||
+    payload.details?.wateringDate ||
+    payload.details?.applicationDate ||
+    payload.details?.weedingDate ||
+    payload.details?.observationDate ||
+    payload.details?.recordingDate ||
+    dateFormatted;
+
   const newRecord: RecentRecordItem = {
     id: `rec-act-${Date.now()}`,
     recordCode,
     title: payload.activityName,
     stage: targetStage,
     activityId: payload.activityId,
-    date: dateFormatted,
+    date: recordDate,
     time: timeFormatted,
     location: targetField?.name || 'Kandy Farm',
+    inputs: payload.inputs && payload.inputs.length > 0 ? payload.inputs : undefined,
     photoEvidenceAttached: !!payload.photoUri,
     photoUrl: payload.photoUri,
     isLocked: true,
@@ -210,6 +222,7 @@ export function saveActivityNotes(payload: SaveActivityNotesPayload): RecentReco
     batchId: payload.batchId || targetField?.batchId || 'BATCH-2026-09',
     isCompact: false,
     notes: payload.notes.trim(),
+    details: payload.details,
     createdAt: now.toISOString(),
   };
 

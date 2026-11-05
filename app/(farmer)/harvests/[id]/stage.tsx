@@ -165,7 +165,11 @@ export default function StageDetailsScreen() {
         {/* Stage Title with icon/emoji */}
         <View style={styles.titleRow}>
           <Text style={styles.titleEmoji}>{activeStageDef.stageEmoji}</Text>
-          <Text style={styles.stageTitleText}>{activeStageDef.title} Stage</Text>
+          <Text style={styles.stageTitleText}>
+            {activeStageDef.key === 'vegetative_growth'
+              ? 'Vegetative Growth'
+              : `${activeStageDef.title} Stage`}
+          </Text>
         </View>
 
         {/* Subtitle: Crop Name • Date Range */}
@@ -277,6 +281,7 @@ export default function StageDetailsScreen() {
         visible={!!selectedActivity}
         activity={selectedActivity}
         cropName={crop.cropName}
+        stageName={activeStageDef.title}
         batchId={crop.batchId}
         existingRecords={
           selectedActivity
@@ -289,7 +294,7 @@ export default function StageDetailsScreen() {
             : []
         }
         onClose={() => setSelectedActivity(null)}
-        onSave={(notes, photoUri) => {
+        onSave={(notes, photoUri, details, inputs) => {
           if (!selectedActivity) return;
           saveActivityNotes({
             cropId: crop.id,
@@ -299,6 +304,8 @@ export default function StageDetailsScreen() {
             activityName: selectedActivity.name,
             notes,
             photoUri,
+            details,
+            inputs,
           });
           setSelectedActivity(null);
         }}
