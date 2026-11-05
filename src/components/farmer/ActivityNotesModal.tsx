@@ -15,14 +15,16 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { StageActivityTemplate } from '../../constants/stages';
+import { FarmingStageKeyType, StageActivityTemplate } from '../../constants/stages';
 import { RecentRecordItem } from '../../types/farmer.types';
+import { getCropSpecificFields } from '../../constants/cropSpecificFields';
 
 interface ActivityNotesModalProps {
   visible: boolean;
   activity: StageActivityTemplate | null;
   cropName: string;
   stageName?: string;
+  stageKey?: FarmingStageKeyType;
   batchId?: string;
   existingRecords: RecentRecordItem[];
   onClose: () => void;
@@ -38,6 +40,7 @@ interface ActivityNotesFormProps {
   activity: StageActivityTemplate;
   cropName: string;
   stageName?: string;
+  stageKey?: FarmingStageKeyType;
   batchId?: string;
   existingRecords: RecentRecordItem[];
   onClose: () => void;
@@ -49,8 +52,59 @@ interface ActivityNotesFormProps {
   ) => void;
 }
 
+function getStageKeyFallback(stageName?: string, activityId?: string): FarmingStageKeyType {
+  const norm = (stageName || '').toLowerCase();
+  if (norm.includes('plant')) return 'planting';
+  if (norm.includes('vegetative')) return 'vegetative_growth';
+  if (norm.includes('flower')) return 'flowering';
+  if (norm.includes('matur')) return 'crop_maturity';
+  if (norm.includes('harvest')) return 'harvesting';
+  if (activityId?.startsWith('act-p-')) return 'planting';
+  if (activityId?.startsWith('act-vg-')) return 'vegetative_growth';
+  if (activityId?.startsWith('flowering_') || activityId === 'pollination_monitoring') return 'flowering';
+  if (activityId?.startsWith('maturity_') || activityId?.startsWith('crop_') || activityId?.includes('ripeness')) return 'crop_maturity';
+  return 'harvesting';
+}
+
 function formatDetailLabel(key: string): string {
   switch (key) {
+    // Crop-Specific Fields (Tomato, Rice, Carrot, Lettuce, Banana)
+    case 'fruitColor':
+      return 'Fruit Color';
+    case 'fruitSize':
+      return 'Fruit Size';
+    case 'ripenessLevel':
+      return 'Ripeness Level';
+    case 'maturityPercentage':
+      return 'Maturity %';
+    case 'grainMaturity':
+      return 'Grain Maturity';
+    case 'grainMoisture':
+      return 'Grain Moisture %';
+    case 'panicleCondition':
+      return 'Panicle Condition';
+    case 'rootDiameter':
+      return 'Root Diameter (cm)';
+    case 'rootLength':
+      return 'Root Length (cm)';
+    case 'rootCondition':
+      return 'Root Condition';
+    case 'leafSize':
+      return 'Leaf Size';
+    case 'leafCount':
+      return 'Leaf Count';
+    case 'leafColor':
+      return 'Leaf Color';
+    case 'plantHealth':
+      return 'Plant Health';
+    case 'numBunches':
+      return 'Bunches';
+    case 'bunchWeight':
+      return 'Bunch Weight (kg)';
+    case 'fruitMaturity':
+      return 'Fruit Maturity';
+    case 'totalQuantity':
+      return 'Total Harvested (kg)';
     // Harvest Stage
     case 'harvestDate':
       return 'Harvest Date';
@@ -208,6 +262,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   activity,
   cropName,
   stageName,
+  stageKey,
   batchId,
   existingRecords,
   onClose,
@@ -222,6 +277,28 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       year: 'numeric',
     }).format(now);
   }, []);
+
+  const computedStageKey = stageKey || getStageKeyFallback(stageName, activity.id);
+  const cropSpecificFields = useMemo(() => {
+    return getCropSpecificFields(cropName, computedStageKey, activity.id, activity.name);
+  }, [cropName, computedStageKey, activity.id, activity.name]);
+
+  const [cropSpecificValues, setCropSpecificValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    const fields = getCropSpecificFields(cropName, computedStageKey, activity.id, activity.name);
+    if (fields) {
+      fields.forEach((f) => {
+        if (f.defaultValue) initial[f.id] = f.defaultValue;
+        else if (f.type === 'date') initial[f.id] = todayDate;
+        else if (f.type === 'select' && f.options && f.options.length > 0) {
+          initial[f.id] = f.options[0].value;
+        }
+      });
+    }
+    return initial;
+  });
+
+  const [customActDate, setCustomActDate] = useState(activity.date || todayDate);
 
   // Common fields
   const [notes, setNotes] = useState('');
@@ -455,8 +532,35 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
     const details: Record<string, string> = {};
     const inputs: string[] = [];
 
+    // ─── CROP-SPECIFIC OVERRIDE ───
+    if (cropSpecificFields && cropSpecificFields.length > 0) {
+      for (const f of cropSpecificFields) {
+        const val = cropSpecificValues[f.id];
+        if (f.required && (!val || !val.trim())) {
+          Alert.alert('Required Field', `Please provide a value for ${f.label}.`);
+          return;
+        }
+        if ((f.type === 'number' || f.type === 'percentage') && val) {
+          const numVal = parseFloat(val);
+          if (isNaN(numVal) || numVal < 0) {
+            Alert.alert('Invalid Number', `Please enter a valid non-negative number for ${f.label}.`);
+            return;
+          }
+        }
+      }
+      Object.entries(cropSpecificValues).forEach(([k, v]) => {
+        if (v && v.trim()) {
+          details[k] = v.trim();
+          inputs.push(`${formatDetailLabel(k)}: ${v.trim()}`);
+        }
+      });
+    } else if (activity.isCustom) {
+      if (customActDate.trim()) details['date'] = customActDate.trim();
+      if (activity.description) details['description'] = activity.description;
+      inputs.push('Custom Activity');
+    }
     // ─── HARVEST STAGE ───
-    if (isHarvestDetails) {
+    else if (isHarvestDetails) {
       if (hvHarvestDate.trim()) details['harvestDate'] = hvHarvestDate.trim();
       if (hvHarvestTime.trim()) details['harvestTime'] = hvHarvestTime.trim();
       if (hvHarvestMethod.trim()) {
@@ -890,8 +994,106 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
               <Text style={styles.sectionHeading}>New Record</Text>
             )}
 
-            {/* ─── HARVEST: 1. Harvest Details ─── */}
-            {isHarvestDetails && (
+            {/* ─── CROP-SPECIFIC FIELD OBSERVATIONS ─── */}
+            {cropSpecificFields && cropSpecificFields.length > 0 && (
+              <View style={styles.cropSpecificBox}>
+                <View style={styles.cropSpecificHeader}>
+                  <Feather name="sliders" size={15} color="#1E4C29" style={{ marginRight: 6 }} />
+                  <Text style={styles.cropSpecificTitle}>
+                    {cropName} • Specific Field Observations
+                  </Text>
+                </View>
+
+                {cropSpecificFields.map((field) => (
+                  <View key={field.id} style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      {field.label} {field.unit ? `(${field.unit})` : ''}{' '}
+                      {field.required && <Text style={{ color: '#D9534F' }}>*</Text>}
+                    </Text>
+
+                    {field.type === 'select' && field.options ? (
+                      <View style={styles.optionPillGroup}>
+                        {field.options.map((opt) => {
+                          const isSelected =
+                            (cropSpecificValues[field.id] || field.defaultValue) === opt.value;
+                          return (
+                            <TouchableOpacity
+                              key={opt.value}
+                              style={[
+                                styles.optionPill,
+                                isSelected && styles.optionPillSelected,
+                              ]}
+                              onPress={() =>
+                                setCropSpecificValues((prev) => ({
+                                  ...prev,
+                                  [field.id]: opt.value,
+                                }))
+                              }
+                            >
+                              <Text
+                                style={[
+                                  styles.optionPillText,
+                                  isSelected && styles.optionPillTextSelected,
+                                ]}
+                              >
+                                {opt.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                        placeholderTextColor="#9CB0A1"
+                        value={cropSpecificValues[field.id] || ''}
+                        onChangeText={(val) =>
+                          setCropSpecificValues((prev) => ({
+                            ...prev,
+                            [field.id]: val,
+                          }))
+                        }
+                        keyboardType={
+                          field.type === 'number' || field.type === 'percentage'
+                            ? 'numeric'
+                            : 'default'
+                        }
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* ─── CUSTOM ACTIVITY INFO & DATE ─── */}
+            {!cropSpecificFields && activity.isCustom && (
+              <View style={styles.customActivityBox}>
+                <View style={styles.customActivityHeader}>
+                  <Feather name="bookmark" size={15} color="#1E4C29" style={{ marginRight: 6 }} />
+                  <Text style={styles.customActivityTitle}>Farmer-Created Custom Activity</Text>
+                </View>
+                {activity.description ? (
+                  <Text style={styles.customActivityDesc}>{activity.description}</Text>
+                ) : null}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Activity Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 28 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={customActDate}
+                    onChangeText={setCustomActDate}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Default activity fields (rendered when no crop-specific configuration matches and not custom) */}
+            {!cropSpecificFields && !activity.isCustom && (
+              <>
+                {/* ─── HARVEST: 1. Harvest Details ─── */}
+                {isHarvestDetails && (
               <>
                 <View style={styles.inputRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
@@ -2570,6 +2772,8 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
                 </View>
               </>
             )}
+          </>
+        )}
 
             {/* Multiline Notes Area (Common to all) */}
             <View style={styles.inputGroup}>
@@ -2646,6 +2850,7 @@ export const ActivityNotesModal: React.FC<ActivityNotesModalProps> = ({
   activity,
   cropName,
   stageName,
+  stageKey,
   batchId,
   existingRecords,
   onClose,
@@ -2668,6 +2873,7 @@ export const ActivityNotesModal: React.FC<ActivityNotesModalProps> = ({
               activity={activity}
               cropName={cropName}
               stageName={stageName}
+              stageKey={stageKey}
               batchId={batchId}
               existingRecords={existingRecords}
               onClose={onClose}
@@ -2986,5 +3192,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  cropSpecificBox: {
+    backgroundColor: '#F3FAF5',
+    borderWidth: 1,
+    borderColor: '#CCE6D3',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  cropSpecificHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cropSpecificTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1C4B27',
+  },
+  customActivityBox: {
+    backgroundColor: '#F5FAF6',
+    borderWidth: 1,
+    borderColor: '#CCE4D3',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  customActivityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  customActivityTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E4C29',
+  },
+  customActivityDesc: {
+    fontSize: 13,
+    color: '#4B6B53',
+    fontStyle: 'italic',
+    marginBottom: 12,
+    lineHeight: 18,
   },
 });

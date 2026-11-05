@@ -1,16 +1,29 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mockFields, mockRecentRecords } from '../constants/farmerMockData';
-import { FieldItem, RecentRecordItem } from '../types/farmer.types';
+import {
+  FieldItem,
+  RecentRecordItem,
+  CustomStageActivity,
+  ActivityApplicabilityRecord,
+  StageApplicabilityRecord,
+} from '../types/farmer.types';
+import { FarmingStageKeyType } from '../constants/stages';
 import { stageIndex, stageLabel } from '../utils/stageHelpers';
 
 // Storage keys for persistent local storage across refreshes and restarts
 const STORAGE_KEY_RECORDS = '@traceroot_records_v1';
 const STORAGE_KEY_FIELDS = '@traceroot_fields_v1';
+const STORAGE_KEY_CUSTOM_ACTIVITIES = '@traceroot_custom_activities_v1';
+const STORAGE_KEY_ACTIVITY_APPLICABILITY = '@traceroot_activity_applicabilities_v1';
+const STORAGE_KEY_STAGE_APPLICABILITY = '@traceroot_stage_applicabilities_v1';
 
 // In-memory reactive state holding fields & records across all screens
 let currentFields: FieldItem[] = [...mockFields];
 let currentRecords: RecentRecordItem[] = [...mockRecentRecords];
+let currentCustomActivities: CustomStageActivity[] = [];
+let currentActivityApplicabilities: ActivityApplicabilityRecord[] = [];
+let currentStageApplicabilities: StageApplicabilityRecord[] = [];
 
 type StoreListener = () => void;
 const listeners = new Set<StoreListener>();
@@ -23,6 +36,9 @@ async function persistToStorage() {
   try {
     await AsyncStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(currentRecords));
     await AsyncStorage.setItem(STORAGE_KEY_FIELDS, JSON.stringify(currentFields));
+    await AsyncStorage.setItem(STORAGE_KEY_CUSTOM_ACTIVITIES, JSON.stringify(currentCustomActivities));
+    await AsyncStorage.setItem(STORAGE_KEY_ACTIVITY_APPLICABILITY, JSON.stringify(currentActivityApplicabilities));
+    await AsyncStorage.setItem(STORAGE_KEY_STAGE_APPLICABILITY, JSON.stringify(currentStageApplicabilities));
   } catch (e) {
     console.warn('Failed to persist TraceRoot records to AsyncStorage', e);
   }
@@ -35,6 +51,9 @@ async function loadFromStorage() {
   try {
     const savedRecordsStr = await AsyncStorage.getItem(STORAGE_KEY_RECORDS);
     const savedFieldsStr = await AsyncStorage.getItem(STORAGE_KEY_FIELDS);
+    const savedCustomActivitiesStr = await AsyncStorage.getItem(STORAGE_KEY_CUSTOM_ACTIVITIES);
+    const savedActivityApplicabilityStr = await AsyncStorage.getItem(STORAGE_KEY_ACTIVITY_APPLICABILITY);
+    const savedStageApplicabilityStr = await AsyncStorage.getItem(STORAGE_KEY_STAGE_APPLICABILITY);
     let changed = false;
 
     if (savedRecordsStr) {
@@ -47,7 +66,31 @@ async function loadFromStorage() {
     if (savedFieldsStr) {
       const savedF = JSON.parse(savedFieldsStr);
       if (Array.isArray(savedF) && savedF.length > 0) {
-        currentFields = savedF;
+        // Merge with mockFields to ensure any newly registered mock crops exist
+        const existingIds = new Set(savedF.map((f: FieldItem) => f.id));
+        const missingFields = mockFields.filter((f) => !existingIds.has(f.id));
+        currentFields = [...savedF, ...missingFields];
+        changed = true;
+      }
+    }
+    if (savedCustomActivitiesStr) {
+      const savedCA = JSON.parse(savedCustomActivitiesStr);
+      if (Array.isArray(savedCA)) {
+        currentCustomActivities = savedCA;
+        changed = true;
+      }
+    }
+    if (savedActivityApplicabilityStr) {
+      const savedAA = JSON.parse(savedActivityApplicabilityStr);
+      if (Array.isArray(savedAA)) {
+        currentActivityApplicabilities = savedAA;
+        changed = true;
+      }
+    }
+    if (savedStageApplicabilityStr) {
+      const savedSA = JSON.parse(savedStageApplicabilityStr);
+      if (Array.isArray(savedSA)) {
+        currentStageApplicabilities = savedSA;
         changed = true;
       }
     }
@@ -328,15 +371,221 @@ export function getActivityRecords(cropId?: string, activityId?: string, batchId
   });
 }
 
+export interface AddCustomActivityPayload {
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  name: string;
+  description?: string;
+  date?: string;
+  notes?: string;
+}
+
+export function addCustomActivity(payload: AddCustomActivityPayload): {
+  success: boolean;
+  activity?: CustomStageActivity;
+  error?: string;
+} {
+  const trimmedName = payload.name.trim();
+  if (!trimmedName) {
+    return { success: false, error: 'Activity name is required.' };
+  }
+
+  // Prevent duplicate activity names within the same stage for this crop batch
+  const existingInStage = currentCustomActivities.filter(
+    (a) => a.cropId === payload.cropId && a.stageKey === payload.stageKey
+  );
+  const isDuplicate = existingInStage.some(
+    (a) => a.name.toLowerCase() === trimmedName.toLowerCase()
+  );
+  if (isDuplicate) {
+    return {
+      success: false,
+      error: `An activity named "${trimmedName}" already exists for this stage.`,
+    };
+  }
+
+  const newActivity: CustomStageActivity = {
+    id: `cust-act-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    cropId: payload.cropId,
+    batchId: payload.batchId,
+    stageKey: payload.stageKey,
+    name: trimmedName,
+    description: payload.description?.trim(),
+    date: payload.date,
+    notes: payload.notes?.trim(),
+    createdAt: new Date().toISOString(),
+    isCustom: true,
+  };
+
+  currentCustomActivities = [...currentCustomActivities, newActivity];
+  persistToStorage();
+  notify();
+  return { success: true, activity: newActivity };
+}
+
+export function getCustomActivitiesForCropStage(
+  cropId: string,
+  stageKey: FarmingStageKeyType
+): CustomStageActivity[] {
+  return currentCustomActivities.filter(
+    (a) => a.cropId === cropId && a.stageKey === stageKey
+  );
+}
+
+export interface SetActivityApplicabilityPayload {
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  activityId: string;
+  isNotApplicable: boolean;
+  reason: string;
+  additionalNotes?: string;
+}
+
+export function setActivityApplicability(
+  payload: SetActivityApplicabilityPayload
+): ActivityApplicabilityRecord {
+  const existingIdx = currentActivityApplicabilities.findIndex(
+    (a) =>
+      a.cropId === payload.cropId &&
+      a.stageKey === payload.stageKey &&
+      a.activityId === payload.activityId
+  );
+
+  const updatedRecord: ActivityApplicabilityRecord = {
+    id:
+      existingIdx >= 0
+        ? currentActivityApplicabilities[existingIdx].id
+        : `act-app-${Date.now()}`,
+    cropId: payload.cropId,
+    batchId: payload.batchId,
+    stageKey: payload.stageKey,
+    activityId: payload.activityId,
+    isNotApplicable: payload.isNotApplicable,
+    reason: payload.reason.trim(),
+    additionalNotes: payload.additionalNotes?.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    currentActivityApplicabilities = [
+      ...currentActivityApplicabilities.slice(0, existingIdx),
+      updatedRecord,
+      ...currentActivityApplicabilities.slice(existingIdx + 1),
+    ];
+  } else {
+    currentActivityApplicabilities = [...currentActivityApplicabilities, updatedRecord];
+  }
+
+  persistToStorage();
+  notify();
+  return updatedRecord;
+}
+
+export function getActivityApplicability(
+  cropId: string,
+  stageKey: FarmingStageKeyType,
+  activityId: string
+): ActivityApplicabilityRecord | undefined {
+  return currentActivityApplicabilities.find(
+    (a) =>
+      a.cropId === cropId &&
+      a.stageKey === stageKey &&
+      a.activityId === activityId
+  );
+}
+
+export interface SetStageApplicabilityPayload {
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  stageNumber: number;
+  isNotApplicable: boolean;
+  reason: string;
+}
+
+export function setStageApplicability(
+  payload: SetStageApplicabilityPayload
+): StageApplicabilityRecord {
+  const existingIdx = currentStageApplicabilities.findIndex(
+    (s) =>
+      s.cropId === payload.cropId &&
+      s.stageKey === payload.stageKey
+  );
+
+  const updatedRecord: StageApplicabilityRecord = {
+    id:
+      existingIdx >= 0
+        ? currentStageApplicabilities[existingIdx].id
+        : `stg-app-${Date.now()}`,
+    cropId: payload.cropId,
+    batchId: payload.batchId,
+    stageKey: payload.stageKey,
+    stageNumber: payload.stageNumber,
+    isNotApplicable: payload.isNotApplicable,
+    reason: payload.reason.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    currentStageApplicabilities = [
+      ...currentStageApplicabilities.slice(0, existingIdx),
+      updatedRecord,
+      ...currentStageApplicabilities.slice(existingIdx + 1),
+    ];
+  } else {
+    currentStageApplicabilities = [...currentStageApplicabilities, updatedRecord];
+  }
+
+  // Also synchronize stage applicability on currentFields
+  currentFields = currentFields.map((f) => {
+    if (f.id !== payload.cropId) return f;
+    const stages = [...f.stages];
+    const targetIdx = payload.stageNumber - 1;
+    if (stages[targetIdx]) {
+      stages[targetIdx] = {
+        ...stages[targetIdx],
+        isNotApplicable: payload.isNotApplicable,
+        notApplicableReason: payload.reason.trim(),
+      };
+    }
+    return { ...f, stages };
+  });
+
+  persistToStorage();
+  notify();
+  return updatedRecord;
+}
+
+export function getStageApplicability(
+  cropId: string,
+  stageKeyOrNumber: FarmingStageKeyType | number
+): StageApplicabilityRecord | undefined {
+  return currentStageApplicabilities.find((s) => {
+    if (s.cropId !== cropId) return false;
+    if (typeof stageKeyOrNumber === 'number') {
+      return s.stageNumber === stageKeyOrNumber;
+    }
+    return s.stageKey === stageKeyOrNumber;
+  });
+}
+
 export function useCropsStore() {
   const [fields, setFields] = useState<FieldItem[]>(currentFields);
   const [records, setRecords] = useState<RecentRecordItem[]>(currentRecords);
+  const [customActivities, setCustomActivities] = useState<CustomStageActivity[]>(currentCustomActivities);
+  const [activityApplicabilities, setActivityApplicabilities] = useState<ActivityApplicabilityRecord[]>(currentActivityApplicabilities);
+  const [stageApplicabilities, setStageApplicabilities] = useState<StageApplicabilityRecord[]>(currentStageApplicabilities);
 
   useEffect(() => {
     loadFromStorage();
     const handleUpdate = () => {
       setFields([...currentFields]);
       setRecords([...currentRecords]);
+      setCustomActivities([...currentCustomActivities]);
+      setActivityApplicabilities([...currentActivityApplicabilities]);
+      setStageApplicabilities([...currentStageApplicabilities]);
     };
     listeners.add(handleUpdate);
     return () => {
@@ -359,6 +608,9 @@ export function useCropsStore() {
   return {
     fields,
     records,
+    customActivities,
+    activityApplicabilities,
+    stageApplicabilities,
     getFieldById,
     getRecordsByStage,
     getRecordsForActivity,
@@ -367,5 +619,11 @@ export function useCropsStore() {
     addRecordToCrop,
     saveActivityNotes,
     addCorrectionToRecord,
+    addCustomActivity,
+    getCustomActivitiesForCropStage,
+    setActivityApplicability,
+    getActivityApplicability,
+    setStageApplicability,
+    getStageApplicability,
   };
 }

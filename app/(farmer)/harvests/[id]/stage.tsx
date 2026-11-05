@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,15 +16,21 @@ import { useCropsStore } from '../../../../src/store/cropStore';
 import { FarmingStageDefinition, StageActivityTemplate } from '../../../../src/constants/stages';
 import { stageIndex, getStageByNumber } from '../../../../src/utils/stageHelpers';
 import { StageProgressIndicator } from '../../../../src/components/farmer/StageProgressIndicator';
-import { StageActivitiesCard } from '../../../../src/components/farmer/StageActivitiesCard';
+import { StageActivitiesCard, ActivityItemStatus } from '../../../../src/components/farmer/StageActivitiesCard';
 import { RecentRecordCard } from '../../../../src/components/farmer/RecentRecordCard';
 import { AddRecordModal } from '../../../../src/components/farmer/AddRecordModal';
 import { AddCorrectionModal } from '../../../../src/components/farmer/AddCorrectionModal';
 import { ActivityNotesModal } from '../../../../src/components/farmer/ActivityNotesModal';
+import { AddCustomActivityModal } from '../../../../src/components/farmer/AddCustomActivityModal';
+import { ActivityActionModal } from '../../../../src/components/farmer/ActivityActionModal';
+import { StageActionModal } from '../../../../src/components/farmer/StageActionModal';
 import { RecentRecordItem } from '../../../../src/types/farmer.types';
 
 export default function StageDetailsScreen() {
   const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<any>(null);
+  const recordsSectionY = useRef<number>(320);
+
   const params = useLocalSearchParams<{
     id?: string;
     stageId?: string;
@@ -36,9 +42,15 @@ export default function StageDetailsScreen() {
     fields,
     getFieldById,
     records,
+    customActivities,
+    activityApplicabilities,
+    stageApplicabilities,
     addRecordToCrop,
     saveActivityNotes,
     addCorrectionToRecord,
+    addCustomActivity,
+    setActivityApplicability,
+    setStageApplicability,
   } = useCropsStore();
 
   const crop = params.id ? fields.find((f) => f.id === params.id) : getFieldById('field-tomato');
@@ -61,6 +73,10 @@ export default function StageDetailsScreen() {
   const [addRecordModalVisible, setAddRecordModalVisible] = useState(false);
   const [correctionTargetRecord, setCorrectionTargetRecord] = useState<RecentRecordItem | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<StageActivityTemplate | null>(null);
+  const [addCustomActivityModalVisible, setAddCustomActivityModalVisible] = useState(false);
+  const [stageActionModalVisible, setStageActionModalVisible] = useState(false);
+  const [activityActionModalVisible, setActivityActionModalVisible] = useState(false);
+  const [selectedActivityForAction, setSelectedActivityForAction] = useState<StageActivityTemplate | null>(null);
 
   // Active stage definition
   const activeStageDef: FarmingStageDefinition = getStageByNumber(activeStageNumber);
@@ -77,6 +93,22 @@ export default function StageDetailsScreen() {
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [crop, records, activeStageNumber]);
+
+  // Check if current stage is marked Not Applicable
+  const currentStageApplicability = useMemo(() => {
+    if (!crop) return undefined;
+    return stageApplicabilities.find(
+      (s) => s.cropId === crop.id && s.stageNumber === activeStageNumber && s.isNotApplicable
+    );
+  }, [crop, stageApplicabilities, activeStageNumber]);
+
+  // List of all stage numbers marked Not Applicable for this crop
+  const notApplicableStageNumbers = useMemo(() => {
+    if (!crop) return [];
+    return stageApplicabilities
+      .filter((s) => s.cropId === crop.id && s.isNotApplicable)
+      .map((s) => s.stageNumber);
+  }, [crop, stageApplicabilities]);
 
   // Stage date string formatted for subtitle
   const stageDateText = useMemo(() => {
@@ -153,6 +185,16 @@ export default function StageDetailsScreen() {
     setCorrectionTargetRecord(null);
   };
 
+  // Activity click handler: if completed, directly view history; if pending or NA, show options
+  const handleActivityPress = (activity: StageActivityTemplate, status: ActivityItemStatus) => {
+    if (status === 'completed') {
+      setSelectedActivity(activity);
+    } else {
+      setSelectedActivityForAction(activity);
+      setActivityActionModalVisible(true);
+    }
+  };
+
   return (
     <View style={styles.screenContainer}>
       <StatusBar style="dark" />
@@ -170,16 +212,35 @@ export default function StageDetailsScreen() {
           <Text style={styles.backButtonText}>Crop Details</Text>
         </TouchableOpacity>
 
-        {/* Stage Title with icon/emoji */}
-        <View style={styles.titleRow}>
-          <Text style={styles.titleEmoji}>{activeStageDef.stageEmoji}</Text>
-          <Text style={styles.stageTitleText}>
-            {activeStageDef.key === 'vegetative_growth'
-              ? 'Vegetative Growth'
-              : activeStageDef.key === 'harvesting'
-              ? 'Harvest Stage'
-              : `${activeStageDef.title} Stage`}
-          </Text>
+        {/* Stage Title and Action Menu */}
+        <View style={styles.titleAndActionRow}>
+          <View style={styles.titleRow}>
+            <Text style={styles.titleEmoji}>{activeStageDef.stageEmoji}</Text>
+            <Text style={styles.stageTitleText}>
+              {activeStageDef.key === 'vegetative_growth'
+                ? 'Vegetative Growth'
+                : activeStageDef.key === 'harvesting'
+                ? 'Harvest Stage'
+                : `${activeStageDef.title} Stage`}
+            </Text>
+            {currentStageApplicability && (
+              <View style={styles.headerNaBadge}>
+                <Feather name="minus-circle" size={11} color="#6C8373" style={{ marginRight: 3 }} />
+                <Text style={styles.headerNaBadgeText}>Not Applicable</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Action Menu (3-dots button) */}
+          <TouchableOpacity
+            style={styles.actionMenuBtn}
+            activeOpacity={0.75}
+            onPress={() => setStageActionModalVisible(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Stage Options"
+          >
+            <Feather name="more-horizontal" size={20} color="#2D5837" />
+          </TouchableOpacity>
         </View>
 
         {/* Subtitle: Crop Name • Date Range */}
@@ -193,25 +254,70 @@ export default function StageDetailsScreen() {
         <StageProgressIndicator
           currentCropStageIndex={crop.currentStageIndex ?? 3}
           activeViewingStageNumber={activeStageNumber}
+          notApplicableStageNumbers={notApplicableStageNumbers}
           onSelectStage={(num) => setActiveStageNumber(num)}
         />
       </View>
 
       {/* Scrollable Stage Content */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Stage Activities Card */}
+        {/* Stage Not Applicable Notice Banner (if applicable) */}
+        {currentStageApplicability && (
+          <View style={styles.stageNABanner}>
+            <View style={styles.stageNABannerHeader}>
+              <Feather name="minus-circle" size={16} color="#556F5C" style={{ marginRight: 6 }} />
+              <Text style={styles.stageNABannerTitle}>Stage Marked as Not Applicable</Text>
+            </View>
+            <Text style={styles.stageNABannerReason}>
+              &quot;{currentStageApplicability.reason}&quot;
+            </Text>
+            <TouchableOpacity
+              style={styles.stageNAReactivateBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                setStageApplicability({
+                  cropId: crop.id,
+                  batchId: crop.batchId,
+                  stageKey: activeStageDef.key,
+                  stageNumber: activeStageNumber,
+                  isNotApplicable: false,
+                  reason: 'Reactivated by farmer',
+                });
+                Alert.alert('Stage Reactivated', `${activeStageDef.title} is now active.`);
+              }}
+            >
+              <Ionicons name="refresh" size={13} color="#215930" style={{ marginRight: 4 }} />
+              <Text style={styles.stageNAReactivateBtnText}>Reactivate This Stage</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Stage Activities Card (with Custom Activities & Not Applicable support) */}
         <StageActivitiesCard
           stageKey={activeStageDef.key}
           records={stageRecords}
-          onActivityPress={(act) => setSelectedActivity(act)}
+          customActivities={customActivities.filter(
+            (ca) => ca.cropId === crop.id && ca.stageKey === activeStageDef.key
+          )}
+          activityApplicabilities={activityApplicabilities.filter(
+            (aa) => aa.cropId === crop.id && aa.stageKey === activeStageDef.key
+          )}
+          onActivityPress={handleActivityPress}
+          onAddCustomActivityPress={() => setAddCustomActivityModalVisible(true)}
         />
 
         {/* Stage Records Header */}
-        <View style={styles.recordsSectionHeader}>
+        <View
+          style={styles.recordsSectionHeader}
+          onLayout={(e) => {
+            recordsSectionY.current = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.recordsSectionTitle}>STAGE RECORDS</Text>
           <Text style={styles.recordsSectionCount}>
             {stageRecords.length} {stageRecords.length === 1 ? 'record' : 'records'}
@@ -286,12 +392,120 @@ export default function StageDetailsScreen() {
         onSave={handleSaveCorrection}
       />
 
-      {/* Activity Notes Modal (Interactive Stage Checklist) */}
+      {/* Add Custom Activity Modal */}
+      <AddCustomActivityModal
+        visible={addCustomActivityModalVisible}
+        stageTitle={activeStageDef.title}
+        onClose={() => setAddCustomActivityModalVisible(false)}
+        onAdd={(data) => {
+          return addCustomActivity({
+            cropId: crop.id,
+            batchId: crop.batchId,
+            stageKey: activeStageDef.key,
+            name: data.name,
+            description: data.description,
+            date: data.date,
+            notes: data.notes,
+          });
+        }}
+      />
+
+      {/* Activity Action Modal (Add Record / Mark Not Applicable / Reactivate) */}
+      <ActivityActionModal
+        visible={activityActionModalVisible}
+        activity={selectedActivityForAction}
+        applicabilityRecord={
+          selectedActivityForAction
+            ? activityApplicabilities.find(
+                (a) =>
+                  a.cropId === crop.id &&
+                  a.stageKey === activeStageDef.key &&
+                  a.activityId === selectedActivityForAction.id
+              )
+            : undefined
+        }
+        onClose={() => {
+          setActivityActionModalVisible(false);
+          setSelectedActivityForAction(null);
+        }}
+        onAddRecord={() => {
+          const act = selectedActivityForAction;
+          setActivityActionModalVisible(false);
+          setSelectedActivityForAction(null);
+          setSelectedActivity(act);
+        }}
+        onConfirmNotApplicable={(reason, notes) => {
+          if (!selectedActivityForAction) return;
+          setActivityApplicability({
+            cropId: crop.id,
+            batchId: crop.batchId,
+            stageKey: activeStageDef.key,
+            activityId: selectedActivityForAction.id,
+            isNotApplicable: true,
+            reason,
+            additionalNotes: notes,
+          });
+          setActivityActionModalVisible(false);
+          setSelectedActivityForAction(null);
+        }}
+        onReactivateActivity={() => {
+          if (!selectedActivityForAction) return;
+          setActivityApplicability({
+            cropId: crop.id,
+            batchId: crop.batchId,
+            stageKey: activeStageDef.key,
+            activityId: selectedActivityForAction.id,
+            isNotApplicable: false,
+            reason: 'Reactivated by farmer',
+          });
+          setActivityActionModalVisible(false);
+          setSelectedActivityForAction(null);
+        }}
+      />
+
+      {/* Stage Action Modal (View Records / Mark Stage NA / Reactivate) */}
+      <StageActionModal
+        visible={stageActionModalVisible}
+        stageTitle={activeStageDef.title}
+        stageNumber={activeStageNumber}
+        recordCount={stageRecords.length}
+        stageApplicability={currentStageApplicability}
+        onClose={() => setStageActionModalVisible(false)}
+        onViewRecords={() => {
+          setStageActionModalVisible(false);
+          scrollViewRef.current?.scrollTo({ y: recordsSectionY.current || 300, animated: true });
+        }}
+        onConfirmNotApplicable={(reason) => {
+          setStageApplicability({
+            cropId: crop.id,
+            batchId: crop.batchId,
+            stageKey: activeStageDef.key,
+            stageNumber: activeStageNumber,
+            isNotApplicable: true,
+            reason,
+          });
+          setStageActionModalVisible(false);
+        }}
+        onReactivateStage={() => {
+          setStageApplicability({
+            cropId: crop.id,
+            batchId: crop.batchId,
+            stageKey: activeStageDef.key,
+            stageNumber: activeStageNumber,
+            isNotApplicable: false,
+            reason: 'Reactivated by farmer',
+          });
+          setStageActionModalVisible(false);
+        }}
+      />
+
+      {/* Activity Notes Modal (Interactive Stage Checklist & Crop-Specific Form) */}
       <ActivityNotesModal
         visible={!!selectedActivity}
         activity={selectedActivity}
         cropName={crop.cropName}
         stageName={activeStageDef.title}
+        stageKey={activeStageDef.key}
         batchId={crop.batchId}
         existingRecords={
           selectedActivity
@@ -372,14 +586,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#55725D',
   },
+  titleAndActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    flex: 1,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   titleEmoji: {
     fontSize: 22,
-    marginRight: 8,
   },
   stageTitleText: {
     fontSize: 24,
@@ -387,10 +608,75 @@ const styles = StyleSheet.create({
     color: '#142E19',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
+  headerNaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAEFE9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  headerNaBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#496350',
+  },
+  actionMenuBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F0F5F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   stageSubtitleText: {
     fontSize: 13.5,
     fontWeight: '500',
     color: '#67816E',
+  },
+
+  /* Stage NA Banner */
+  stageNABanner: {
+    backgroundColor: '#EDF3EE',
+    borderWidth: 1,
+    borderColor: '#D4E2D7',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  stageNABannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stageNABannerTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#24492C',
+  },
+  stageNABannerReason: {
+    fontSize: 13,
+    color: '#4B6752',
+    fontStyle: 'italic',
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  stageNAReactivateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#BDDEC5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  stageNAReactivateBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#215930',
   },
 
   /* Progress Section */

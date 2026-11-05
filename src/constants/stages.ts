@@ -116,6 +116,11 @@ export interface StageActivityTemplate {
   id: string;
   name: string;
   matchKeywords: string[];
+  isCustom?: boolean;
+  description?: string;
+  date?: string;
+  status?: 'pending' | 'completed' | 'not_applicable';
+  notApplicableReason?: string;
 }
 
 export const STAGE_ACTIVITIES: Record<FarmingStageKeyType, StageActivityTemplate[]> = {

@@ -14,6 +14,8 @@ export interface JourneyStage {
   tags?: string[];
   recordCount?: number;
   stageEmoji?: string;
+  isNotApplicable?: boolean;
+  notApplicableReason?: string;
 }
 
 export interface FieldItem {
@@ -117,4 +119,40 @@ export interface UpcomingItem {
   dotColor?: string;
   route?: string;
   cropId?: string;
+}
+
+export interface CustomStageActivity {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  name: string;
+  description?: string;
+  date?: string;
+  notes?: string;
+  createdAt: string;
+  isCustom: true;
+}
+
+export interface ActivityApplicabilityRecord {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  activityId: string;
+  isNotApplicable: boolean;
+  reason: string;
+  additionalNotes?: string;
+  updatedAt: string;
+}
+
+export interface StageApplicabilityRecord {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  stageNumber: number;
+  isNotApplicable: boolean;
+  reason: string;
+  updatedAt: string;
 }
