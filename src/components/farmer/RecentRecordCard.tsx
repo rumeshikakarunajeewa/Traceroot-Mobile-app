@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Animated,
   Platform,
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { RecentRecordItem } from '../../types/farmer.types';
 
 interface RecentRecordCardProps {
@@ -23,7 +23,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
   onAddCorrectionPress,
   forceExpanded = false,
 }) => {
-  const cardScale = useRef(new Animated.Value(1)).current;
+  const [cardScale] = useState(() => new Animated.Value(1));
 
   const handlePressIn = () => {
     Animated.spring(cardScale, {
@@ -184,6 +184,16 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
           <View style={styles.evidenceRow}>
             <View style={styles.evidenceDot} />
             <Text style={styles.evidenceText}>Photo evidence attached</Text>
+          </View>
+        )}
+
+        {/* Saved Notes */}
+        {Boolean(record.notes && record.notes.trim().length > 0) && (
+          <View style={styles.notesContainer}>
+            <Text style={styles.notesText} numberOfLines={3}>
+              <Text style={styles.notesLabel}>Notes: </Text>
+              {record.notes}
+            </Text>
           </View>
         )}
 
@@ -363,6 +373,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#657B6C',
+  },
+  notesContainer: {
+    backgroundColor: '#F5F9F6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#3B7D54',
+  },
+  notesLabel: {
+    fontWeight: '700',
+    color: '#215930',
+    fontSize: 12.5,
+  },
+  notesText: {
+    fontSize: 12.5,
+    color: '#3C4B40',
+    lineHeight: 18,
   },
   divider: {
     height: 1,

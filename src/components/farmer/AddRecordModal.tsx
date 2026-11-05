@@ -13,7 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 interface AddRecordModalProps {
@@ -54,7 +54,9 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
     year: 'numeric',
   }).format(new Date());
 
-  const [selectedType, setSelectedType] = useState<string>('Fertilizing');
+  const [selectedType, setSelectedType] = useState<string>(
+    initialStage === 'Harvesting' ? 'Harvesting' : 'Fertilizing'
+  );
   const [recordDate, setRecordDate] = useState<string>(todayFormatted);
   const [notes, setNotes] = useState<string>('');
   const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
@@ -64,7 +66,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const [dateError, setDateError] = useState<string | null>(null);
 
   const resetForm = () => {
-    setSelectedType('Fertilizing');
+    setSelectedType(initialStage === 'Harvesting' ? 'Harvesting' : 'Fertilizing');
     setRecordDate(todayFormatted);
     setNotes('');
     setPhotoUri(undefined);

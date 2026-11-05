@@ -572,6 +572,11 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
     } else if (isHarvestQuantity) {
       if (hvMeasurementDate.trim()) details['measurementDate'] = hvMeasurementDate.trim();
       if (hvTotalQuantity.trim()) {
+        const parsedQty = parseFloat(hvTotalQuantity.trim());
+        if (isNaN(parsedQty) || parsedQty < 0) {
+          Alert.alert('Invalid Quantity', 'Please enter a valid non-negative number for Total Harvested Quantity.');
+          return;
+        }
         details['harvestQuantity'] = `${hvTotalQuantity.trim()} ${hvQuantityUnit.trim()}`;
         inputs.push(`${hvTotalQuantity.trim()} ${hvQuantityUnit.trim()}`);
       }
@@ -580,7 +585,14 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['numberContainers'] = hvNumberContainers.trim();
         inputs.push(hvNumberContainers.trim());
       }
-      if (hvRejectedQuantity.trim()) details['rejectedQuantity'] = hvRejectedQuantity.trim();
+      if (hvRejectedQuantity.trim()) {
+        const parsedRej = parseFloat(hvRejectedQuantity.trim());
+        if (!isNaN(parsedRej) && parsedRej < 0) {
+          Alert.alert('Invalid Quantity', 'Rejected quantity cannot be negative.');
+          return;
+        }
+        details['rejectedQuantity'] = hvRejectedQuantity.trim();
+      }
     } else if (isQualityGrading) {
       if (hvGradingDate.trim()) details['assessmentDate'] = hvGradingDate.trim();
       if (hvQualityGrade.trim()) {
@@ -600,8 +612,22 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['cleaningMethod'] = hvCleaningMethod.trim();
         inputs.push(hvCleaningMethod.trim());
       }
-      if (hvQuantityAccepted.trim()) details['quantityAccepted'] = hvQuantityAccepted.trim();
-      if (hvQuantityRejected.trim()) details['quantityRejected'] = hvQuantityRejected.trim();
+      if (hvQuantityAccepted.trim()) {
+        const parsedAcc = parseFloat(hvQuantityAccepted.trim());
+        if (!isNaN(parsedAcc) && parsedAcc < 0) {
+          Alert.alert('Invalid Quantity', 'Accepted quantity cannot be negative.');
+          return;
+        }
+        details['quantityAccepted'] = hvQuantityAccepted.trim();
+      }
+      if (hvQuantityRejected.trim()) {
+        const parsedRej = parseFloat(hvQuantityRejected.trim());
+        if (!isNaN(parsedRej) && parsedRej < 0) {
+          Alert.alert('Invalid Quantity', 'Rejected quantity cannot be negative.');
+          return;
+        }
+        details['quantityRejected'] = hvQuantityRejected.trim();
+      }
       if (hvRejectionReason.trim()) details['rejectionReason'] = hvRejectionReason.trim();
     } else if (isHarvestPackaging) {
       if (hvPackagingDate.trim()) details['packagingDate'] = hvPackagingDate.trim();

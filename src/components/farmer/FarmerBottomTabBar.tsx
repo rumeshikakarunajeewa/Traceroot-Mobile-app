@@ -147,7 +147,13 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
         <View style={styles.centerButtonWrapper}>
           <TouchableOpacity
             style={styles.plusButton}
-            onPress={onAddPress}
+            onPress={() => {
+              if (onAddPress) {
+                onAddPress();
+              } else {
+                router.push('/harvests/new');
+              }
+            }}
             activeOpacity={0.85}
           >
             <Feather name="plus" size={26} color="#18361F" />

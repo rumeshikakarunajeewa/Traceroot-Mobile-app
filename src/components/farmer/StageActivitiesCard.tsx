@@ -187,7 +187,7 @@ export const StageActivitiesCard: React.FC<StageActivitiesCardProps> = ({
 
       {/* Card footer note */}
       <Text style={styles.footerNoteText}>
-        Activities will automatically check off after you save notes for each activity.
+        Activities will automatically check off as you log cultivation records for this stage.
       </Text>
     </View>
   );
