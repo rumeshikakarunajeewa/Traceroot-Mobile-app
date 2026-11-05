@@ -50,6 +50,40 @@ interface ActivityNotesFormProps {
 
 function formatDetailLabel(key: string): string {
   switch (key) {
+    // Crop Maturity
+    case 'cropDimensions':
+      return 'Dimensions';
+    case 'cropWeight':
+      return 'Avg Weight';
+    case 'growthCondition':
+      return 'Growth Condition';
+    case 'maturityStage':
+      return 'Maturity Stage';
+    case 'colorAppearance':
+      return 'Color / Appearance';
+    case 'ripenessPercentage':
+      return 'Ripeness';
+    case 'wateringFrequency':
+      return 'Frequency';
+    case 'applicationMethod':
+      return 'Application Method';
+    case 'severityLevel':
+      return 'Severity';
+    case 'cropAppearance':
+      return 'Appearance';
+    case 'qualityCondition':
+      return 'Quality';
+    case 'visibleDefects':
+      return 'Defects / Damage';
+    case 'qualityGrade':
+      return 'Grade';
+    case 'expectedHarvestDate':
+      return 'Expected Harvest';
+    case 'harvestReadiness':
+      return 'Harvest Readiness';
+    case 'maturityObservations':
+      return 'Maturity Observations';
+    // Flowering
     case 'firstFloweringDate':
       return 'First Flowering Date';
     case 'floweringProgress':
@@ -58,6 +92,8 @@ function formatDetailLabel(key: string): string {
       return 'Flower Count';
     case 'observationDate':
       return 'Observation Date';
+    case 'assessmentDate':
+      return 'Assessment Date';
     case 'pollinationMethod':
       return 'Pollination Method';
     case 'pollinatorObservations':
@@ -94,7 +130,7 @@ function formatDetailLabel(key: string): string {
       return 'Treatment';
     case 'flowerHealthCondition':
     case 'healthCondition':
-      return 'Flower Health';
+      return 'Health Condition';
     case 'flowerDamageDrop':
       return 'Damage / Dropping';
     case 'possibleCauses':
@@ -140,36 +176,77 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   const [notesError, setNotesError] = useState<string | null>(null);
   const [showAddAnother, setShowAddAnother] = useState(existingRecords.length === 0);
 
+  // ─── CROP MATURITY ACTIVITIES ─────────────────────────────────────────────
+  // 1. Crop Growth & Development
+  const [cmGrowthDate, setCmGrowthDate] = useState(todayDate);
+  const [cmCropDimensions, setCmCropDimensions] = useState('');
+  const [cmCropWeight, setCmCropWeight] = useState('');
+  const [cmGrowthCondition, setCmGrowthCondition] = useState('Optimal Sizing');
+
+  // 2. Ripeness & Maturity Monitoring
+  const [cmRipenessDate, setCmRipenessDate] = useState(todayDate);
+  const [cmMaturityStage, setCmMaturityStage] = useState('Developing');
+  const [cmColorAppearance, setCmColorAppearance] = useState('');
+  const [cmRipenessPercentage, setCmRipenessPercentage] = useState('');
+
+  // 3. Watering & Irrigation (Maturity)
+  const [cmWateringDate, setCmWateringDate] = useState(todayDate);
+  const [cmIrrigationMethod, setCmIrrigationMethod] = useState('Drip');
+  const [cmWaterQuantity, setCmWaterQuantity] = useState('');
+  const [cmWateringFrequency, setCmWateringFrequency] = useState('');
+
+  // 4. Organic Fertilizer Application (Maturity)
+  const [cmFertilizerName, setCmFertilizerName] = useState('');
+  const [cmFertilizerType, setCmFertilizerType] = useState('Organic Potash');
+  const [cmQuantityUnit, setCmQuantityUnit] = useState('');
+  const [cmFertilizerDate, setCmFertilizerDate] = useState(todayDate);
+  const [cmApplicationMethod, setCmApplicationMethod] = useState('');
+  const [cmOrganicStatus, setCmOrganicStatus] = useState('');
+
+  // 5. Pest & Disease Management (Maturity)
+  const [cmPestDate, setCmPestDate] = useState(todayDate);
+  const [cmPestIdentified, setCmPestIdentified] = useState('');
+  const [cmSymptoms, setCmSymptoms] = useState('');
+  const [cmSeverityLevel, setCmSeverityLevel] = useState('None');
+  const [cmTreatment, setCmTreatment] = useState('');
+
+  // 6. Crop Quality Assessment
+  const [cmQualityDate, setCmQualityDate] = useState(todayDate);
+  const [cmCropAppearance, setCmCropAppearance] = useState('');
+  const [cmQualityCondition, setCmQualityCondition] = useState('Premium (Grade A)');
+  const [cmVisibleDefects, setCmVisibleDefects] = useState('');
+  const [cmQualityGrade, setCmQualityGrade] = useState('');
+
+  // 7. Harvest Readiness Assessment
+  const [cmReadinessDate, setCmReadinessDate] = useState(todayDate);
+  const [cmExpectedHarvestDate, setCmExpectedHarvestDate] = useState('2 Oct 2026');
+  const [cmHarvestReadiness, setCmHarvestReadiness] = useState('1 Week Away');
+  const [cmMaturityObservations, setCmMaturityObservations] = useState('');
+
   // ─── FLOWERING STAGE ACTIVITIES ──────────────────────────────────────────
-  // 1. Flowering Observation
   const [firstFloweringDate, setFirstFloweringDate] = useState(todayDate);
   const [floweringProgress, setFloweringProgress] = useState('Early Bloom (10-25%)');
   const [approxFlowerCount, setApproxFlowerCount] = useState('');
 
-  // 2. Pollination Monitoring
   const [pollinationObsDate, setPollinationObsDate] = useState(todayDate);
   const [pollinationMethod, setPollinationMethod] = useState('Natural');
   const [pollinatorObservations, setPollinatorObservations] = useState('');
 
-  // 3. Flowering Watering & Irrigation
   const [flWateringDate, setFlWateringDate] = useState(todayDate);
   const [flIrrigationMethod, setFlIrrigationMethod] = useState('Drip');
   const [flWaterQuantity, setFlWaterQuantity] = useState('');
 
-  // 4. Flowering Organic Fertilizer Application
   const [flFertilizerName, setFlFertilizerName] = useState('');
   const [flFertilizerType, setFlFertilizerType] = useState('Liquid Foliar');
   const [flQuantityUnit, setFlQuantityUnit] = useState('');
   const [flFertilizerDate, setFlFertilizerDate] = useState(todayDate);
   const [flOrganicCertStatus, setFlOrganicCertStatus] = useState('');
 
-  // 5. Flowering Pest & Disease Management
   const [flPestDate, setFlPestDate] = useState(todayDate);
   const [flPestIdentified, setFlPestIdentified] = useState('');
   const [flSymptoms, setFlSymptoms] = useState('');
   const [flTreatment, setFlTreatment] = useState('');
 
-  // 6. Flower Health Monitoring
   const [flHealthDate, setFlHealthDate] = useState(todayDate);
   const [flHealthCondition, setFlHealthCondition] = useState('Good / Healthy');
   const [flDamageDrop, setFlDamageDrop] = useState('Zero Drop');
@@ -207,6 +284,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
   const actId = activity.id;
   const actName = activity.name;
 
+  // Crop Maturity activities
+  const isCropGrowth = actId === 'crop_growth_development' || actName === 'Crop Growth & Development';
+  const isRipeness = actId === 'ripeness_maturity_monitoring' || actName === 'Ripeness & Maturity Monitoring';
+  const isMaturityIrrigation = actId === 'maturity_irrigation';
+  const isMaturityFertilizer = actId === 'maturity_fertilizer';
+  const isMaturityPest = actId === 'maturity_pest_management';
+  const isQualityAssessment = actId === 'crop_quality_assessment' || actName === 'Crop Quality Assessment';
+  const isHarvestReadiness = actId === 'harvest_readiness_assessment' || actName === 'Harvest Readiness Assessment';
+
   // Flowering activities
   const isFloweringObs = actId === 'flowering_observation' || actName === 'Flowering Observation';
   const isPollination = actId === 'pollination_monitoring' || actName === 'Pollination Monitoring';
@@ -217,12 +303,15 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
 
   // Vegetative Growth activities
   const isVgWatering =
-    actId === 'act-vg-watering' || (!isFloweringIrrigation && actName === 'Watering & Irrigation' && stageName?.toLowerCase().includes('vegetative'));
+    actId === 'act-vg-watering' ||
+    (!isFloweringIrrigation && !isMaturityIrrigation && actName === 'Watering & Irrigation' && stageName?.toLowerCase().includes('vegetative'));
   const isVgFertilizer =
-    actId === 'act-vg-fertilizer' || (!isFloweringFertilizer && actName === 'Organic Fertilizer Application' && stageName?.toLowerCase().includes('vegetative'));
+    actId === 'act-vg-fertilizer' ||
+    (!isFloweringFertilizer && !isMaturityFertilizer && actName === 'Organic Fertilizer Application' && stageName?.toLowerCase().includes('vegetative'));
   const isVgWeeding = actId === 'act-vg-weeding' || actName === 'Weeding & Soil Care';
   const isVgPest =
-    actId === 'act-vg-pest' || (!isFloweringPest && actName.toLowerCase().includes('pest') && stageName?.toLowerCase().includes('vegetative'));
+    actId === 'act-vg-pest' ||
+    (!isFloweringPest && !isMaturityPest && actName.toLowerCase().includes('pest') && stageName?.toLowerCase().includes('vegetative'));
   const isVgGrowth = actId === 'act-vg-growth' || actName === 'Plant Growth Observation';
   const isVgEnv = actId === 'act-vg-env' || actName === 'Environmental Monitoring';
 
@@ -258,8 +347,100 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
     const details: Record<string, string> = {};
     const inputs: string[] = [];
 
-    // Flowering: 1. Flowering Observation
-    if (isFloweringObs) {
+    // ─── CROP MATURITY ───
+    if (isCropGrowth) {
+      if (cmGrowthDate.trim()) details['observationDate'] = cmGrowthDate.trim();
+      if (cmCropDimensions.trim()) {
+        details['cropDimensions'] = cmCropDimensions.trim();
+        inputs.push(cmCropDimensions.trim());
+      }
+      if (cmCropWeight.trim()) {
+        details['cropWeight'] = cmCropWeight.trim();
+        inputs.push(cmCropWeight.trim());
+      }
+      if (cmGrowthCondition.trim()) {
+        details['growthCondition'] = cmGrowthCondition.trim();
+        inputs.push(cmGrowthCondition.trim());
+      }
+    } else if (isRipeness) {
+      if (cmRipenessDate.trim()) details['observationDate'] = cmRipenessDate.trim();
+      if (cmMaturityStage.trim()) {
+        details['maturityStage'] = cmMaturityStage.trim();
+        inputs.push(cmMaturityStage.trim());
+      }
+      if (cmColorAppearance.trim()) details['colorAppearance'] = cmColorAppearance.trim();
+      if (cmRipenessPercentage.trim()) {
+        details['ripenessPercentage'] = cmRipenessPercentage.trim();
+        inputs.push(`${cmRipenessPercentage.trim()} Ripeness`);
+      }
+    } else if (isMaturityIrrigation) {
+      if (cmWateringDate.trim()) details['wateringDate'] = cmWateringDate.trim();
+      if (cmIrrigationMethod.trim()) {
+        details['irrigationMethod'] = cmIrrigationMethod.trim();
+        inputs.push(cmIrrigationMethod.trim());
+      }
+      if (cmWaterQuantity.trim()) {
+        details['waterQuantity'] = cmWaterQuantity.trim();
+        inputs.push(cmWaterQuantity.trim());
+      }
+      if (cmWateringFrequency.trim()) details['wateringFrequency'] = cmWateringFrequency.trim();
+    } else if (isMaturityFertilizer) {
+      if (cmFertilizerName.trim()) details['fertilizerName'] = cmFertilizerName.trim();
+      if (cmFertilizerType.trim()) details['fertilizerType'] = cmFertilizerType.trim();
+      if (cmQuantityUnit.trim()) {
+        details['quantityUnit'] = cmQuantityUnit.trim();
+        if (cmFertilizerName.trim()) {
+          inputs.push(`${cmFertilizerName.trim()} ${cmQuantityUnit.trim()}`);
+        } else {
+          inputs.push(cmQuantityUnit.trim());
+        }
+      } else if (cmFertilizerName.trim()) {
+        inputs.push(cmFertilizerName.trim());
+      }
+      if (cmFertilizerDate.trim()) details['applicationDate'] = cmFertilizerDate.trim();
+      if (cmApplicationMethod.trim()) details['applicationMethod'] = cmApplicationMethod.trim();
+      if (cmOrganicStatus.trim()) {
+        details['organicCertStatus'] = cmOrganicStatus.trim();
+        inputs.push(cmOrganicStatus.trim());
+      }
+    } else if (isMaturityPest) {
+      if (cmPestDate.trim()) details['observationDate'] = cmPestDate.trim();
+      if (cmPestIdentified.trim()) {
+        details['pestIdentified'] = cmPestIdentified.trim();
+        inputs.push(cmPestIdentified.trim());
+      }
+      if (cmSymptoms.trim()) details['symptoms'] = cmSymptoms.trim();
+      if (cmSeverityLevel.trim()) {
+        details['severityLevel'] = cmSeverityLevel.trim();
+        inputs.push(`Severity: ${cmSeverityLevel.trim()}`);
+      }
+      if (cmTreatment.trim()) details['treatment'] = cmTreatment.trim();
+    } else if (isQualityAssessment) {
+      if (cmQualityDate.trim()) details['assessmentDate'] = cmQualityDate.trim();
+      if (cmCropAppearance.trim()) details['cropAppearance'] = cmCropAppearance.trim();
+      if (cmQualityCondition.trim()) {
+        details['qualityCondition'] = cmQualityCondition.trim();
+        inputs.push(cmQualityCondition.trim());
+      }
+      if (cmVisibleDefects.trim()) details['visibleDefects'] = cmVisibleDefects.trim();
+      if (cmQualityGrade.trim()) {
+        details['qualityGrade'] = cmQualityGrade.trim();
+        inputs.push(`Grade: ${cmQualityGrade.trim()}`);
+      }
+    } else if (isHarvestReadiness) {
+      if (cmReadinessDate.trim()) details['assessmentDate'] = cmReadinessDate.trim();
+      if (cmExpectedHarvestDate.trim()) {
+        details['expectedHarvestDate'] = cmExpectedHarvestDate.trim();
+        inputs.push(`Harvest: ${cmExpectedHarvestDate.trim()}`);
+      }
+      if (cmHarvestReadiness.trim()) {
+        details['harvestReadiness'] = cmHarvestReadiness.trim();
+        inputs.push(cmHarvestReadiness.trim());
+      }
+      if (cmMaturityObservations.trim()) details['maturityObservations'] = cmMaturityObservations.trim();
+    }
+    // ─── FLOWERING ───
+    else if (isFloweringObs) {
       if (firstFloweringDate.trim()) details['firstFloweringDate'] = firstFloweringDate.trim();
       if (floweringProgress.trim()) {
         details['floweringProgress'] = floweringProgress.trim();
@@ -269,9 +450,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['approxFlowerCount'] = approxFlowerCount.trim();
         inputs.push(approxFlowerCount.trim());
       }
-    }
-    // Flowering: 2. Pollination Monitoring
-    else if (isPollination) {
+    } else if (isPollination) {
       if (pollinationObsDate.trim()) details['observationDate'] = pollinationObsDate.trim();
       if (pollinationMethod.trim()) {
         details['pollinationMethod'] = pollinationMethod.trim();
@@ -280,9 +459,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       if (pollinatorObservations.trim()) {
         details['pollinatorObservations'] = pollinatorObservations.trim();
       }
-    }
-    // Flowering: 3. Watering & Irrigation
-    else if (isFloweringIrrigation) {
+    } else if (isFloweringIrrigation) {
       if (flWateringDate.trim()) details['wateringDate'] = flWateringDate.trim();
       if (flIrrigationMethod.trim()) {
         details['irrigationMethod'] = flIrrigationMethod.trim();
@@ -292,9 +469,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['waterQuantity'] = flWaterQuantity.trim();
         inputs.push(flWaterQuantity.trim());
       }
-    }
-    // Flowering: 4. Organic Fertilizer Application
-    else if (isFloweringFertilizer) {
+    } else if (isFloweringFertilizer) {
       if (flFertilizerName.trim()) details['fertilizerName'] = flFertilizerName.trim();
       if (flFertilizerType.trim()) details['fertilizerType'] = flFertilizerType.trim();
       if (flQuantityUnit.trim()) {
@@ -312,9 +487,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['organicCertStatus'] = flOrganicCertStatus.trim();
         inputs.push(flOrganicCertStatus.trim());
       }
-    }
-    // Flowering: 5. Pest & Disease Management
-    else if (isFloweringPest) {
+    } else if (isFloweringPest) {
       if (flPestDate.trim()) details['observationDate'] = flPestDate.trim();
       if (flPestIdentified.trim()) {
         details['pestIdentified'] = flPestIdentified.trim();
@@ -322,9 +495,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       }
       if (flSymptoms.trim()) details['symptoms'] = flSymptoms.trim();
       if (flTreatment.trim()) details['treatment'] = flTreatment.trim();
-    }
-    // Flowering: 6. Flower Health Monitoring
-    else if (isFlowerHealth) {
+    } else if (isFlowerHealth) {
       if (flHealthDate.trim()) details['observationDate'] = flHealthDate.trim();
       if (flHealthCondition.trim()) {
         details['flowerHealthCondition'] = flHealthCondition.trim();
@@ -336,7 +507,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       }
       if (flPossibleCauses.trim()) details['possibleCauses'] = flPossibleCauses.trim();
     }
-    // Vegetative Growth: 1. Watering & Irrigation
+    // ─── VEGETATIVE GROWTH ───
     else if (isVgWatering) {
       if (vgWateringDate.trim()) details['wateringDate'] = vgWateringDate.trim();
       if (vgWaterQuantity.trim()) {
@@ -347,9 +518,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['irrigationMethod'] = vgIrrigationMethod.trim();
         inputs.push(vgIrrigationMethod.trim());
       }
-    }
-    // Vegetative Growth: 2. Organic Fertilizer Application
-    else if (isVgFertilizer) {
+    } else if (isVgFertilizer) {
       if (vgFertilizerName.trim()) details['fertilizerName'] = vgFertilizerName.trim();
       if (vgFertilizerQuantity.trim()) details['fertilizerQuantity'] = vgFertilizerQuantity.trim();
       if (vgFertilizerDate.trim()) details['applicationDate'] = vgFertilizerDate.trim();
@@ -358,9 +527,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       } else if (vgFertilizerName.trim()) {
         inputs.push(vgFertilizerName.trim());
       }
-    }
-    // Vegetative Growth: 3. Weeding & Soil Care
-    else if (isVgWeeding) {
+    } else if (isVgWeeding) {
       if (vgWeedingDate.trim()) details['weedingDate'] = vgWeedingDate.trim();
       if (vgWeedingMethod.trim()) {
         details['weedingMethod'] = vgWeedingMethod.trim();
@@ -369,9 +536,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       if (vgSoilCareActivities.trim()) {
         details['soilCareActivities'] = vgSoilCareActivities.trim();
       }
-    }
-    // Vegetative Growth: 4. Pest & Disease Monitoring
-    else if (isVgPest) {
+    } else if (isVgPest) {
       if (vgPestDate.trim()) details['observationDate'] = vgPestDate.trim();
       if (vgPestIdentified.trim()) {
         details['pestIdentified'] = vgPestIdentified.trim();
@@ -379,9 +544,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
       }
       if (vgSymptoms.trim()) details['symptoms'] = vgSymptoms.trim();
       if (vgTreatment.trim()) details['treatment'] = vgTreatment.trim();
-    }
-    // Vegetative Growth: 5. Plant Growth Observation
-    else if (isVgGrowth) {
+    } else if (isVgGrowth) {
       if (vgGrowthDate.trim()) details['observationDate'] = vgGrowthDate.trim();
       if (vgPlantHeight.trim()) {
         details['plantHeight'] = vgPlantHeight.trim();
@@ -392,9 +555,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
         details['healthCondition'] = vgHealthCondition.trim();
         inputs.push(vgHealthCondition.trim());
       }
-    }
-    // Vegetative Growth: 6. Environmental Monitoring
-    else if (isVgEnv) {
+    } else if (isVgEnv) {
       if (vgEnvDate.trim()) details['recordingDate'] = vgEnvDate.trim();
       if (vgTemperature.trim()) {
         details['temperature'] = vgTemperature.trim();
@@ -528,6 +689,497 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
           <View style={styles.formSection}>
             {existingRecords.length > 0 && (
               <Text style={styles.sectionHeading}>New Record</Text>
+            )}
+
+            {/* ─── CROP MATURITY: 1. Crop Growth & Development ─── */}
+            {isCropGrowth && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observation Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 25 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmGrowthDate}
+                    onChangeText={setCmGrowthDate}
+                  />
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Crop Dimensions (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 6.5 cm diameter"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmCropDimensions}
+                      onChangeText={setCmCropDimensions}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Average Weight (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 150g per fruit"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmCropWeight}
+                      onChangeText={setCmCropWeight}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Growth Condition</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Optimal Sizing', 'Normal Growth', 'Slow Development', 'Stunted'].map((cond) => (
+                      <TouchableOpacity
+                        key={cond}
+                        style={[
+                          styles.optionPill,
+                          cmGrowthCondition === cond && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmGrowthCondition(cond)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmGrowthCondition === cond && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {cond}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── CROP MATURITY: 2. Ripeness & Maturity Monitoring ─── */}
+            {isRipeness && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observation Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 25 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmRipenessDate}
+                    onChangeText={setCmRipenessDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Maturity Stage</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Immature', 'Developing', 'Nearly Mature', 'Mature'].map((stg) => (
+                      <TouchableOpacity
+                        key={stg}
+                        style={[
+                          styles.optionPill,
+                          cmMaturityStage === stg && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmMaturityStage(stg)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmMaturityStage === stg && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {stg}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Color / Appearance Changes</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Turning from green to light red / orange"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmColorAppearance}
+                    onChangeText={setCmColorAppearance}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Estimated Ripeness Percentage (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 70%"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmRipenessPercentage}
+                    onChangeText={setCmRipenessPercentage}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── CROP MATURITY: 3. Watering & Irrigation ─── */}
+            {isMaturityIrrigation && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Watering Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 25 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmWateringDate}
+                    onChangeText={setCmWateringDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Irrigation Method</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Drip', 'Sprinkler', 'Manual Furrow', 'Reduced Irrigation'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[
+                          styles.optionPill,
+                          cmIrrigationMethod === m && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmIrrigationMethod(m)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmIrrigationMethod === m && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Water Quantity (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 3L/plant, 10mm"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmWaterQuantity}
+                      onChangeText={setCmWaterQuantity}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Watering Frequency (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Every 2 days"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmWateringFrequency}
+                      onChangeText={setCmWateringFrequency}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── CROP MATURITY: 4. Organic Fertilizer Application ─── */}
+            {isMaturityFertilizer && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Fertilizer Name</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Organic Potassium Sulfate, Wood Ash Extract, Compost Tea"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmFertilizerName}
+                    onChangeText={setCmFertilizerName}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Fertilizer Type</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Liquid Foliar', 'Granular Soil', 'Organic Potash', 'Bio-fertilizer'].map((ft) => (
+                      <TouchableOpacity
+                        key={ft}
+                        style={[
+                          styles.optionPill,
+                          cmFertilizerType === ft && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmFertilizerType(ft)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmFertilizerType === ft && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {ft}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Quantity and Unit</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 1.5 kg, 250 ml"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmQuantityUnit}
+                      onChangeText={setCmQuantityUnit}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Application Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 25 Sep 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmFertilizerDate}
+                      onChangeText={setCmFertilizerDate}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Application Method (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Drip fertigation, Soil drench"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmApplicationMethod}
+                      onChangeText={setCmApplicationMethod}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Organic Status / Evidence (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Certified Organic (OMRI)"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmOrganicStatus}
+                      onChangeText={setCmOrganicStatus}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── CROP MATURITY: 5. Pest & Disease Management ─── */}
+            {isMaturityPest && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observation Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 25 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmPestDate}
+                    onChangeText={setCmPestDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Pest or Disease Identified</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Fruit fly, Blossom end rot, None detected"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmPestIdentified}
+                    onChangeText={setCmPestIdentified}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Symptoms or Crop Damage</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Minor skin scarring, zero internal damage, none"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmSymptoms}
+                    onChangeText={setCmSymptoms}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Severity Level (Optional)</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['None', 'Low (<5%)', 'Moderate (5-15%)', 'High (>15%)'].map((sev) => (
+                      <TouchableOpacity
+                        key={sev}
+                        style={[
+                          styles.optionPill,
+                          cmSeverityLevel === sev && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmSeverityLevel(sev)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmSeverityLevel === sev && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {sev}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Treatment Applied (Optional — Monitoring only if blank)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Optional — e.g. Organic lure trap, or blank (monitoring only)"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmTreatment}
+                    onChangeText={setCmTreatment}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ─── CROP MATURITY: 6. Crop Quality Assessment ─── */}
+            {isQualityAssessment && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Assessment Date</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. 25 Sep 2026"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmQualityDate}
+                    onChangeText={setCmQualityDate}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Crop Appearance</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Uniform shape, smooth glossy skin, rich red color"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmCropAppearance}
+                    onChangeText={setCmCropAppearance}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quality Condition</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Premium (Grade A)', 'Standard (Grade B)', 'Acceptable', 'Cull / Rejected'].map((qc) => (
+                      <TouchableOpacity
+                        key={qc}
+                        style={[
+                          styles.optionPill,
+                          cmQualityCondition === qc && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmQualityCondition(qc)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmQualityCondition === qc && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {qc}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Visible Defects or Damage</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Zero cracking, minor sunscald on 2%"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmVisibleDefects}
+                      onChangeText={setCmVisibleDefects}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Quality Grade (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Grade A Export, Class 1"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmQualityGrade}
+                      onChangeText={setCmQualityGrade}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ─── CROP MATURITY: 7. Harvest Readiness Assessment ─── */}
+            {isHarvestReadiness && (
+              <>
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Assessment Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 25 Sep 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmReadinessDate}
+                      onChangeText={setCmReadinessDate}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Expected Harvest Date</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 2 Oct 2026"
+                      placeholderTextColor="#9CB0A1"
+                      value={cmExpectedHarvestDate}
+                      onChangeText={setCmExpectedHarvestDate}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Harvest Readiness Status</Text>
+                  <View style={styles.optionPillGroup}>
+                    {['Ready for Harvest', '1-3 Days Away', '1 Week Away', 'Not Ready'].map((hr) => (
+                      <TouchableOpacity
+                        key={hr}
+                        style={[
+                          styles.optionPill,
+                          cmHarvestReadiness === hr && styles.optionPillSelected,
+                        ]}
+                        onPress={() => setCmHarvestReadiness(hr)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionPillText,
+                            cmHarvestReadiness === hr && styles.optionPillTextSelected,
+                          ]}
+                        >
+                          {hr}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Maturity Observations</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Firmness optimal, Brix sugar 5.2, separation clean"
+                    placeholderTextColor="#9CB0A1"
+                    value={cmMaturityObservations}
+                    onChangeText={setCmMaturityObservations}
+                  />
+                </View>
+              </>
             )}
 
             {/* ─── FLOWERING: 1. Flowering Observation ─── */}
@@ -1152,7 +1804,7 @@ const ActivityNotesForm: React.FC<ActivityNotesFormProps> = ({
               </Text>
               <TextInput
                 style={[styles.textInput, styles.multilineInput, notesError && styles.inputErrorBorder]}
-                placeholder="Enter detailed activity notes and field observations..."
+                placeholder="Enter detailed activity notes and observations..."
                 placeholderTextColor="#9CB0A1"
                 value={notes}
                 onChangeText={(val) => {

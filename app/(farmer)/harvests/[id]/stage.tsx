@@ -94,7 +94,8 @@ export default function StageDetailsScreen() {
       return `${start} – ${end}`;
     } else {
       const stageItem = crop.stages?.[activeStageNumber - 1];
-      return stageItem?.date || 'Est. Upcoming';
+      const start = stageItem?.date || '25 Sep';
+      return start.includes('Est') ? start : `${start} – Present`;
     }
   }, [crop, activeStageNumber]);
 

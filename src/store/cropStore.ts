@@ -202,6 +202,7 @@ export function saveActivityNotes(payload: SaveActivityNotesPayload): RecentReco
     payload.details?.applicationDate ||
     payload.details?.weedingDate ||
     payload.details?.observationDate ||
+    payload.details?.assessmentDate ||
     payload.details?.recordingDate ||
     dateFormatted;
 
