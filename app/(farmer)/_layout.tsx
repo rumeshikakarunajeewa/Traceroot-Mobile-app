@@ -51,6 +51,7 @@ export default function FarmerLayout() {
       <Tabs.Screen name="harvests/index" />
       <Tabs.Screen name="harvests/new" />
       <Tabs.Screen name="harvests/[id]" />
+      <Tabs.Screen name="harvests/[id]/stage" />
       <Tabs.Screen name="contracts" />
       <Tabs.Screen name="suppliers" />
       <Tabs.Screen name="profile" />

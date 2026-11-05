@@ -64,13 +64,23 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
     }
   };
 
-  const isHomeFocused = currentRouteName === 'index';
+  const isHomeFocused =
+    currentRouteName === 'index' ||
+    currentRouteName === 'harvests/[id]' ||
+    currentRouteName === 'harvests/[id]/stage';
   const isCropsFocused = currentRouteName === 'crops';
   const isOrdersFocused = currentRouteName === 'orders';
   const isMessagesFocused = currentRouteName === 'messages';
 
-  // Do not render floating tab bar on full-screen detail subroutes (e.g. harvests/[id], harvests/new)
-  const isTabScreen = ['index', 'crops', 'orders', 'messages'].includes(currentRouteName);
+  // Render floating tab bar on main tabs, farming journey, and stage details
+  const isTabScreen = [
+    'index',
+    'crops',
+    'orders',
+    'messages',
+    'harvests/[id]',
+    'harvests/[id]/stage',
+  ].includes(currentRouteName);
   if (!isTabScreen) {
     return null;
   }

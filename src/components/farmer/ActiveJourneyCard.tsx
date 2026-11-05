@@ -83,8 +83,14 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
     }).start();
   };
 
-  // Predefined stage titles matching standard progression
-  const stageLabels = ['Seedling', 'Growth', 'Flowering', 'Fruit', 'Harvest'];
+  // Predefined stage titles matching standard progression (exactly 5 stages)
+  const stageLabels = [
+    'Planting',
+    'Vegetative Growth',
+    'Flowering',
+    'Crop Maturity',
+    'Harvesting',
+  ];
   const currentStageIdx = (crop.currentStageIndex ?? 3) - 1; // 0-indexed (e.g. 2 for Flowering)
 
   // Construct subtitle like "Greenhouse · Day 47 · since 15 Aug"
@@ -94,7 +100,7 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
   const subTitle = `${envText} · ${dayText} · ${sinceText}`;
 
   // Next stage details
-  const nextStageTitle = crop.nextStageName || 'Fruit development';
+  const nextStageTitle = crop.nextStageName || 'Crop Maturity';
   const nextStageTime = crop.nextStageEst || 'est. next week';
 
   // Evidence counts
@@ -218,7 +224,7 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
                       styles.nodeLabel,
                       isCurrent ? styles.nodeLabelCurrent : styles.nodeLabelNormal,
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
                     {label}
                   </Text>
@@ -498,7 +504,8 @@ const styles = StyleSheet.create({
     borderColor: '#D4DDD5',
   },
   nodeLabel: {
-    fontSize: 11,
+    fontSize: 10,
+    lineHeight: 12,
     marginTop: 7,
     textAlign: 'center',
   },

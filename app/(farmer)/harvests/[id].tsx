@@ -216,6 +216,19 @@ export default function CropFarmingJourneyScreen() {
     applyNewPhoto(undefined);
   };
 
+  const handleOpenStage = (stage: JourneyStage) => {
+    if (!field) return;
+    router.push({
+      pathname: '/(farmer)/harvests/[id]/stage',
+      params: {
+        id: field.id,
+        stageId: stage.key || stage.id,
+        stageNumber: String(stage.stageNumber),
+        batchId: field.batchId,
+      },
+    });
+  };
+
   const stages: JourneyStage[] = field?.stages || [];
   const currentStageIndex = field?.currentStageIndex ?? 3;
   const totalStages = field?.totalStages ?? stages.length ?? 5;
@@ -480,8 +493,10 @@ export default function CropFarmingJourneyScreen() {
                     )}
                   </View>
 
-                  {/* Right Stage Card */}
-                  <View
+                  {/* Right Stage Card (Clickable to open Stage Details) */}
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    onPress={() => handleOpenStage(stage)}
                     style={[
                       styles.stageCard,
                       isCurrent && styles.stageCardCurrent,
@@ -512,16 +527,12 @@ export default function CropFarmingJourneyScreen() {
                         )}
 
                         {/* View -> Link */}
-                        {!isUpcoming && (
-                          <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => {
-                              Alert.alert('Stage Records', `Viewing ${stage.title} records`);
-                            }}
-                          >
-                            <Text style={styles.viewLinkText}>View →</Text>
-                          </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleOpenStage(stage)}
+                        >
+                          <Text style={styles.viewLinkText}>View →</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
 
@@ -542,7 +553,7 @@ export default function CropFarmingJourneyScreen() {
                         </View>
                       )}
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })}
