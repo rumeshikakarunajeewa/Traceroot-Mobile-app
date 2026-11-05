@@ -14,12 +14,14 @@ interface RecentRecordCardProps {
   record: RecentRecordItem;
   onPress: () => void;
   onAddCorrectionPress?: () => void;
+  forceExpanded?: boolean;
 }
 
 export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
   record,
   onPress,
   onAddCorrectionPress,
+  forceExpanded = false,
 }) => {
   const cardScale = useRef(new Animated.Value(1)).current;
 
@@ -40,8 +42,8 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
     }).start();
   };
 
-  // If it's a compact record (e.g. TR-0047 Growth Observation row)
-  if (record.isCompact) {
+  // If it's a compact record (e.g. TR-0047 Growth Observation row) unless forceExpanded is requested
+  if (record.isCompact && !forceExpanded) {
     return (
       <Animated.View style={[styles.compactWrapper, { transform: [{ scale: cardScale }] }]}>
         <TouchableOpacity
@@ -102,7 +104,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
             )}
 
             {/* Original Badge with doc icon */}
-            {record.isOriginal && (
+            {record.isOriginal && !record.isCorrection && (
               <View style={styles.originalPill}>
                 <Ionicons
                   name="document-text-outline"
@@ -113,6 +115,19 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
                 <Text style={styles.originalPillText}>Original</Text>
               </View>
             )}
+
+            {/* Correction Badge */}
+            {record.isCorrection && (
+              <View style={styles.correctionPill}>
+                <Ionicons
+                  name="git-branch-outline"
+                  size={10.5}
+                  color="#B45309"
+                  style={{ marginRight: 3.5 }}
+                />
+                <Text style={styles.correctionPillText}>Corrected</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -120,6 +135,12 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
         <View style={styles.titleSection}>
           <Text style={styles.recordTitle}>{record.title}</Text>
           <Text style={styles.stageText}>{record.stage}</Text>
+          {record.correctsRecordCode && (
+            <Text style={styles.correctionLinkText}>
+              ↪ Linked correction to {record.correctsRecordCode}
+              {record.correctionReason ? ` · "${record.correctionReason}"` : ''}
+            </Text>
+          )}
         </View>
 
         {/* Metadata chips row: Date, Time, Location */}
@@ -252,6 +273,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2B7045',
   },
+  correctionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  correctionPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
   titleSection: {
     marginBottom: 12,
   },
@@ -266,6 +302,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#768B7C',
+  },
+  correctionLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#B45309',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   chipsRow: {
     flexDirection: 'row',

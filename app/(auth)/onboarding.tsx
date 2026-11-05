@@ -85,7 +85,7 @@ export default function OnboardingScreen() {
         <Animated.View style={[styles.contentContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <Text style={styles.title}>Track Your Crop{'\n'}Journey</Text>
           <Text style={styles.subtitle}>
-            Follow every cultivation stage from seedling to harvest with fully verified, immutable records.
+            Follow every cultivation stage from planting to harvesting with fully verified, immutable records.
           </Text>
         </Animated.View>
 

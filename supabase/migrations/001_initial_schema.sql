@@ -68,9 +68,9 @@ CREATE TABLE IF NOT EXISTS harvests (
   expected_harvest_date DATE,
   status                TEXT NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active','harvested','sold','contracted')),
-  current_stage         TEXT NOT NULL DEFAULT 'seedling'
+  current_stage         TEXT NOT NULL DEFAULT 'planting'
                         CHECK (current_stage IN (
-                          'seedling','vegetative_growth','flowering','fruiting','harvested'
+                          'planting','vegetative_growth','flowering','crop_maturity','harvesting'
                         )),
   description           TEXT,
   cover_image_url       TEXT,
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS cultivation_records (
   harvest_id      UUID NOT NULL REFERENCES harvests(id) ON DELETE CASCADE,
   farmer_id       UUID NOT NULL REFERENCES profiles(id),
   stage           TEXT NOT NULL CHECK (stage IN (
-                    'seedling','vegetative_growth','flowering','fruiting','harvested'
+                    'planting','vegetative_growth','flowering','crop_maturity','harvesting'
                   )),
   activity_type   TEXT NOT NULL,
   notes           TEXT,

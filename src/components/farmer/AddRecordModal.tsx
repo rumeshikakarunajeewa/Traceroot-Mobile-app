@@ -19,12 +19,14 @@ import * as ImagePicker from 'expo-image-picker';
 interface AddRecordModalProps {
   visible: boolean;
   cropName: string;
+  initialStage?: string;
   onClose: () => void;
   onSave: (record: {
     recordType: string;
     date: string;
     notes?: string;
     photoUri?: string;
+    stage?: string;
   }) => void;
 }
 
@@ -35,13 +37,14 @@ const RECORD_TYPES = [
   'Spraying',
   'Weeding',
   'Observation',
-  'Harvest',
+  'Harvesting',
   'Other',
 ];
 
 export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   visible,
   cropName,
+  initialStage,
   onClose,
   onSave,
 }) => {
@@ -166,6 +169,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
       date: recordDate.trim(),
       notes: notes.trim() || undefined,
       photoUri,
+      stage: initialStage,
     });
 
     resetForm();
@@ -194,7 +198,10 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                 <View style={styles.sheetHeader}>
                   <View>
                     <Text style={styles.sheetTitle}>Add Record</Text>
-                    <Text style={styles.sheetSubtitle}>Log an activity for {cropName}</Text>
+                    <Text style={styles.sheetSubtitle}>
+                      Log an activity for {cropName}
+                      {initialStage ? ` · ${initialStage}` : ''}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.closeCircleBtn}

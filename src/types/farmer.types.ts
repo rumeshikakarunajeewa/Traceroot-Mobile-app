@@ -1,6 +1,9 @@
+import { FarmingStageKeyType } from '../constants/stages';
+
 export interface JourneyStage {
   id: string;
   stageNumber: number;
+  key?: FarmingStageKeyType;
   title: string;
   subtitle: string;
   date: string;
@@ -37,6 +40,7 @@ export interface FieldItem {
   nextStageName?: string;
   nextStageEst?: string;
   daysCount?: number;
+  batchId?: string;
 }
 
 export interface FarmerProfile {
@@ -87,10 +91,20 @@ export interface RecentRecordItem {
   location?: string;
   inputs?: string[];
   photoEvidenceAttached?: boolean;
+  photoUrl?: string;
   isLocked?: boolean;
   isOriginal?: boolean;
+  isCorrection?: boolean;
+  correctsRecordCode?: string;
+  correctionReason?: string;
+  correctedAt?: string;
   cropId?: string;
+  batchId?: string;
+  activityId?: string;
   isCompact?: boolean;
+  notes?: string;
+  details?: Record<string, any>;
+  createdAt?: string;
 }
 
 export interface UpcomingItem {
