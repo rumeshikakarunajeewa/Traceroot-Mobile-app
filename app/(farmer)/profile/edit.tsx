@@ -678,3 +678,4 @@ const styles = StyleSheet.create({
     color: '#455F4A',
   },
 });
+

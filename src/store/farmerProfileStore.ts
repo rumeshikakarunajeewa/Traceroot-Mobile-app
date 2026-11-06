@@ -190,3 +190,4 @@ export function useFarmerProfile() {
     updateSettings: updateFarmerSettings,
   };
 }
+
