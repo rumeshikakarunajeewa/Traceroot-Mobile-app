@@ -27,6 +27,11 @@ export interface Order {
   status: OrderStatus;
   status_timestamps: Record<string, string | null>;
   decline_reason?: string | null;
+  deadline?: string;
+  buyer_notes?: string;
+  linked_crop_batch?: string;
+  crop_route_id?: string;
+  invoice_number?: string;
 }
 
 export const INITIAL_MOCK_ORDERS: Order[] = [
@@ -48,6 +53,11 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       placed: '2026-09-10T08:30:00Z',
       accepted: '2026-09-10T10:15:00Z',
     },
+    deadline: '25 Sep 2026',
+    buyer_notes: 'Greenhouse-grown preferred. No pesticides after 7 Sep.',
+    linked_crop_batch: 'Tomato — Batch #3 (Kandy Farm)',
+    crop_route_id: 'field-tomato',
+    invoice_number: 'INV-2026-0012',
   },
   {
     id: 'ORD-0015',
@@ -66,6 +76,11 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
     status_timestamps: {
       placed: '2026-09-11T09:00:00Z',
     },
+    deadline: '28 Sep 2026',
+    buyer_notes: 'Freshly harvested carrots, grade-A organic certification.',
+    linked_crop_batch: 'Carrots — Batch #1 (Kandy Farm)',
+    crop_route_id: 'field-carrots',
+    invoice_number: 'INV-2026-0015',
   },
   {
     id: 'ORD-0008',
@@ -87,6 +102,11 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       ready: '2026-09-03T11:00:00Z',
       delivered: '2026-09-04T15:30:00Z',
     },
+    deadline: '05 Sep 2026',
+    buyer_notes: 'Eco-friendly cardboard packing preferred.',
+    linked_crop_batch: 'Green Beans — Batch #2 (Kandy Farm)',
+    crop_route_id: 'field-beans',
+    invoice_number: 'INV-2026-0008',
   },
   {
     id: 'ORD-0004',
@@ -106,6 +126,11 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       placed: '2026-08-28T14:10:00Z',
       cancelled: '2026-08-29T10:00:00Z',
     },
+    deadline: '01 Sep 2026',
+    buyer_notes: 'Storage in aerated sacks.',
+    linked_crop_batch: 'Potatoes — Batch #1 (Kandy Farm)',
+    crop_route_id: 'field-potato',
+    invoice_number: 'INV-2026-0004',
   },
 ];
 

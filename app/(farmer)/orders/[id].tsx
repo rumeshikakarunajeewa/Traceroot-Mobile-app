@@ -24,6 +24,7 @@ import {
 import StatusBadge from '../../../src/components/farmer/StatusBadge';
 import ProgressBar from '../../../src/components/farmer/ProgressBar';
 import AcceptDeclineModal from '../../../src/components/farmer/AcceptDeclineModal';
+import InvoiceModal from '../../../src/components/farmer/InvoiceModal';
 
 export default function OrderDetailsScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
@@ -37,6 +38,7 @@ export default function OrderDetailsScreen() {
   });
 
   const [modalAction, setModalAction] = useState<'accept' | 'decline' | null>(null);
+  const [invoiceVisible, setInvoiceVisible] = useState<boolean>(false);
 
   const formattedDate = new Date(order.created_at).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -195,20 +197,41 @@ export default function OrderDetailsScreen() {
           </View>
         </View>
 
-        {/* Traceability Link */}
+        {/* Purchase Invoice & Bill (Replaces QR Card) */}
         <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Traceability & Verification</Text>
+          <Text style={styles.cardSectionTitle}>Order Invoice & Purchase Bill</Text>
           <Text style={styles.traceDesc}>
-            This order is cryptographically tied to the TraceRoot Farming Journey batch for{' '}
-            {order.crop_name}.
+            Invoice #{order.invoice_number || `INV-${order.id}`} has been automatically generated according to this order's agreed quantity and price.
+          </Text>
+          <TouchableOpacity
+            style={styles.viewInvoiceBtn}
+            onPress={() => setInvoiceVisible(true)}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="receipt-text-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.viewInvoiceBtnText}>View Official Invoice & Bill</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Linked Crop Journey */}
+        <View style={styles.card}>
+          <Text style={styles.cardSectionTitle}>Linked Crop Production</Text>
+          <Text style={styles.traceDesc}>
+            Linked to {order.linked_crop_batch || `${order.crop_name} Batch #3`}. Tap below to view crop lifecycle and farming journey records.
           </Text>
           <TouchableOpacity
             style={styles.viewTimelineBtn}
-            onPress={() => router.push('/(farmer)/contracts' as any)}
+            onPress={() => {
+              const targetCropId = order.crop_route_id || 'field-tomato';
+              router.push({
+                pathname: '/harvests/[id]',
+                params: { id: targetCropId },
+              } as any);
+            }}
             activeOpacity={0.85}
           >
-            <MaterialCommunityIcons name="timeline-text-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.viewTimelineBtnText}>View Full Farming Journey</Text>
+            <MaterialCommunityIcons name="sprout" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.viewTimelineBtnText}>View Crop Farming Journey</Text>
           </TouchableOpacity>
         </View>
 
@@ -252,6 +275,13 @@ export default function OrderDetailsScreen() {
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      {/* Invoice Modal */}
+      <InvoiceModal
+        visible={invoiceVisible}
+        order={order}
+        onClose={() => setInvoiceVisible(false)}
+      />
 
       {/* Confirmation Modal */}
       {modalAction && (
@@ -462,6 +492,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   viewTimelineBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewInvoiceBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#204E26',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  viewInvoiceBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
