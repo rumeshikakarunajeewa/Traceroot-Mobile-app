@@ -35,10 +35,12 @@ import {
 } from '../../src/constants/farmerMockData';
 import { FieldItem, RecentRecordItem, UpcomingItem } from '../../src/types/farmer.types';
 import { useCropsStore, updateFieldPhoto } from '../../src/store/cropStore';
+import { useFarmerProfile } from '../../src/store/farmerProfileStore';
 
 export default function FarmerHomeScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
+  const { profile: farmerProfile } = useFarmerProfile();
   // Ensure the plant growth animation and loop run reliably on dashboard
   const isFocused = true;
 
@@ -301,17 +303,17 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={styles.avatarBorder}
               activeOpacity={0.8}
-              onPress={() => router.push('/profile')}
+              onPress={() => router.push('/(farmer)/profile' as any)}
             >
               <Image
-                source={{ uri: mockFarmerProfile.avatarUrl }}
+                source={{ uri: farmerProfile.avatarUrl || mockFarmerProfile.avatarUrl }}
                 style={styles.avatarImg}
               />
             </TouchableOpacity>
 
             <View style={styles.greetingTextGroup}>
               <Text style={styles.welcomeSub}>Welcome back! 🍃</Text>
-              <Text style={styles.farmerName}>{mockFarmerProfile.fullName}</Text>
+              <Text style={styles.farmerName}>{farmerProfile.fullName || mockFarmerProfile.fullName}</Text>
             </View>
           </View>
 
