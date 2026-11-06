@@ -80,6 +80,8 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
     'messages',
     'harvests/[id]',
     'harvests/[id]/stage',
+    'profile',
+    'profile/index',
   ].includes(currentRouteName);
   if (!isTabScreen) {
     return null;
