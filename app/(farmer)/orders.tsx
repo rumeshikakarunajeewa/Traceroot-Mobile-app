@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
 import {
   fetchOrders,
@@ -28,9 +29,11 @@ import OrderFilterTabs, { FilterKey } from '../../src/components/farmer/OrderFil
 import OrderCard from '../../src/components/farmer/OrderCard';
 import AcceptDeclineModal from '../../src/components/farmer/AcceptDeclineModal';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useDarkMode } from '../../src/store/uiStore';
 
 export default function FarmerOrdersScreen() {
   const { farmerId } = useAuth();
+  const [isDark] = useDarkMode();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -212,7 +215,8 @@ export default function FarmerOrdersScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
@@ -229,16 +233,16 @@ export default function FarmerOrdersScreen() {
         {/* Header matching screenshot */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.subtitle}>Incoming Purchase Orders</Text>
-            <Text style={styles.title}>Orders</Text>
+            <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>Incoming Purchase Orders</Text>
+            <Text style={[styles.title, isDark && styles.titleDark]}>Orders</Text>
           </View>
 
           <TouchableOpacity
-            style={styles.messagesIconButton}
+            style={[styles.messagesIconButton, isDark && styles.messagesIconButtonDark]}
             onPress={() => router.push('/messages')}
             activeOpacity={0.8}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#2A4832" />
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? '#4ADE80' : '#2A4832'} />
           </TouchableOpacity>
         </View>
 
@@ -255,7 +259,7 @@ export default function FarmerOrdersScreen() {
 
         {/* Section Heading & Filter Tabs */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your orders</Text>
+          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Your orders</Text>
         </View>
 
         <OrderFilterTabs
@@ -267,12 +271,12 @@ export default function FarmerOrdersScreen() {
         {/* Order Cards List */}
         <View style={styles.ordersList}>
           {filteredOrders.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Feather name="inbox" size={38} color="#9EB0A1" />
-              <Text style={styles.emptyTitle}>
+            <View style={[styles.emptyContainer, isDark && styles.emptyContainerDark]}>
+              <Feather name="inbox" size={38} color={isDark ? '#4ADE80' : '#9EB0A1'} />
+              <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
                 {activeFilter === 'new' ? 'No new orders at the moment.' : 'No orders in this category.'}
               </Text>
-              <Text style={styles.emptySubtitle}>
+              <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
                 New buyer purchase orders will appear here automatically.
               </Text>
             </View>
@@ -429,5 +433,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     lineHeight: 18,
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  subtitleDark: {
+    color: '#9CB3A0',
+  },
+  titleDark: {
+    color: '#F0F5F1',
+  },
+  messagesIconButtonDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  sectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptyContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  emptyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptySubtitleDark: {
+    color: '#9CB3A0',
   },
 });

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { RecentRecordItem } from '../../types/farmer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface RecentRecordCardProps {
   record: RecentRecordItem;
@@ -23,6 +24,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
   onAddCorrectionPress,
   forceExpanded = false,
 }) => {
+  const [isDark] = useDarkMode();
   const [cardScale] = useState(() => new Animated.Value(1));
 
   const handlePressIn = () => {
@@ -47,7 +49,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
     return (
       <Animated.View style={[styles.compactWrapper, { transform: [{ scale: cardScale }] }]}>
         <TouchableOpacity
-          style={styles.compactContainer}
+          style={[styles.compactContainer, isDark && styles.compactContainerDark]}
           activeOpacity={0.88}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
@@ -60,16 +62,16 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
 
           {/* Center texts */}
           <View style={styles.compactTextGroup}>
-            <Text style={styles.compactTitle} numberOfLines={1}>
+            <Text style={[styles.compactTitle, isDark && styles.compactTitleDark]} numberOfLines={1}>
               {record.title}
             </Text>
-            <Text style={styles.compactSubtitle} numberOfLines={1}>
+            <Text style={[styles.compactSubtitle, isDark && styles.compactSubtitleDark]} numberOfLines={1}>
               {record.recordCode} · {record.stage} · {record.date}
             </Text>
           </View>
 
           {/* Right Chevron */}
-          <Feather name="chevron-right" size={18} color="#C4CEC5" />
+          <Feather name="chevron-right" size={18} color={isDark ? '#4ADE80' : '#C4CEC5'} />
         </TouchableOpacity>
       </Animated.View>
     );
@@ -79,7 +81,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
   return (
     <Animated.View style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
       <TouchableOpacity
-        style={styles.container}
+        style={[styles.container, isDark && styles.containerDark]}
         activeOpacity={0.92}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -87,7 +89,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
       >
         {/* Top Header Row: Record Code and Badges */}
         <View style={styles.headerRow}>
-          <Text style={styles.recordCodeText}>{record.recordCode}</Text>
+          <Text style={[styles.recordCodeText, isDark && styles.recordCodeTextDark]}>{record.recordCode}</Text>
 
           <View style={styles.badgesGroup}>
             {/* Locked Badge with lock icon */}
@@ -133,8 +135,8 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
 
         {/* Title and Stage */}
         <View style={styles.titleSection}>
-          <Text style={styles.recordTitle}>{record.title}</Text>
-          <Text style={styles.stageText}>{record.stage}</Text>
+          <Text style={[styles.recordTitle, isDark && styles.recordTitleDark]}>{record.title}</Text>
+          <Text style={[styles.stageText, isDark && styles.stageTextDark]}>{record.stage}</Text>
           {record.correctsRecordCode && (
             <Text style={styles.correctionLinkText}>
               ↪ Linked correction to {record.correctsRecordCode}
@@ -146,24 +148,24 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
         {/* Metadata chips row: Date, Time, Location */}
         <View style={styles.chipsRow}>
           {/* Date chip */}
-          <View style={styles.metaChip}>
-            <Feather name="calendar" size={12} color="#8A9E8F" style={{ marginRight: 4.5 }} />
-            <Text style={styles.metaChipText}>{record.date}</Text>
+          <View style={[styles.metaChip, isDark && styles.metaChipDark]}>
+            <Feather name="calendar" size={12} color={isDark ? '#4ADE80' : '#8A9E8F'} style={{ marginRight: 4.5 }} />
+            <Text style={[styles.metaChipText, isDark && styles.metaChipTextDark]}>{record.date}</Text>
           </View>
 
           {/* Time chip */}
           {record.time && (
-            <View style={styles.metaChip}>
-              <Feather name="clock" size={12} color="#8A9E8F" style={{ marginRight: 4.5 }} />
-              <Text style={styles.metaChipText}>{record.time}</Text>
+            <View style={[styles.metaChip, isDark && styles.metaChipDark]}>
+              <Feather name="clock" size={12} color={isDark ? '#4ADE80' : '#8A9E8F'} style={{ marginRight: 4.5 }} />
+              <Text style={[styles.metaChipText, isDark && styles.metaChipTextDark]}>{record.time}</Text>
             </View>
           )}
 
           {/* Location chip */}
           {record.location && (
-            <View style={styles.metaChip}>
-              <Ionicons name="location-outline" size={12} color="#B54A34" style={{ marginRight: 3 }} />
-              <Text style={styles.metaChipText}>{record.location}</Text>
+            <View style={[styles.metaChip, isDark && styles.metaChipDark]}>
+              <Ionicons name="location-outline" size={12} color="#F87171" style={{ marginRight: 3 }} />
+              <Text style={[styles.metaChipText, isDark && styles.metaChipTextDark]}>{record.location}</Text>
             </View>
           )}
         </View>
@@ -183,14 +185,14 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
         {record.photoEvidenceAttached && (
           <View style={styles.evidenceRow}>
             <View style={styles.evidenceDot} />
-            <Text style={styles.evidenceText}>Photo evidence attached</Text>
+            <Text style={[styles.evidenceText, isDark && styles.evidenceTextDark]}>Photo evidence attached</Text>
           </View>
         )}
 
         {/* Saved Notes */}
         {Boolean(record.notes && record.notes.trim().length > 0) && (
-          <View style={styles.notesContainer}>
-            <Text style={styles.notesText} numberOfLines={3}>
+          <View style={[styles.notesContainer, isDark && styles.notesContainerDark]}>
+            <Text style={[styles.notesText, isDark && styles.notesTextDark]} numberOfLines={3}>
               <Text style={styles.notesLabel}>Notes: </Text>
               {record.notes}
             </Text>
@@ -198,7 +200,7 @@ export const RecentRecordCard: React.FC<RecentRecordCardProps> = ({
         )}
 
         {/* Divider */}
-        <View style={styles.divider} />
+        <View style={[styles.divider, isDark && styles.dividerDark]} />
 
         {/* Bottom Actions Row: Permanently locked note & + Add Correction button */}
         <View style={styles.bottomActionsRow}>
@@ -471,5 +473,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#748A7A',
+  },
+  compactContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+  },
+  compactTitleDark: {
+    color: '#F0F5F1',
+  },
+  compactSubtitleDark: {
+    color: '#9CB3A0',
+  },
+  containerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  recordCodeTextDark: {
+    color: '#9CB3A0',
+  },
+  recordTitleDark: {
+    color: '#F0F5F1',
+  },
+  stageTextDark: {
+    color: '#9CB3A0',
+  },
+  metaChipDark: {
+    backgroundColor: '#122015',
+  },
+  metaChipTextDark: {
+    color: '#E5EFE7',
+  },
+  evidenceTextDark: {
+    color: '#9CB3A0',
+  },
+  notesContainerDark: {
+    backgroundColor: '#122015',
+  },
+  notesTextDark: {
+    color: '#CBD5E1',
+  },
+  dividerDark: {
+    backgroundColor: '#283D2C',
   },
 });

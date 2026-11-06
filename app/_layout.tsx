@@ -2,13 +2,14 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
-import { useDarkMode } from '../src/store/uiStore';
+import { useDarkMode, loadDarkModeFromStorage } from '../src/store/uiStore';
 import { initializeAuth } from '../src/store/authStore';
 
 export default function RootLayout() {
   const [isDark] = useDarkMode();
 
   useEffect(() => {
+    loadDarkModeFromStorage();
     initializeAuth();
   }, []);
 

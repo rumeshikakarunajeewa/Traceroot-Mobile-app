@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { router } from 'expo-router';
+import { useDarkMode } from '../../store/uiStore';
 
 export interface FarmerBottomTabBarProps {
   state?: any;
@@ -22,6 +22,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   navigateToTab,
   onAddPress,
 }) => {
+  const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
@@ -89,7 +90,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
-      <View style={[styles.barContainer, { marginBottom: bottomMargin }]}>
+      <View style={[styles.barContainer, isDark && styles.barContainerDark, { marginBottom: bottomMargin }]}>
         {/* Tab 1: Home */}
         <TouchableOpacity
           style={styles.tabItem}
@@ -148,7 +149,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
         {/* Center Floating Plus (+) Action Button */}
         <View style={styles.centerButtonWrapper}>
           <TouchableOpacity
-            style={styles.plusButton}
+            style={[styles.plusButton, isDark && styles.plusButtonDark]}
             onPress={() => {
               if (onAddPress) {
                 onAddPress();
@@ -158,7 +159,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
             }}
             activeOpacity={0.85}
           >
-            <Feather name="plus" size={26} color="#18361F" />
+            <Feather name="plus" size={26} color={isDark ? '#E5EFE7' : '#18361F'} />
           </TouchableOpacity>
         </View>
 
@@ -254,6 +255,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  barContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+  },
   tabItem: {
     flex: 1,
     alignItems: 'center',
@@ -309,5 +317,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
+  },
+  plusButtonDark: {
+    backgroundColor: '#2D5936',
   },
 });

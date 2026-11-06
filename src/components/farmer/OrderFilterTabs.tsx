@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { useDarkMode } from '../../store/uiStore';
 
 export type FilterKey = 'all' | 'new' | 'accepted' | 'completed' | 'cancelled';
 
@@ -22,6 +23,8 @@ export default function OrderFilterTabs({
   onSelect,
   counts,
 }: OrderFilterTabsProps) {
+  const [isDark] = useDarkMode();
+
   return (
     <ScrollView
       horizontal
@@ -35,14 +38,25 @@ export default function OrderFilterTabs({
         return (
           <TouchableOpacity
             key={f.key}
-            style={[styles.pill, isSelected ? styles.pillActive : styles.pillInactive]}
+            style={[
+              styles.pill,
+              isSelected
+                ? styles.pillActive
+                : isDark
+                ? styles.pillInactiveDark
+                : styles.pillInactive,
+            ]}
             onPress={() => onSelect(f.key)}
             activeOpacity={0.8}
           >
             <Text
               style={[
                 styles.label,
-                isSelected ? styles.labelActive : styles.labelInactive,
+                isSelected
+                  ? styles.labelActive
+                  : isDark
+                  ? styles.labelInactiveDark
+                  : styles.labelInactive,
               ]}
             >
               {f.label}{f.key !== 'all' ? ` ${count}` : ''}
@@ -74,6 +88,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E6E2',
   },
+  pillInactiveDark: {
+    backgroundColor: '#18271C',
+    borderWidth: 1,
+    borderColor: '#283D2C',
+  },
   label: {
     fontSize: 13,
     fontWeight: '600',
@@ -84,5 +103,8 @@ const styles = StyleSheet.create({
   },
   labelInactive: {
     color: '#344E39',
+  },
+  labelInactiveDark: {
+    color: '#9CB3A0',
   },
 });

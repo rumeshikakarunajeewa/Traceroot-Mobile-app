@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { FieldItem } from '../../types/farmer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface ActiveJourneyCardProps {
   crop: FieldItem;
@@ -27,6 +28,7 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
   isSingle = false,
   index = 0,
 }) => {
+  const [isDark] = useDarkMode();
   const cardScale = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -119,7 +121,7 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
       ]}
     >
       <TouchableOpacity
-        style={styles.container}
+        style={[styles.container, isDark && styles.containerDark]}
         activeOpacity={0.92}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -184,7 +186,7 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
           {/* Stepper nodes and connecting lines */}
           <View style={styles.stepTrackRow}>
             {/* Background track line */}
-            <View style={styles.trackBackgroundLine} />
+            <View style={[styles.trackBackgroundLine, isDark && styles.trackBackgroundLineDark]} />
 
             {/* Animated active green track line (between first and 3rd node) */}
             <Animated.View
@@ -217,12 +219,14 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
                       <View style={styles.currentNodeDot} />
                     </View>
                   )}
-                  {isFuture && <View style={styles.upcomingNode} />}
+                  {isFuture && <View style={[styles.upcomingNode, isDark && styles.upcomingNodeDark]} />}
 
                   <Text
                     style={[
                       styles.nodeLabel,
-                      isCurrent ? styles.nodeLabelCurrent : styles.nodeLabelNormal,
+                      isCurrent
+                        ? (isDark ? styles.nodeLabelCurrentDark : styles.nodeLabelCurrent)
+                        : (isDark ? styles.nodeLabelNormalDark : styles.nodeLabelNormal),
                     ]}
                     numberOfLines={2}
                   >
@@ -236,15 +240,15 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
 
         {/* 3. "NEXT STAGE" CALLOUT PANEL */}
         <TouchableOpacity
-          style={styles.nextStageCard}
+          style={[styles.nextStageCard, isDark && styles.nextStageCardDark]}
           activeOpacity={0.85}
           onPress={onPress}
         >
           <View style={styles.nextStageTextGroup}>
-            <Text style={styles.nextStageLabel}>Next stage</Text>
+            <Text style={[styles.nextStageLabel, isDark && styles.nextStageLabelDark]}>Next stage</Text>
             <Text style={styles.nextStageDetails} numberOfLines={1}>
-              <Text style={styles.nextStageUnderline}>{nextStageTitle}</Text>
-              <Text style={styles.nextStageEstText}> · {nextStageTime}</Text>
+              <Text style={[styles.nextStageUnderline, isDark && styles.nextStageUnderlineDark]}>{nextStageTitle}</Text>
+              <Text style={[styles.nextStageEstText, isDark && styles.nextStageEstTextDark]}> · {nextStageTime}</Text>
             </Text>
           </View>
 
@@ -255,25 +259,25 @@ export const ActiveJourneyCard: React.FC<ActiveJourneyCardProps> = ({
         </TouchableOpacity>
 
         {/* Bottom divider line */}
-        <View style={styles.footerDivider} />
+        <View style={[styles.footerDivider, isDark && styles.footerDividerDark]} />
 
         {/* 4. FOOTER METADATA STRIP */}
         <View style={styles.footerRow}>
           {/* Records */}
           <View style={styles.footerItem}>
-            <Ionicons name="document-text-outline" size={14} color="#6B7F70" style={{ marginRight: 5 }} />
-            <Text style={styles.footerItemText}>{recordCount} records</Text>
+            <Ionicons name="document-text-outline" size={14} color={isDark ? '#4ADE80' : '#6B7F70'} style={{ marginRight: 5 }} />
+            <Text style={[styles.footerItemText, isDark && styles.footerItemTextDark]}>{recordCount} records</Text>
           </View>
 
           {/* Evidence */}
           <View style={styles.footerItem}>
-            <Feather name="camera" size={13} color="#6B7F70" style={{ marginRight: 5 }} />
-            <Text style={styles.footerItemText}>{evidenceCount} with evidence</Text>
+            <Feather name="camera" size={13} color={isDark ? '#4ADE80' : '#6B7F70'} style={{ marginRight: 5 }} />
+            <Text style={[styles.footerItemText, isDark && styles.footerItemTextDark]}>{evidenceCount} with evidence</Text>
           </View>
 
           {/* Immutable */}
           <View style={styles.footerItem}>
-            <Ionicons name="shield-checkmark-outline" size={14} color="#8F6335" style={{ marginRight: 5 }} />
+            <Ionicons name="shield-checkmark-outline" size={14} color="#FBBF24" style={{ marginRight: 5 }} />
             <Text style={[styles.footerItemText, styles.immutableText]}>Immutable</Text>
           </View>
         </View>
@@ -591,5 +595,44 @@ const styles = StyleSheet.create({
   immutableText: {
     color: '#8A6031',
     fontWeight: '600',
+  },
+  containerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+  },
+  trackBackgroundLineDark: {
+    backgroundColor: '#263B2B',
+  },
+  upcomingNodeDark: {
+    backgroundColor: '#263B2B',
+  },
+  nodeLabelNormalDark: {
+    color: '#9CB3A0',
+  },
+  nodeLabelCurrentDark: {
+    color: '#F0F5F1',
+  },
+  nextStageCardDark: {
+    backgroundColor: '#122015',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  nextStageLabelDark: {
+    color: '#9CB3A0',
+  },
+  nextStageUnderlineDark: {
+    color: '#4ADE80',
+  },
+  nextStageEstTextDark: {
+    color: '#E5EFE7',
+  },
+  footerDividerDark: {
+    backgroundColor: '#263B2B',
+  },
+  footerItemTextDark: {
+    color: '#9CB3A0',
   },
 });

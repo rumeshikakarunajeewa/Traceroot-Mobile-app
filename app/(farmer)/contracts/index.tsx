@@ -16,6 +16,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCropsStore } from '../../../src/store/cropStore';
+import { useDarkMode } from '../../../src/store/uiStore';
 import { FieldItem, RecentRecordItem } from '../../../src/types/farmer.types';
 import { stageIndex } from '../../../src/utils/stageHelpers';
 
@@ -23,6 +24,7 @@ export default function TraceabilityTimelineScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
   const { fields, records, getFieldById } = useCropsStore();
+  const [isDark] = useDarkMode();
 
   // Selected crop ID (defaults to passed id or tomato)
   const initialCropId = params.id || 'field-tomato';
@@ -124,26 +126,26 @@ export default function TraceabilityTimelineScreen() {
   };
 
   return (
-    <View style={styles.screenContainer}>
-      <StatusBar style="dark" />
+    <View style={[styles.screenContainer, isDark && styles.screenContainerDark]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Top Header Section */}
-      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={[styles.topHeader, isDark && styles.topHeaderDark, { paddingTop: Math.max(insets.top, 16) }]}>
         <View style={styles.headerRow}>
           {/* Back Button */}
           <TouchableOpacity
-            style={styles.backCircleBtn}
+            style={[styles.backCircleBtn, isDark && styles.backCircleBtnDark]}
             activeOpacity={0.8}
             onPress={() => router.back()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Feather name="chevron-left" size={22} color="#15321B" />
+            <Feather name="chevron-left" size={22} color={isDark ? '#E5EFE7' : '#15321B'} />
           </TouchableOpacity>
 
           {/* Title and Subtitle */}
           <View style={styles.headerTextGroup}>
-            <Text style={styles.topSubtitleText}>Complete cultivation history 🌾</Text>
-            <Text style={styles.mainTitleText}>Traceability Timeline</Text>
+            <Text style={[styles.topSubtitleText, isDark && styles.topSubtitleTextDark]}>Complete cultivation history 🌾</Text>
+            <Text style={[styles.mainTitleText, isDark && styles.mainTitleTextDark]}>Traceability Timeline</Text>
           </View>
         </View>
 
@@ -159,13 +161,13 @@ export default function TraceabilityTimelineScreen() {
               return (
                 <TouchableOpacity
                   key={f.id}
-                  style={[styles.cropChip, isSelected && styles.cropChipSelected]}
+                  style={[styles.cropChip, isDark && styles.cropChipDark, isSelected && styles.cropChipSelected]}
                   activeOpacity={0.8}
                   onPress={() => setSelectedCropId(f.id)}
                 >
                   <Text style={styles.cropChipEmoji}>{f.cropEmoji || '🌱'}</Text>
                   <Text
-                    style={[styles.cropChipText, isSelected && styles.cropChipTextSelected]}
+                    style={[styles.cropChipText, isDark && styles.cropChipTextDark, isSelected && styles.cropChipTextSelected]}
                   >
                     {f.cropName}
                   </Text>
@@ -618,12 +620,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F3EC',
   },
+  screenContainerDark: {
+    backgroundColor: '#0E1710',
+  },
 
   /* Top Header */
   topHeader: {
     backgroundColor: '#F5F3EC',
     paddingHorizontal: 20,
     paddingBottom: 10,
+  },
+  topHeaderDark: {
+    backgroundColor: '#0E1710',
   },
   headerRow: {
     flexDirection: 'row',
@@ -643,6 +651,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  backCircleBtnDark: {
+    backgroundColor: '#18271C',
+    borderWidth: 1,
+    borderColor: '#283D2C',
+  },
   headerTextGroup: {
     flex: 1,
   },
@@ -652,11 +665,24 @@ const styles = StyleSheet.create({
     color: '#497352',
     marginBottom: 2,
   },
+  topSubtitleTextDark: {
+    color: '#9CB3A0',
+  },
   mainTitleText: {
     fontSize: 26,
     fontWeight: '700',
     color: '#132E18',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  mainTitleTextDark: {
+    color: '#F0F5F1',
+  },
+  cropChipDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  cropChipTextDark: {
+    color: '#9CB3A0',
   },
   cropChipsScroll: {
     paddingTop: 12,

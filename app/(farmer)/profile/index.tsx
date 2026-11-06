@@ -13,23 +13,27 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useFarmerProfile } from '../../../src/store/farmerProfileStore';
 import { useCropsStore } from '../../../src/store/cropStore';
 import { authService } from '../../../src/services/auth.service';
 import { setAuthState } from '../../../src/store/authStore';
+import { useDarkMode } from '../../../src/store/uiStore';
 
 type ProfileTab = 'about' | 'products' | 'reviews' | 'documents';
 
 export default function FarmerProfileScreen() {
   const { profile, settings, updateSettings } = useFarmerProfile();
   const { fields: crops } = useCropsStore();
+  const [darkMode, setDarkMode] = useDarkMode();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('about');
 
   // Toggle handlers for Settings
   const handleToggleDarkMode = (val: boolean) => {
+    setDarkMode(val);
     updateSettings({ darkMode: val });
   };
 
@@ -89,21 +93,23 @@ export default function FarmerProfileScreen() {
   const bgImageUri = 'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, darkMode && styles.safeAreaDark]} edges={['top', 'left', 'right']}>
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
+
       {/* 1. Header Navigation Bar */}
       <View style={styles.headerBar}>
         <TouchableOpacity
-          style={styles.backCircleBtn}
+          style={[styles.backCircleBtn, darkMode && styles.backCircleBtnDark]}
           onPress={() => router.back()}
           activeOpacity={0.7}
           accessibilityLabel="Go back"
         >
-          <Feather name="chevron-left" size={22} color="#16351E" />
+          <Feather name="chevron-left" size={22} color={darkMode ? '#E5EFE7' : '#16351E'} />
         </TouchableOpacity>
 
         <View style={styles.headerTitles}>
-          <Text style={styles.headerSubtitle}>Your account</Text>
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={[styles.headerSubtitle, darkMode && styles.headerSubtitleDark]}>Your account</Text>
+          <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>My Profile</Text>
         </View>
 
         {/* Edit Profile Pill Button matching screenshot */}
@@ -197,15 +203,15 @@ export default function FarmerProfileScreen() {
         </ImageBackground>
 
         {/* 3. Trust Score Card */}
-        <View style={styles.trustCard}>
-          <View style={styles.trustCircleRing}>
-            <Text style={styles.trustScoreNumber}>{profile.trustScore}</Text>
+        <View style={[styles.trustCard, darkMode && styles.trustCardDark]}>
+          <View style={[styles.trustCircleRing, darkMode && styles.trustCircleRingDark]}>
+            <Text style={[styles.trustScoreNumber, darkMode && styles.trustScoreNumberDark]}>{profile.trustScore}</Text>
           </View>
 
           <View style={styles.trustTextCol}>
-            <Text style={styles.trustLabel}>Trust score</Text>
-            <Text style={styles.trustHeadline}>Highly trusted</Text>
-            <Text style={styles.trustSubtext}>
+            <Text style={[styles.trustLabel, darkMode && styles.trustLabelDark]}>Trust score</Text>
+            <Text style={[styles.trustHeadline, darkMode && styles.trustHeadlineDark]}>Highly trusted</Text>
+            <Text style={[styles.trustSubtext, darkMode && styles.trustSubtextDark]}>
               Every crop record locked with photo evidence
             </Text>
           </View>
@@ -225,14 +231,21 @@ export default function FarmerProfileScreen() {
             return (
               <TouchableOpacity
                 key={tab}
-                style={[styles.tabPill, isSelected ? styles.tabPillActive : styles.tabPillInactive]}
+                style={[
+                  styles.tabPill,
+                  isSelected
+                    ? (darkMode ? styles.tabPillActiveDark : styles.tabPillActive)
+                    : (darkMode ? styles.tabPillInactiveDark : styles.tabPillInactive),
+                ]}
                 onPress={() => setActiveTab(tab)}
                 activeOpacity={0.8}
               >
                 <Text
                   style={[
                     styles.tabPillText,
-                    isSelected ? styles.tabPillTextActive : styles.tabPillTextInactive,
+                    isSelected
+                      ? styles.tabPillTextActive
+                      : (darkMode ? styles.tabPillTextInactiveDark : styles.tabPillTextInactive),
                   ]}
                 >
                   {labels[tab]}
@@ -246,52 +259,52 @@ export default function FarmerProfileScreen() {
         {activeTab === 'about' && (
           <View style={styles.tabContentContainer}>
             {/* Card 1: Contact, Farm & Registration Details */}
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, darkMode && styles.infoCardDark]}>
               {/* Phone */}
               <View style={styles.infoItemRow}>
-                <View style={styles.infoIconCircle}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={17} color="#26542D" />
+                <View style={[styles.infoIconCircle, darkMode && styles.infoIconCircleDark]}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={17} color={darkMode ? '#4ADE80' : '#26542D'} />
                 </View>
-                <Text style={styles.infoItemLabel}>Phone</Text>
-                <Text style={styles.infoItemValue}>{profile.phone}</Text>
+                <Text style={[styles.infoItemLabel, darkMode && styles.infoItemLabelDark]}>Phone</Text>
+                <Text style={[styles.infoItemValue, darkMode && styles.infoItemValueDark]}>{profile.phone}</Text>
               </View>
 
-              <View style={styles.infoRowDivider} />
+              <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
               {/* Email */}
               <View style={styles.infoItemRow}>
-                <View style={styles.infoIconCircle}>
-                  <Ionicons name="mail-outline" size={17} color="#26542D" />
+                <View style={[styles.infoIconCircle, darkMode && styles.infoIconCircleDark]}>
+                  <Ionicons name="mail-outline" size={17} color={darkMode ? '#4ADE80' : '#26542D'} />
                 </View>
-                <Text style={styles.infoItemLabel}>Email</Text>
-                <Text style={styles.infoItemValue} numberOfLines={1}>{profile.email}</Text>
+                <Text style={[styles.infoItemLabel, darkMode && styles.infoItemLabelDark]}>Email</Text>
+                <Text style={[styles.infoItemValue, darkMode && styles.infoItemValueDark]} numberOfLines={1}>{profile.email}</Text>
               </View>
 
-              <View style={styles.infoRowDivider} />
+              <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
               {/* Farm */}
               <View style={styles.infoItemRow}>
-                <View style={styles.infoIconCircle}>
-                  <MaterialCommunityIcons name="chart-bar" size={17} color="#26542D" />
+                <View style={[styles.infoIconCircle, darkMode && styles.infoIconCircleDark]}>
+                  <MaterialCommunityIcons name="chart-bar" size={17} color={darkMode ? '#4ADE80' : '#26542D'} />
                 </View>
-                <Text style={styles.infoItemLabel}>Farm</Text>
-                <Text style={styles.infoItemValue}>{profile.farmName ? `${profile.farmName} • ${profile.farmSize}` : `Greenhouse • ${profile.farmSize}`}</Text>
+                <Text style={[styles.infoItemLabel, darkMode && styles.infoItemLabelDark]}>Farm</Text>
+                <Text style={[styles.infoItemValue, darkMode && styles.infoItemValueDark]}>{profile.farmName ? `${profile.farmName} • ${profile.farmSize}` : `Greenhouse • ${profile.farmSize}`}</Text>
               </View>
 
-              <View style={styles.infoRowDivider} />
+              <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
               {/* Registration */}
               <View style={styles.infoItemRow}>
-                <View style={styles.infoIconCircle}>
-                  <MaterialCommunityIcons name="shield-check-outline" size={17} color="#26542D" />
+                <View style={[styles.infoIconCircle, darkMode && styles.infoIconCircleDark]}>
+                  <MaterialCommunityIcons name="shield-check-outline" size={17} color={darkMode ? '#4ADE80' : '#26542D'} />
                 </View>
-                <Text style={styles.infoItemLabel}>Registration</Text>
-                <Text style={styles.infoItemValue}>{profile.registrationNo}</Text>
+                <Text style={[styles.infoItemLabel, darkMode && styles.infoItemLabelDark]}>Registration</Text>
+                <Text style={[styles.infoItemValue, darkMode && styles.infoItemValueDark]}>{profile.registrationNo}</Text>
               </View>
             </View>
 
             {/* Card 2: Location Card (Dark Forest Green) */}
-            <View style={styles.locationCard}>
+            <View style={[styles.locationCard, darkMode && styles.locationCardDark]}>
               <View style={styles.locationLeft}>
                 <View style={styles.locationHeaderRow}>
                   <Ionicons name="location-outline" size={14} color="#A7CCA9" style={{ marginRight: 4 }} />
@@ -314,63 +327,63 @@ export default function FarmerProfileScreen() {
 
             {/* Card 3: Settings Section */}
             <View style={styles.settingsSection}>
-              <Text style={styles.settingsSectionTitle}>Settings</Text>
+              <Text style={[styles.settingsSectionTitle, darkMode && styles.settingsSectionTitleDark]}>Settings</Text>
 
-              <View style={styles.settingsCard}>
+              <View style={[styles.settingsCard, darkMode && styles.settingsCardDark]}>
                 {/* Dark Mode */}
                 <View style={styles.settingsItemRow}>
-                  <View style={styles.settingsIconCircle}>
-                    <Ionicons name="sunny-outline" size={18} color="#26542D" />
+                  <View style={[styles.settingsIconCircle, darkMode && styles.settingsIconCircleDark]}>
+                    <Ionicons name="sunny-outline" size={18} color={darkMode ? '#4ADE80' : '#26542D'} />
                   </View>
                   <View style={styles.settingsTextCol}>
-                    <Text style={styles.settingsItemTitle}>Dark mode</Text>
-                    <Text style={styles.settingsItemSub}>{settings.darkMode ? 'On' : 'Off'}</Text>
+                    <Text style={[styles.settingsItemTitle, darkMode && styles.settingsItemTitleDark]}>Dark mode</Text>
+                    <Text style={[styles.settingsItemSub, darkMode && styles.settingsItemSubDark]}>{darkMode ? 'On' : 'Off'}</Text>
                   </View>
                   <Switch
-                    value={settings.darkMode}
+                    value={darkMode}
                     onValueChange={handleToggleDarkMode}
-                    trackColor={{ false: '#E2E6E2', true: '#26542D' }}
-                    thumbColor={settings.darkMode ? '#FFFFFF' : '#FFFFFF'}
+                    trackColor={{ false: darkMode ? '#283D2C' : '#E2E6E2', true: '#2E7D32' }}
+                    thumbColor="#FFFFFF"
                   />
                 </View>
 
-                <View style={styles.infoRowDivider} />
+                <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
                 {/* Notifications */}
                 <View style={styles.settingsItemRow}>
-                  <View style={styles.settingsIconCircle}>
-                    <Ionicons name="notifications-outline" size={18} color="#26542D" />
+                  <View style={[styles.settingsIconCircle, darkMode && styles.settingsIconCircleDark]}>
+                    <Ionicons name="notifications-outline" size={18} color={darkMode ? '#4ADE80' : '#26542D'} />
                   </View>
                   <View style={styles.settingsTextCol}>
-                    <Text style={styles.settingsItemTitle}>Notifications</Text>
-                    <Text style={styles.settingsItemSub}>Orders, contracts & alerts</Text>
+                    <Text style={[styles.settingsItemTitle, darkMode && styles.settingsItemTitleDark]}>Notifications</Text>
+                    <Text style={[styles.settingsItemSub, darkMode && styles.settingsItemSubDark]}>Orders, contracts & alerts</Text>
                   </View>
                   <Switch
                     value={settings.notifications}
                     onValueChange={handleToggleNotifications}
-                    trackColor={{ false: '#E2E6E2', true: '#26542D' }}
-                    thumbColor={settings.notifications ? '#FFFFFF' : '#FFFFFF'}
+                    trackColor={{ false: darkMode ? '#283D2C' : '#E2E6E2', true: '#2E7D32' }}
+                    thumbColor="#FFFFFF"
                   />
                 </View>
 
-                <View style={styles.infoRowDivider} />
+                <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
                 {/* Language */}
                 <View style={styles.settingsItemRow}>
-                  <View style={styles.settingsIconCircle}>
-                    <Ionicons name="chatbox-ellipses-outline" size={18} color="#26542D" />
+                  <View style={[styles.settingsIconCircle, darkMode && styles.settingsIconCircleDark]}>
+                    <Ionicons name="chatbox-ellipses-outline" size={18} color={darkMode ? '#4ADE80' : '#26542D'} />
                   </View>
                   <View style={styles.settingsTextCol}>
-                    <Text style={styles.settingsItemTitle}>Language</Text>
-                    <Text style={styles.settingsItemSub}>{settings.language}</Text>
+                    <Text style={[styles.settingsItemTitle, darkMode && styles.settingsItemTitleDark]}>Language</Text>
+                    <Text style={[styles.settingsItemSub, darkMode && styles.settingsItemSubDark]}>{settings.language}</Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.languageDropdownPill}
+                    style={[styles.languageDropdownPill, darkMode && styles.languageDropdownPillDark]}
                     onPress={handleLanguageSelect}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.languagePillText}>{settings.language}</Text>
-                    <Feather name="chevron-down" size={14} color="#455F4A" style={{ marginLeft: 4 }} />
+                    <Text style={[styles.languagePillText, darkMode && styles.languagePillTextDark]}>{settings.language}</Text>
+                    <Feather name="chevron-down" size={14} color={darkMode ? '#A0B6A3' : '#455F4A'} style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -378,7 +391,7 @@ export default function FarmerProfileScreen() {
 
             {/* Card 4: Log Out Pill Button */}
             <TouchableOpacity
-              style={styles.logoutBtn}
+              style={[styles.logoutBtn, darkMode && styles.logoutBtnDark]}
               onPress={handleLogout}
               activeOpacity={0.8}
             >
@@ -391,25 +404,25 @@ export default function FarmerProfileScreen() {
         {/* Tab Content: Products */}
         {activeTab === 'products' && (
           <View style={styles.tabContentContainer}>
-            <View style={styles.infoCard}>
-              <Text style={styles.tabSectionTitle}>Registered Organic Crops</Text>
+            <View style={[styles.infoCard, darkMode && styles.infoCardDark]}>
+              <Text style={[styles.tabSectionTitle, darkMode && styles.tabSectionTitleDark]}>Registered Organic Crops</Text>
               {crops.length === 0 ? (
-                <Text style={styles.emptyTabText}>No registered crops yet.</Text>
+                <Text style={[styles.emptyTabText, darkMode && styles.emptyTabTextDark]}>No registered crops yet.</Text>
               ) : (
                 crops.map((crop) => (
                   <TouchableOpacity
                     key={crop.id}
-                    style={styles.productCropRow}
+                    style={[styles.productCropRow, darkMode && styles.productCropRowDark]}
                     onPress={() => router.push({ pathname: '/harvests/[id]', params: { id: crop.id } } as any)}
                     activeOpacity={0.8}
                   >
                     <Image source={{ uri: crop.imageUrl || 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=80' }} style={styles.cropThumb} />
                     <View style={styles.cropTextCol}>
-                      <Text style={styles.cropTitleText}>{crop.cropName}</Text>
-                      <Text style={styles.cropSubText}>{crop.name} • {crop.areaAcres} acres</Text>
-                      <Text style={styles.cropStageText}>Stage: {crop.stageName}</Text>
+                      <Text style={[styles.cropTitleText, darkMode && styles.cropTitleTextDark]}>{crop.cropName}</Text>
+                      <Text style={[styles.cropSubText, darkMode && styles.cropSubTextDark]}>{crop.name} • {crop.areaAcres} acres</Text>
+                      <Text style={[styles.cropStageText, darkMode && styles.cropStageTextDark]}>Stage: {crop.stageName}</Text>
                     </View>
-                    <Feather name="chevron-right" size={18} color="#7E9382" />
+                    <Feather name="chevron-right" size={18} color={darkMode ? '#7E9E84' : '#7E9382'} />
                   </TouchableOpacity>
                 ))
               )}
@@ -420,30 +433,30 @@ export default function FarmerProfileScreen() {
         {/* Tab Content: Reviews */}
         {activeTab === 'reviews' && (
           <View style={styles.tabContentContainer}>
-            <View style={styles.infoCard}>
-              <Text style={styles.tabSectionTitle}>Buyer Ratings & Reviews</Text>
+            <View style={[styles.infoCard, darkMode && styles.infoCardDark]}>
+              <Text style={[styles.tabSectionTitle, darkMode && styles.tabSectionTitleDark]}>Buyer Ratings & Reviews</Text>
               <View style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewerName}>Saman Perera (Buyer)</Text>
+                  <Text style={[styles.reviewerName, darkMode && styles.reviewerNameDark]}>Saman Perera (Buyer)</Text>
                   <Text style={styles.reviewRating}>⭐ 5.0</Text>
                 </View>
-                <Text style={styles.reviewBody}>
+                <Text style={[styles.reviewBody, darkMode && styles.reviewBodyDark]}>
                   Exceptional quality organic tomatoes. Every batch included verifiable photo evidence on the TraceRoot timeline.
                 </Text>
-                <Text style={styles.reviewDate}>12 Sep 2026</Text>
+                <Text style={[styles.reviewDate, darkMode && styles.reviewDateDark]}>12 Sep 2026</Text>
               </View>
 
-              <View style={styles.infoRowDivider} />
+              <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
               <View style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewerName}>Nimal Silva (Retailer)</Text>
+                  <Text style={[styles.reviewerName, darkMode && styles.reviewerNameDark]}>Nimal Silva (Retailer)</Text>
                   <Text style={styles.reviewRating}>⭐ 4.8</Text>
                 </View>
-                <Text style={styles.reviewBody}>
+                <Text style={[styles.reviewBody, darkMode && styles.reviewBodyDark]}>
                   Fresh greenhouse carrots delivered exactly on schedule. Highly reliable producer.
                 </Text>
-                <Text style={styles.reviewDate}>28 Aug 2026</Text>
+                <Text style={[styles.reviewDate, darkMode && styles.reviewDateDark]}>28 Aug 2026</Text>
               </View>
             </View>
           </View>
@@ -452,29 +465,29 @@ export default function FarmerProfileScreen() {
         {/* Tab Content: Documents */}
         {activeTab === 'documents' && (
           <View style={styles.tabContentContainer}>
-            <View style={styles.infoCard}>
-              <Text style={styles.tabSectionTitle}>Certifications & Verified Credentials</Text>
+            <View style={[styles.infoCard, darkMode && styles.infoCardDark]}>
+              <Text style={[styles.tabSectionTitle, darkMode && styles.tabSectionTitleDark]}>Certifications & Verified Credentials</Text>
               <View style={styles.docRow}>
-                <MaterialCommunityIcons name="certificate-outline" size={24} color="#26542D" style={{ marginRight: 12 }} />
+                <MaterialCommunityIcons name="certificate-outline" size={24} color={darkMode ? '#4ADE80' : '#26542D'} style={{ marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.docTitle}>Organic Crop Production Certificate</Text>
-                  <Text style={styles.docSub}>Ref: SL-ORG-2026-904 • Verified</Text>
+                  <Text style={[styles.docTitle, darkMode && styles.docTitleDark]}>Organic Crop Production Certificate</Text>
+                  <Text style={[styles.docSub, darkMode && styles.docSubDark]}>Ref: SL-ORG-2026-904 • Verified</Text>
                 </View>
-                <View style={styles.verifiedTag}>
-                  <Text style={styles.verifiedTagText}>Active</Text>
+                <View style={[styles.verifiedTag, darkMode && styles.verifiedTagDark]}>
+                  <Text style={[styles.verifiedTagText, darkMode && styles.verifiedTagTextDark]}>Active</Text>
                 </View>
               </View>
 
-              <View style={styles.infoRowDivider} />
+              <View style={[styles.infoRowDivider, darkMode && styles.infoRowDividerDark]} />
 
               <View style={styles.docRow}>
-                <MaterialCommunityIcons name="file-check-outline" size={24} color="#26542D" style={{ marginRight: 12 }} />
+                <MaterialCommunityIcons name="file-check-outline" size={24} color={darkMode ? '#4ADE80' : '#26542D'} style={{ marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.docTitle}>TraceRoot Farmer Registration</Text>
-                  <Text style={styles.docSub}>No: {profile.registrationNo} • Central Province</Text>
+                  <Text style={[styles.docTitle, darkMode && styles.docTitleDark]}>TraceRoot Farmer Registration</Text>
+                  <Text style={[styles.docSub, darkMode && styles.docSubDark]}>No: {profile.registrationNo} • Central Province</Text>
                 </View>
-                <View style={styles.verifiedTag}>
-                  <Text style={styles.verifiedTagText}>Verified</Text>
+                <View style={[styles.verifiedTag, darkMode && styles.verifiedTagDark]}>
+                  <Text style={[styles.verifiedTagText, darkMode && styles.verifiedTagTextDark]}>Verified</Text>
                 </View>
               </View>
             </View>
@@ -1059,5 +1072,143 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#24542B',
     fontWeight: '700',
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  backCircleBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  headerSubtitleDark: {
+    color: '#9CB3A0',
+  },
+  headerTitleDark: {
+    color: '#F0F5F1',
+  },
+  trustCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  trustCircleRingDark: {
+    borderColor: '#4ADE80',
+  },
+  trustScoreNumberDark: {
+    color: '#F0F5F1',
+  },
+  trustLabelDark: {
+    color: '#FBBF24',
+  },
+  trustHeadlineDark: {
+    color: '#F0F5F1',
+  },
+  trustSubtextDark: {
+    color: '#9CB3A0',
+  },
+  tabPillActiveDark: {
+    backgroundColor: '#26542D',
+  },
+  tabPillInactiveDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  tabPillTextInactiveDark: {
+    color: '#A0B6A3',
+  },
+  infoCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  infoIconCircleDark: {
+    backgroundColor: '#233827',
+  },
+  infoItemLabelDark: {
+    color: '#9CB3A0',
+  },
+  infoItemValueDark: {
+    color: '#F0F5F1',
+  },
+  infoRowDividerDark: {
+    backgroundColor: '#263B2B',
+  },
+  locationCardDark: {
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  settingsSectionTitleDark: {
+    color: '#9CB3A0',
+  },
+  settingsCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  settingsIconCircleDark: {
+    backgroundColor: '#233827',
+  },
+  settingsItemTitleDark: {
+    color: '#F0F5F1',
+  },
+  settingsItemSubDark: {
+    color: '#9CB3A0',
+  },
+  languageDropdownPillDark: {
+    backgroundColor: '#233827',
+  },
+  languagePillTextDark: {
+    color: '#A5DCAD',
+  },
+  logoutBtnDark: {
+    backgroundColor: '#2A1810',
+    borderColor: '#59321E',
+  },
+  tabSectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptyTabTextDark: {
+    color: '#9CB3A0',
+  },
+  productCropRowDark: {
+    borderBottomColor: '#263B2B',
+  },
+  cropTitleTextDark: {
+    color: '#F0F5F1',
+  },
+  cropSubTextDark: {
+    color: '#9CB3A0',
+  },
+  cropStageTextDark: {
+    color: '#4ADE80',
+  },
+  reviewerNameDark: {
+    color: '#F0F5F1',
+  },
+  reviewBodyDark: {
+    color: '#CBD5E1',
+  },
+  reviewDateDark: {
+    color: '#9CB3A0',
+  },
+  docTitleDark: {
+    color: '#F0F5F1',
+  },
+  docSubDark: {
+    color: '#9CB3A0',
+  },
+  verifiedTagDark: {
+    backgroundColor: '#233827',
+  },
+  verifiedTagTextDark: {
+    color: '#4ADE80',
   },
 });

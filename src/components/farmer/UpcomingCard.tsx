@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UpcomingItem } from '../../types/farmer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface UpcomingCardProps {
   items: UpcomingItem[];
@@ -15,8 +16,10 @@ interface UpcomingCardProps {
 }
 
 export const UpcomingCard: React.FC<UpcomingCardProps> = ({ items, onItemPress }) => {
+  const [isDark] = useDarkMode();
+
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, isDark && styles.cardContainerDark]}>
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
         return (
@@ -24,6 +27,7 @@ export const UpcomingCard: React.FC<UpcomingCardProps> = ({ items, onItemPress }
             key={item.id}
             item={item}
             isLast={isLast}
+            isDark={isDark}
             onPress={() => onItemPress(item)}
           />
         );
@@ -35,10 +39,11 @@ export const UpcomingCard: React.FC<UpcomingCardProps> = ({ items, onItemPress }
 interface UpcomingRowItemProps {
   item: UpcomingItem;
   isLast: boolean;
+  isDark?: boolean;
   onPress: () => void;
 }
 
-const UpcomingRowItem: React.FC<UpcomingRowItemProps> = ({ item, isLast, onPress }) => {
+const UpcomingRowItem: React.FC<UpcomingRowItemProps> = ({ item, isLast, isDark, onPress }) => {
   const rowScale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -69,20 +74,20 @@ const UpcomingRowItem: React.FC<UpcomingRowItemProps> = ({ item, isLast, onPress
           onPress={onPress}
         >
           {/* Circular Left Icon Avatar */}
-          <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+          <View style={[styles.iconCircle, { backgroundColor: isDark ? '#142318' : item.iconBg }]}>
             {item.iconType === 'stage' ? (
-              <Ionicons name="leaf-outline" size={17} color={item.iconColor} />
+              <Ionicons name="leaf-outline" size={17} color={isDark ? '#4ADE80' : item.iconColor} />
             ) : (
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={item.iconColor} />
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={isDark ? '#4ADE80' : item.iconColor} />
             )}
           </View>
 
           {/* Text labels */}
           <View style={styles.textContainer}>
-            <Text style={styles.titleText} numberOfLines={2}>
+            <Text style={[styles.titleText, isDark && styles.titleTextDark]} numberOfLines={2}>
               {item.title}
             </Text>
-            <Text style={styles.subtitleText} numberOfLines={1}>
+            <Text style={[styles.subtitleText, isDark && styles.subtitleTextDark]} numberOfLines={1}>
               {item.subtitle}
             </Text>
           </View>
@@ -95,7 +100,7 @@ const UpcomingRowItem: React.FC<UpcomingRowItemProps> = ({ item, isLast, onPress
       </Animated.View>
 
       {/* Row Divider between items */}
-      {!isLast && <View style={styles.divider} />}
+      {!isLast && <View style={[styles.divider, isDark && styles.dividerDark]} />}
     </View>
   );
 };
@@ -158,5 +163,20 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F3F2EC',
     marginHorizontal: 16,
+  },
+  cardContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  titleTextDark: {
+    color: '#F0F5F1',
+  },
+  subtitleTextDark: {
+    color: '#9CB3A0',
+  },
+  dividerDark: {
+    backgroundColor: '#283D2C',
   },
 });
