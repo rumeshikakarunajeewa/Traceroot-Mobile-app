@@ -193,6 +193,29 @@ class AuthService {
         console.warn('Profile creation error (trigger may handle it):', profileError.message);
       }
 
+      // Also ensure connected role-based profile row is initialized
+      try {
+        if (role === 'farmer') {
+          await supabase.from('farmer_profiles').upsert({
+            id: data.user.id,
+            farming_type: 'open_field',
+          });
+        } else if (role === 'buyer') {
+          await supabase.from('buyer_profiles').upsert({
+            id: data.user.id,
+            buyer_type: 'supermarket',
+            company_name: '',
+          });
+        } else if (role === 'supplier') {
+          await supabase.from('supplier_profiles').upsert({
+            id: data.user.id,
+            company_name: '',
+          });
+        }
+      } catch (roleErr) {
+        console.warn('Role profile initialization error:', roleErr);
+      }
+
       return {
         user: data.user,
         profile: newProfile,
