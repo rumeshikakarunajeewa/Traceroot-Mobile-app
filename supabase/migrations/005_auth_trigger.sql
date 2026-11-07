@@ -123,8 +123,8 @@ CREATE TRIGGER tr_sync_profile_name_to_role_profiles
   WHEN (OLD.full_name IS DISTINCT FROM NEW.full_name)
   EXECUTE FUNCTION public.sync_profile_name_to_role_profiles();
 
--- 5. SAFETY DEFAULT TRIGGER ON farmer_profiles:
--- If a row in farmer_profiles is inserted or updated with null/empty farmer_name,
+-- 5. SAFETY DEFAULT TRIGGERS ON ROLE TABLES:
+-- If a row in any role table is inserted or updated with null/empty name,
 -- automatically look up full_name from public.profiles
 CREATE OR REPLACE FUNCTION public.default_farmer_name_from_profiles()
 RETURNS TRIGGER AS $$
@@ -143,6 +143,42 @@ CREATE TRIGGER tr_default_farmer_name
   BEFORE INSERT OR UPDATE ON public.farmer_profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.default_farmer_name_from_profiles();
+
+CREATE OR REPLACE FUNCTION public.default_buyer_name_from_profiles()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.buyer_name IS NULL OR TRIM(NEW.buyer_name) = '' THEN
+    SELECT full_name INTO NEW.buyer_name
+    FROM public.profiles
+    WHERE id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_default_buyer_name ON public.buyer_profiles;
+CREATE TRIGGER tr_default_buyer_name
+  BEFORE INSERT OR UPDATE ON public.buyer_profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.default_buyer_name_from_profiles();
+
+CREATE OR REPLACE FUNCTION public.default_supplier_name_from_profiles()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.supplier_name IS NULL OR TRIM(NEW.supplier_name) = '' THEN
+    SELECT full_name INTO NEW.supplier_name
+    FROM public.profiles
+    WHERE id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_default_supplier_name ON public.supplier_profiles;
+CREATE TRIGGER tr_default_supplier_name
+  BEFORE INSERT OR UPDATE ON public.supplier_profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.default_supplier_name_from_profiles();
 
 -- 6. BACKFILL: Ensure existing profiles also have their role table connected & names synced
 INSERT INTO public.farmer_profiles (id, farming_type, farmer_name)
@@ -166,9 +202,21 @@ WHERE role = 'supplier'
 ON CONFLICT (id) DO UPDATE SET
   supplier_name = COALESCE(supplier_profiles.supplier_name, EXCLUDED.supplier_name);
 
--- Sync any existing farmer rows where farmer_name is NULL
+-- Sync any existing rows across all role tables where the name column is NULL or empty
 UPDATE public.farmer_profiles fp
 SET farmer_name = p.full_name
 FROM public.profiles p
 WHERE fp.id = p.id
   AND (fp.farmer_name IS NULL OR TRIM(fp.farmer_name) = '');
+
+UPDATE public.buyer_profiles bp
+SET buyer_name = p.full_name
+FROM public.profiles p
+WHERE bp.id = p.id
+  AND (bp.buyer_name IS NULL OR TRIM(bp.buyer_name) = '');
+
+UPDATE public.supplier_profiles sp
+SET supplier_name = p.full_name
+FROM public.profiles p
+WHERE sp.id = p.id
+  AND (sp.supplier_name IS NULL OR TRIM(sp.supplier_name) = '');

@@ -24,12 +24,14 @@ export interface FarmerProfileDetails {
 
 export interface BuyerProfileDetails {
   buyer_type: 'supermarket' | 'retailer' | 'restaurant';
+  buyer_name?: string;
   company_name: string;
   address?: string;
   br_number?: string;
 }
 
 export interface SupplierProfileDetails {
+  supplier_name?: string;
   company_name: string;
   address?: string;
   br_number?: string;
