@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Animated } from 'react-native';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { FieldItem } from '../../types/farmer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface FieldCardProps {
   field: FieldItem;
@@ -16,6 +17,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
   onChangePhotoPress,
   onBookmarkPress,
 }) => {
+  const [isDark] = useDarkMode();
   const cardScale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -40,7 +42,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
   return (
     <Animated.View style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
       <TouchableOpacity
-        style={styles.cardContainer}
+        style={[styles.cardContainer, isDark && styles.cardContainerDark]}
         activeOpacity={0.9}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -87,12 +89,12 @@ export const FieldCard: React.FC<FieldCardProps> = ({
         </View>
 
         {/* Bottom Half: Field Details */}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.cropTitle} numberOfLines={1}>
+        <View style={[styles.detailsContainer, isDark && styles.detailsContainerDark]}>
+          <Text style={[styles.cropTitle, isDark && styles.cropTitleDark]} numberOfLines={1}>
             {field.cropName}
           </Text>
 
-          <Text style={styles.plotSubtitle} numberOfLines={1}>
+          <Text style={[styles.plotSubtitle, isDark && styles.plotSubtitleDark]} numberOfLines={1}>
             {field.plotName}
           </Text>
 
@@ -266,5 +268,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E3C25',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  cardContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  detailsContainerDark: {
+    backgroundColor: '#18271C',
+  },
+  cropTitleDark: {
+    color: '#F0F5F1',
+  },
+  plotSubtitleDark: {
+    color: '#9CB3A0',
   },
 });

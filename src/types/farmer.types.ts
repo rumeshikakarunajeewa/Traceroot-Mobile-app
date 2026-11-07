@@ -1,6 +1,9 @@
+import { FarmingStageKeyType } from '../constants/stages';
+
 export interface JourneyStage {
   id: string;
   stageNumber: number;
+  key?: FarmingStageKeyType;
   title: string;
   subtitle: string;
   date: string;
@@ -11,6 +14,8 @@ export interface JourneyStage {
   tags?: string[];
   recordCount?: number;
   stageEmoji?: string;
+  isNotApplicable?: boolean;
+  notApplicableReason?: string;
 }
 
 export interface FieldItem {
@@ -37,6 +42,7 @@ export interface FieldItem {
   nextStageName?: string;
   nextStageEst?: string;
   daysCount?: number;
+  batchId?: string;
 }
 
 export interface FarmerProfile {
@@ -87,10 +93,20 @@ export interface RecentRecordItem {
   location?: string;
   inputs?: string[];
   photoEvidenceAttached?: boolean;
+  photoUrl?: string;
   isLocked?: boolean;
   isOriginal?: boolean;
+  isCorrection?: boolean;
+  correctsRecordCode?: string;
+  correctionReason?: string;
+  correctedAt?: string;
   cropId?: string;
+  batchId?: string;
+  activityId?: string;
   isCompact?: boolean;
+  notes?: string;
+  details?: Record<string, any>;
+  createdAt?: string;
 }
 
 export interface UpcomingItem {
@@ -103,4 +119,40 @@ export interface UpcomingItem {
   dotColor?: string;
   route?: string;
   cropId?: string;
+}
+
+export interface CustomStageActivity {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  name: string;
+  description?: string;
+  date?: string;
+  notes?: string;
+  createdAt: string;
+  isCustom: true;
+}
+
+export interface ActivityApplicabilityRecord {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  activityId: string;
+  isNotApplicable: boolean;
+  reason: string;
+  additionalNotes?: string;
+  updatedAt: string;
+}
+
+export interface StageApplicabilityRecord {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  stageNumber: number;
+  isNotApplicable: boolean;
+  reason: string;
+  updatedAt: string;
 }

@@ -29,7 +29,7 @@ export default function CropFarmingJourneyScreen() {
   const { width: windowWidth } = useWindowDimensions();
 
   // Reactive shared crop store so photo changes and new records sync across all dashboard views and crops list
-  const { fields, getFieldById, updateFieldPhoto, addRecordToCrop } = useCropsStore();
+  const { fields, getFieldById, updateFieldPhoto, addRecordToCrop, stageApplicabilities } = useCropsStore();
   const field = id ? fields.find((f) => f.id === id) : getFieldById('field-tomato');
 
   // Photo change modal state
@@ -214,6 +214,19 @@ export default function CropFarmingJourneyScreen() {
 
   const handleRemovePhoto = () => {
     applyNewPhoto(undefined);
+  };
+
+  const handleOpenStage = (stage: JourneyStage) => {
+    if (!field) return;
+    router.push({
+      pathname: '/(farmer)/harvests/[id]/stage',
+      params: {
+        id: field.id,
+        stageId: stage.key || stage.id,
+        stageNumber: String(stage.stageNumber),
+        batchId: field.batchId,
+      },
+    });
   };
 
   const stages: JourneyStage[] = field?.stages || [];
@@ -443,9 +456,15 @@ export default function CropFarmingJourneyScreen() {
           {/* Connected Stepper Timeline */}
           <View style={styles.timelineList}>
             {stages.map((stage, idx) => {
-              const isPast = idx < currentStageIndex - 1;
-              const isCurrent = idx === currentStageIndex - 1;
-              const isUpcoming = idx > currentStageIndex - 1;
+              const stageApp = stageApplicabilities?.find(
+                (s) =>
+                  s.cropId === field?.id &&
+                  (s.stageNumber === stage.stageNumber || s.stageKey === stage.key)
+              );
+              const isNotApplicable = Boolean(stage.isNotApplicable || stageApp?.isNotApplicable);
+              const isPast = !isNotApplicable && idx < currentStageIndex - 1;
+              const isCurrent = !isNotApplicable && idx === currentStageIndex - 1;
+              const isUpcoming = !isNotApplicable && idx > currentStageIndex - 1;
               const isLast = idx === stages.length - 1;
 
               return (
@@ -453,17 +472,19 @@ export default function CropFarmingJourneyScreen() {
                   {/* Left Node & Vertical Connector Line */}
                   <View style={styles.timelineTrackCol}>
                     {/* Node Icon */}
-                    {isPast && (
+                    {isNotApplicable ? (
+                      <View style={styles.nodeNotApplicable}>
+                        <Feather name="minus" size={14} color="#6C8373" />
+                      </View>
+                    ) : isPast ? (
                       <View style={styles.nodeDone}>
                         <Feather name="check" size={14} color="#FFFFFF" />
                       </View>
-                    )}
-                    {isCurrent && (
+                    ) : isCurrent ? (
                       <View style={styles.nodeCurrent}>
                         <Text style={styles.nodeCurrentEmoji}>{stage.stageEmoji || '🌸'}</Text>
                       </View>
-                    )}
-                    {isUpcoming && (
+                    ) : (
                       <View style={styles.nodeUpcoming}>
                         <Text style={styles.nodeUpcomingEmoji}>{stage.stageEmoji || '🌱'}</Text>
                       </View>
@@ -480,12 +501,15 @@ export default function CropFarmingJourneyScreen() {
                     )}
                   </View>
 
-                  {/* Right Stage Card */}
-                  <View
+                  {/* Right Stage Card (Clickable to open Stage Details) */}
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    onPress={() => handleOpenStage(stage)}
                     style={[
                       styles.stageCard,
                       isCurrent && styles.stageCardCurrent,
                       isUpcoming && styles.stageCardUpcoming,
+                      isNotApplicable && styles.stageCardNA,
                     ]}
                   >
                     {/* Top Row: Title, Date, View / Status */}
@@ -494,6 +518,7 @@ export default function CropFarmingJourneyScreen() {
                         style={[
                           styles.stageCardTitle,
                           isUpcoming && styles.stageCardTitleUpcoming,
+                          isNotApplicable && styles.stageCardTitleNA,
                         ]}
                         numberOfLines={1}
                       >
@@ -501,29 +526,36 @@ export default function CropFarmingJourneyScreen() {
                       </Text>
 
                       <View style={styles.stageCardRightHeader}>
-                        {stage.date && !isUpcoming && (
+                        {stage.date && !isUpcoming && !isNotApplicable && (
                           <Text style={styles.stageDateText}>{stage.date}</Text>
                         )}
 
-                        {isCurrent && (
+                        {isNotApplicable ? (
+                          <View style={styles.naBadgePill}>
+                            <Text style={styles.naBadgeText}>NOT APPLICABLE</Text>
+                          </View>
+                        ) : isCurrent ? (
                           <View style={styles.currentBadgePill}>
                             <Text style={styles.currentBadgeText}>CURRENT</Text>
                           </View>
-                        )}
+                        ) : null}
 
                         {/* View -> Link */}
-                        {!isUpcoming && (
-                          <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => {
-                              Alert.alert('Stage Records', `Viewing ${stage.title} records`);
-                            }}
-                          >
-                            <Text style={styles.viewLinkText}>View →</Text>
-                          </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleOpenStage(stage)}
+                        >
+                          <Text style={styles.viewLinkText}>View →</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
+
+                    {/* Not Applicable Reason note if available */}
+                    {isNotApplicable && (stage.notApplicableReason || stageApp?.reason) ? (
+                      <Text style={styles.naReasonText} numberOfLines={2}>
+                        &quot;{stage.notApplicableReason || stageApp?.reason}&quot;
+                      </Text>
+                    ) : null}
 
                     {/* Bottom Row: Record count & Tag pills */}
                     <View style={styles.stageCardFooter}>
@@ -542,7 +574,7 @@ export default function CropFarmingJourneyScreen() {
                         </View>
                       )}
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -553,8 +585,14 @@ export default function CropFarmingJourneyScreen() {
             style={styles.traceabilityBtn}
             activeOpacity={0.8}
             onPress={() => {
-              // TODO: Navigate to complete public tamper-proof audit trail / batch cert
-              router.push('/contracts');
+              if (field) {
+                router.push({
+                  pathname: '/(farmer)/contracts',
+                  params: { id: field.id },
+                });
+              } else {
+                router.push('/(farmer)/contracts');
+              }
             }}
           >
             <Ionicons name="git-network-outline" size={17} color="#2D5C35" style={{ marginRight: 8 }} />
@@ -918,6 +956,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
   },
+  nodeNotApplicable: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F0F4F1',
+    borderWidth: 1.5,
+    borderColor: '#BCCDC0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
   timelineConnector: {
     position: 'absolute',
     top: 32,
@@ -956,6 +1005,10 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: '#DDD9CF',
   },
+  stageCardNA: {
+    backgroundColor: '#F8FAF8',
+    borderColor: '#D7E3D9',
+  },
   stageCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -970,6 +1023,10 @@ const styles = StyleSheet.create({
   },
   stageCardTitleUpcoming: {
     color: '#8C9B90',
+  },
+  stageCardTitleNA: {
+    color: '#768B7C',
+    fontStyle: 'italic',
   },
   stageCardRightHeader: {
     flexDirection: 'row',
@@ -992,6 +1049,25 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  naBadgePill: {
+    backgroundColor: '#E0EAE2',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  naBadgeText: {
+    color: '#43614B',
+    fontSize: 9.5,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  naReasonText: {
+    fontSize: 11.5,
+    color: '#657E6B',
+    fontStyle: 'italic',
+    marginTop: 2,
+    marginBottom: 6,
   },
   viewLinkText: {
     fontSize: 11.5,

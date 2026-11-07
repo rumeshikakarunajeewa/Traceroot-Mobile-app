@@ -201,9 +201,9 @@ CREATE TABLE harvests (
   expected_harvest_date DATE,
   status                TEXT NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active','harvested','sold','contracted')),
-  current_stage         TEXT NOT NULL DEFAULT 'seedling'
+  current_stage         TEXT NOT NULL DEFAULT 'planting'
                         CHECK (current_stage IN (
-                          'seedling','vegetative_growth','flowering','fruiting','harvested'
+                          'planting','vegetative_growth','flowering','crop_maturity','harvesting'
                         )),
   description           TEXT,
   cover_image_url       TEXT,
@@ -226,7 +226,7 @@ CREATE TABLE cultivation_records (
 
   -- Classification
   stage           TEXT NOT NULL CHECK (stage IN (
-                    'seedling','vegetative_growth','flowering','fruiting','harvested'
+                    'planting','vegetative_growth','flowering','crop_maturity','harvesting'
                   )),
   activity_type   TEXT NOT NULL,  -- 'Growth Observation', 'Fertilizer Applied', etc.
 
@@ -521,7 +521,7 @@ TraceRoot/
 │   │   │   ├── [id].tsx                  # ← Figma Screen 2
 │   │   │   │                             #   Crop header (Stats row: Records/Photos/Days)
 │   │   │   │                             #   Stage progress dots bar
-│   │   │   │                             #   Accordion per stage (Seedling/Veg/Flowering…)
+│   │   │   │                             #   Accordion per stage (Planting/Veg/Flowering/Maturity/Harvesting)
 │   │   │   │                             #   Each record row: TR-XXXX + ⏳ if pending
 │   │   │   └── [id]/
 │   │   │       ├── record/
@@ -1179,11 +1179,11 @@ export async function signInWithGoogle() {
 ```typescript
 // src/components/harvest/GrowthStageTimeline.tsx
 const STAGES = [
-  { key: 'seedling',          label: 'Seedling',          icon: '🌱', color: '#74C69D' },
+  { key: 'planting',          label: 'Planting',          icon: '🌱', color: '#74C69D' },
   { key: 'vegetative_growth', label: 'Vegetative Growth', icon: '🌿', color: '#74C69D' },
   { key: 'flowering',         label: 'Flowering',         icon: '🌸', color: '#E76F51' },
-  { key: 'fruiting',          label: 'Fruiting',          icon: '🍅', color: '#74C69D' },
-  { key: 'harvested',         label: 'Harvested',         icon: '📦', color: '#74C69D' },
+  { key: 'crop_maturity',     label: 'Crop Maturity',     icon: '🍅', color: '#74C69D' },
+  { key: 'harvesting',        label: 'Harvesting',        icon: '🌾', color: '#74C69D' },
 ] as const;
 
 const stageKeys = STAGES.map(s => s.key);

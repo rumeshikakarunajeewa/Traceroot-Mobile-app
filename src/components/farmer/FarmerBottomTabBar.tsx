@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { router } from 'expo-router';
+import { useDarkMode } from '../../store/uiStore';
 
 export interface FarmerBottomTabBarProps {
   state?: any;
@@ -22,6 +22,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   navigateToTab,
   onAddPress,
 }) => {
+  const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
@@ -64,20 +65,32 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
     }
   };
 
-  const isHomeFocused = currentRouteName === 'index';
+  const isHomeFocused =
+    currentRouteName === 'index' ||
+    currentRouteName === 'harvests/[id]' ||
+    currentRouteName === 'harvests/[id]/stage';
   const isCropsFocused = currentRouteName === 'crops';
   const isOrdersFocused = currentRouteName === 'orders';
   const isMessagesFocused = currentRouteName === 'messages';
 
-  // Do not render floating tab bar on full-screen detail subroutes (e.g. harvests/[id], harvests/new)
-  const isTabScreen = ['index', 'crops', 'orders', 'messages'].includes(currentRouteName);
+  // Render floating tab bar on main tabs, farming journey, and stage details
+  const isTabScreen = [
+    'index',
+    'crops',
+    'orders',
+    'messages',
+    'harvests/[id]',
+    'harvests/[id]/stage',
+    'profile',
+    'profile/index',
+  ].includes(currentRouteName);
   if (!isTabScreen) {
     return null;
   }
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
-      <View style={[styles.barContainer, { marginBottom: bottomMargin }]}>
+      <View style={[styles.barContainer, isDark && styles.barContainerDark, { marginBottom: bottomMargin }]}>
         {/* Tab 1: Home */}
         <TouchableOpacity
           style={styles.tabItem}
@@ -136,11 +149,17 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
         {/* Center Floating Plus (+) Action Button */}
         <View style={styles.centerButtonWrapper}>
           <TouchableOpacity
-            style={styles.plusButton}
-            onPress={onAddPress}
+            style={[styles.plusButton, isDark && styles.plusButtonDark]}
+            onPress={() => {
+              if (onAddPress) {
+                onAddPress();
+              } else {
+                router.push('/harvests/new');
+              }
+            }}
             activeOpacity={0.85}
           >
-            <Feather name="plus" size={26} color="#18361F" />
+            <Feather name="plus" size={26} color={isDark ? '#E5EFE7' : '#18361F'} />
           </TouchableOpacity>
         </View>
 
@@ -236,6 +255,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  barContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+  },
   tabItem: {
     flex: 1,
     alignItems: 'center',
@@ -291,5 +317,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
+  },
+  plusButtonDark: {
+    backgroundColor: '#2D5936',
   },
 });
