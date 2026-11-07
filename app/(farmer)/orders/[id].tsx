@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 
 import {
   Order,
@@ -25,8 +26,10 @@ import StatusBadge from '../../../src/components/farmer/StatusBadge';
 import ProgressBar from '../../../src/components/farmer/ProgressBar';
 import AcceptDeclineModal from '../../../src/components/farmer/AcceptDeclineModal';
 import InvoiceModal from '../../../src/components/farmer/InvoiceModal';
+import { useDarkMode } from '../../../src/store/uiStore';
 
 export default function OrderDetailsScreen() {
+  const [isDark] = useDarkMode();
   const params = useLocalSearchParams<{ id?: string }>();
   const orderId = params.id || 'ORD-0012';
 
@@ -89,18 +92,27 @@ export default function OrderDetailsScreen() {
     Alert.alert('Delivered', `Order ${order.id} has been marked as delivered.`);
   };
 
+  const handleNavigateToCrop = () => {
+    const targetCropId = (order as any).crop_route_id || 'field-tomato';
+    router.push({
+      pathname: '/harvests/[id]',
+      params: { id: targetCropId },
+    } as any);
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, isDark && styles.backButtonDark]}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color="#16351E" />
+          <Feather name="arrow-left" size={22} color={isDark ? '#E5EFE7' : '#16351E'} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order Details</Text>
+        <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>Order Details</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -109,11 +121,11 @@ export default function OrderDetailsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Main Info Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, isDark && styles.cardDark]}>
           <View style={styles.orderTopRow}>
             <View>
-              <Text style={styles.orderIdText}>{order.id}</Text>
-              <Text style={styles.orderDateText}>Placed on {formattedDate}</Text>
+              <Text style={[styles.orderIdText, isDark && styles.orderIdTextDark]}>{order.id}</Text>
+              <Text style={[styles.orderDateText, isDark && styles.orderDateTextDark]}>Placed on {formattedDate}</Text>
             </View>
             <StatusBadge status={order.status} />
           </View>
@@ -123,8 +135,8 @@ export default function OrderDetailsScreen() {
         </View>
 
         {/* Crop Information */}
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Crop Information</Text>
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Crop Information</Text>
           <View style={styles.cropRow}>
             <Image
               source={{
@@ -135,32 +147,32 @@ export default function OrderDetailsScreen() {
               style={styles.cropImage}
             />
             <View style={styles.cropDetails}>
-              <Text style={styles.cropName}>{order.crop_name}</Text>
-              <Text style={styles.cropQuantity}>
+              <Text style={[styles.cropName, isDark && styles.cropNameDark]}>{order.crop_name}</Text>
+              <Text style={[styles.cropQuantity, isDark && styles.cropQuantityDark]}>
                 Quantity: {order.quantity} {order.unit}
               </Text>
-              <Text style={styles.unitPrice}>
+              <Text style={[styles.unitPrice, isDark && styles.unitPriceDark]}>
                 Unit Price: LKR {order.unit_price}/{order.unit}
               </Text>
-              <Text style={styles.batchRef}>Batch: TR-2026-LOT-08</Text>
+              <Text style={[styles.batchRef, isDark && styles.batchRefDark]}>Batch: TR-2026-LOT-08</Text>
             </View>
           </View>
 
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Price</Text>
-            <Text style={styles.totalValue}>LKR {order.total_price.toLocaleString()}</Text>
+          <View style={[styles.totalRow, isDark && styles.totalRowDark]}>
+            <Text style={[styles.totalLabel, isDark && styles.totalLabelDark]}>Total Price</Text>
+            <Text style={[styles.totalValue, isDark && styles.totalValueDark]}>LKR {order.total_price.toLocaleString()}</Text>
           </View>
         </View>
 
         {/* Buyer Information */}
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Buyer Information</Text>
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Buyer Information</Text>
           <View style={styles.buyerRow}>
-            <View style={styles.buyerAvatar}>
-              <Feather name="user" size={20} color="#26542D" />
+            <View style={[styles.buyerAvatar, isDark && styles.buyerAvatarDark]}>
+              <Feather name="user" size={20} color={isDark ? '#4ADE80' : '#26542D'} />
             </View>
             <View style={styles.buyerTextCol}>
-              <Text style={styles.buyerNameText}>{order.buyer_name}</Text>
+              <Text style={[styles.buyerNameText, isDark && styles.buyerNameTextDark]}>{order.buyer_name}</Text>
               {order.buyer_verified ? (
                 <View style={styles.verifiedTag}>
                   <Ionicons name="shield-checkmark" size={13} color="#2E6838" style={{ marginRight: 3 }} />
@@ -171,36 +183,36 @@ export default function OrderDetailsScreen() {
               )}
             </View>
             <TouchableOpacity
-              style={styles.contactBtn}
+              style={[styles.contactBtn, isDark && styles.contactBtnDark]}
               onPress={() => router.push('/messages')}
               activeOpacity={0.8}
             >
-              <Ionicons name="chatbubble-outline" size={18} color="#26542D" />
+              <Ionicons name="chatbubble-outline" size={18} color={isDark ? '#4ADE80' : '#26542D'} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Delivery Information */}
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Delivery Information</Text>
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Delivery Information</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Delivery Method</Text>
-            <Text style={styles.infoValue}>Direct Farm Pickup / Courier</Text>
+            <Text style={[styles.infoLabel, isDark && styles.infoLabelDark]}>Delivery Method</Text>
+            <Text style={[styles.infoValue, isDark && styles.infoValueDark]}>Direct Farm Pickup / Courier</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Delivery Address</Text>
-            <Text style={styles.infoValue}>Colombo 07, Western Province</Text>
+            <Text style={[styles.infoLabel, isDark && styles.infoLabelDark]}>Delivery Address</Text>
+            <Text style={[styles.infoValue, isDark && styles.infoValueDark]}>Colombo 07, Western Province</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Expected Dispatch</Text>
-            <Text style={styles.infoValue}>Within 2-3 business days</Text>
+            <Text style={[styles.infoLabel, isDark && styles.infoLabelDark]}>Expected Dispatch</Text>
+            <Text style={[styles.infoValue, isDark && styles.infoValueDark]}>Within 2-3 business days</Text>
           </View>
         </View>
 
         {/* Purchase Invoice & Bill (Replaces QR Card) */}
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Order Invoice & Purchase Bill</Text>
-          <Text style={styles.traceDesc}>
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Order Invoice & Purchase Bill</Text>
+          <Text style={[styles.traceDesc, isDark && styles.traceDescDark]}>
             Invoice #{order.invoice_number || `INV-${order.id}`} has been automatically generated according to this order's agreed quantity and price.
           </Text>
           <TouchableOpacity
@@ -214,24 +226,18 @@ export default function OrderDetailsScreen() {
         </View>
 
         {/* Linked Crop Journey */}
-        <View style={styles.card}>
-          <Text style={styles.cardSectionTitle}>Linked Crop Production</Text>
-          <Text style={styles.traceDesc}>
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Linked Crop Production</Text>
+          <Text style={[styles.traceDesc, isDark && styles.traceDescDark]}>
             Linked to {order.linked_crop_batch || `${order.crop_name} Batch #3`}. Tap below to view crop lifecycle and farming journey records.
           </Text>
           <TouchableOpacity
-            style={styles.viewTimelineBtn}
-            onPress={() => {
-              const targetCropId = order.crop_route_id || 'field-tomato';
-              router.push({
-                pathname: '/harvests/[id]',
-                params: { id: targetCropId },
-              } as any);
-            }}
-            activeOpacity={0.85}
+            style={[styles.linkCropBtn, isDark && styles.linkCropBtnDark]}
+            onPress={handleNavigateToCrop}
+            activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="sprout" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.viewTimelineBtnText}>View Crop Farming Journey</Text>
+            <MaterialCommunityIcons name="sprout" size={18} color={isDark ? '#4ADE80' : '#26542D'} style={{ marginRight: 6 }} />
+            <Text style={[styles.linkCropBtnText, isDark && styles.linkCropBtnTextDark]}>View Crop Lifecycle Timeline</Text>
           </TouchableOpacity>
         </View>
 
@@ -555,6 +561,94 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  linkCropBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#EDF5EE',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D4E4D6',
+  },
+  linkCropBtnDark: {
+    backgroundColor: '#1E3324',
+    borderColor: '#2D4E35',
+  },
+  linkCropBtnText: {
+    color: '#26542D',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  linkCropBtnTextDark: {
+    color: '#4ADE80',
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  backButtonDark: {
+    backgroundColor: '#18271C',
+    borderWidth: 1,
+    borderColor: '#283D2C',
+  },
+  headerTitleDark: {
+    color: '#F0F5F1',
+  },
+  cardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  orderIdTextDark: {
+    color: '#F0F5F1',
+  },
+  orderDateTextDark: {
+    color: '#9CB3A0',
+  },
+  cardSectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  cropNameDark: {
+    color: '#F0F5F1',
+  },
+  cropQuantityDark: {
+    color: '#9CB3A0',
+  },
+  unitPriceDark: {
+    color: '#9CB3A0',
+  },
+  batchRefDark: {
+    color: '#4ADE80',
+  },
+  totalRowDark: {
+    borderTopColor: '#283D2C',
+  },
+  totalLabelDark: {
+    color: '#9CB3A0',
+  },
+  totalValueDark: {
+    color: '#4ADE80',
+  },
+  buyerAvatarDark: {
+    backgroundColor: '#223827',
+  },
+  buyerNameTextDark: {
+    color: '#F0F5F1',
+  },
+  contactBtnDark: {
+    backgroundColor: '#223827',
+  },
+  infoLabelDark: {
+    color: '#9CB3A0',
+  },
+  infoValueDark: {
+    color: '#F0F5F1',
+  },
+  traceDescDark: {
+    color: '#9CB3A0',
   },
 });
 

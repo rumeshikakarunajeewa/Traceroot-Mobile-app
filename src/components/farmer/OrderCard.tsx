@@ -7,6 +7,7 @@ import StatusBadge from './StatusBadge';
 import ProgressBar from './ProgressBar';
 import InvoiceModal from './InvoiceModal';
 import { Order } from '../../lib/api/orders';
+import { useDarkMode } from '../../store/uiStore';
 
 interface OrderCardProps {
   order: Order;
@@ -25,6 +26,7 @@ export default function OrderCard({
   onMarkReady,
   onMarkDelivered,
 }: OrderCardProps) {
+  const [isDark] = useDarkMode();
   // Expansion state controlled by the circular chevron scroll button
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [invoiceVisible, setInvoiceVisible] = useState<boolean>(false);
@@ -69,7 +71,7 @@ export default function OrderCard({
   const linkedCropText = order.linked_crop_batch || `${order.crop_name} — Batch #3 (Kandy Farm)`;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isDark && styles.cardDark]}>
       {/* Top Section: Image, Crop & Buyer info, Status Badge */}
       <View style={styles.topRow}>
         <Image
@@ -78,18 +80,18 @@ export default function OrderCard({
         />
 
         <View style={styles.headerInfo}>
-          <Text style={styles.orderId}>{order.id}</Text>
-          <Text style={styles.cropTitle} numberOfLines={1}>
+          <Text style={[styles.orderId, isDark && styles.orderIdDark]}>{order.id}</Text>
+          <Text style={[styles.cropTitle, isDark && styles.cropTitleDark]} numberOfLines={1}>
             {order.crop_name} • {order.quantity} {order.unit}
           </Text>
 
           <View style={styles.buyerRow}>
-            <Feather name="user" size={13} color="#556E5A" style={{ marginRight: 4 }} />
-            <Text style={styles.buyerName} numberOfLines={1}>{order.buyer_name}</Text>
+            <Feather name="user" size={13} color={isDark ? '#4ADE80' : '#556E5A'} style={{ marginRight: 4 }} />
+            <Text style={[styles.buyerName, isDark && styles.buyerNameDark]} numberOfLines={1}>{order.buyer_name}</Text>
           </View>
 
           {order.buyer_verified && (
-            <Text style={styles.verifiedText}>Verified Buyer</Text>
+            <Text style={[styles.verifiedText, isDark && styles.verifiedTextDark]}>Verified Buyer</Text>
           )}
         </View>
 
@@ -99,27 +101,27 @@ export default function OrderCard({
       </View>
 
       {/* Price & Chevron Scroll/Expand Button */}
-      <View style={styles.priceRow}>
+      <View style={[styles.priceRow, isDark && styles.priceRowDark]}>
         <View style={styles.priceContainer}>
           <View style={styles.priceTextRow}>
-            <Text style={styles.currencyPrefix}>LKR </Text>
-            <Text style={styles.priceValue}>{order.total_price.toLocaleString()}</Text>
+            <Text style={[styles.currencyPrefix, isDark && styles.currencyPrefixDark]}>LKR </Text>
+            <Text style={[styles.priceValue, isDark && styles.priceValueDark]}>{order.total_price.toLocaleString()}</Text>
           </View>
-          <Text style={styles.unitSubtext}>
+          <Text style={[styles.unitSubtext, isDark && styles.unitSubtextDark]}>
             @ LKR {order.unit_price}/{order.unit} • Ordered {formattedDate}
           </Text>
         </View>
 
         {/* Circular Chevron Expand/Scroll Button matching screenshot */}
         <TouchableOpacity
-          style={styles.chevronButton}
+          style={[styles.chevronButton, isDark && styles.chevronButtonDark]}
           onPress={toggleExpand}
           activeOpacity={0.7}
         >
           <Feather
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={20}
-            color="#395A3E"
+            color={isDark ? '#E5EFE7' : '#395A3E'}
           />
         </TouchableOpacity>
       </View>
@@ -143,27 +145,27 @@ export default function OrderCard({
       {isExpanded && (
         <View style={styles.expandedSection}>
           {/* 1. DEADLINE CARD */}
-          <View style={styles.detailCard}>
-            <View style={styles.deadlineIconWrapper}>
-              <Ionicons name="sunny-outline" size={20} color="#859987" />
+          <View style={[styles.detailCard, isDark && styles.detailCardDark]}>
+            <View style={[styles.deadlineIconWrapper, isDark && styles.deadlineIconWrapperDark]}>
+              <Ionicons name="sunny-outline" size={20} color={isDark ? '#4ADE80' : '#859987'} />
             </View>
             <View style={styles.deadlineTextCol}>
-              <Text style={styles.cardHeaderLabel}>DEADLINE</Text>
-              <Text style={styles.deadlineValue}>{deadline}</Text>
+              <Text style={[styles.cardHeaderLabel, isDark && styles.cardHeaderLabelDark]}>DEADLINE</Text>
+              <Text style={[styles.deadlineValue, isDark && styles.deadlineValueDark]}>{deadline}</Text>
             </View>
           </View>
 
           {/* 2. BUYER NOTES CARD */}
-          <View style={styles.detailCard}>
+          <View style={[styles.detailCard, isDark && styles.detailCardDark]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.notesHeaderLabel}>BUYER NOTES</Text>
-              <Text style={styles.buyerNotesText}>{buyerNotes}</Text>
+              <Text style={[styles.notesHeaderLabel, isDark && styles.notesHeaderLabelDark]}>BUYER NOTES</Text>
+              <Text style={[styles.buyerNotesText, isDark && styles.buyerNotesTextDark]}>{buyerNotes}</Text>
             </View>
           </View>
 
           {/* 3. LINKED TO YOUR CROP CARD */}
           <TouchableOpacity
-            style={styles.cropLinkedCard}
+            style={[styles.cropLinkedCard, isDark && styles.cropLinkedCardDark]}
             onPress={handleNavigateToCrop}
             activeOpacity={0.8}
           >
@@ -172,31 +174,31 @@ export default function OrderCard({
                 <MaterialCommunityIcons name="sprout" size={18} color="#FFFFFF" />
               </View>
               <View style={styles.cropLinkedTextWrapper}>
-                <Text style={styles.cropLinkedLabel}>LINKED TO YOUR CROP</Text>
-                <Text style={styles.cropLinkedTitle} numberOfLines={1}>
+                <Text style={[styles.cropLinkedLabel, isDark && styles.cropLinkedLabelDark]}>LINKED TO YOUR CROP</Text>
+                <Text style={[styles.cropLinkedTitle, isDark && styles.cropLinkedTitleDark]} numberOfLines={1}>
                   {linkedCropText}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.viewCropBtn}>
-              <Text style={styles.viewCropBtnText}>View</Text>
+            <View style={[styles.viewCropBtn, isDark && styles.viewCropBtnDark]}>
+              <Text style={[styles.viewCropBtnText, isDark && styles.viewCropBtnTextDark]}>View</Text>
             </View>
           </TouchableOpacity>
 
           {/* 4. INVOICE / BILL GENERATION CARD (Replaces the QR card) */}
           <TouchableOpacity
-            style={styles.invoiceCard}
+            style={[styles.invoiceCard, isDark && styles.invoiceCardDark]}
             onPress={() => setInvoiceVisible(true)}
             activeOpacity={0.85}
           >
             <View style={styles.invoiceLeft}>
-              <View style={styles.invoiceIconCircle}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={18} color="#204F26" />
+              <View style={[styles.invoiceIconCircle, isDark && styles.invoiceIconCircleDark]}>
+                <MaterialCommunityIcons name="receipt-text-outline" size={18} color={isDark ? '#4ADE80' : '#204F26'} />
               </View>
               <View style={styles.invoiceTextCol}>
-                <Text style={styles.invoiceCardLabel}>PURCHASE INVOICE & BILL</Text>
-                <Text style={styles.invoiceCardTitle} numberOfLines={1}>
+                <Text style={[styles.invoiceCardLabel, isDark && styles.invoiceCardLabelDark]}>PURCHASE INVOICE & BILL</Text>
+                <Text style={[styles.invoiceCardTitle, isDark && styles.invoiceCardTitleDark]} numberOfLines={1}>
                   {order.invoice_number || `INV-${order.id}`} • Ready for View/Print
                 </Text>
               </View>
@@ -269,10 +271,10 @@ export default function OrderCard({
             <Ionicons
               name="chatbubble-ellipses-outline"
               size={17}
-              color="#24542B"
+              color={isDark ? '#4ADE80' : '#24542B'}
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.messageBuyerText}>Message {order.buyer_name}</Text>
+            <Text style={[styles.messageBuyerText, isDark && styles.messageBuyerTextDark]}>Message {order.buyer_name}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -652,5 +654,91 @@ const styles = StyleSheet.create({
     color: '#24542B',
     fontSize: 14,
     fontWeight: '700',
+  },
+  cardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  orderIdDark: {
+    color: '#9CB3A0',
+  },
+  cropTitleDark: {
+    color: '#F0F5F1',
+  },
+  buyerNameDark: {
+    color: '#9CB3A0',
+  },
+  verifiedTextDark: {
+    color: '#9CB3A0',
+  },
+  priceRowDark: {
+    borderTopColor: '#263B2B',
+  },
+  currencyPrefixDark: {
+    color: '#F0F5F1',
+  },
+  priceValueDark: {
+    color: '#F0F5F1',
+  },
+  unitSubtextDark: {
+    color: '#9CB3A0',
+  },
+  chevronButtonDark: {
+    backgroundColor: '#233827',
+  },
+  detailCardDark: {
+    backgroundColor: '#122015',
+    borderColor: '#283D2C',
+  },
+  deadlineIconWrapperDark: {
+    backgroundColor: '#233827',
+  },
+  cardHeaderLabelDark: {
+    color: '#9CB3A0',
+  },
+  deadlineValueDark: {
+    color: '#F0F5F1',
+  },
+  notesHeaderLabelDark: {
+    color: '#FBBF24',
+  },
+  buyerNotesTextDark: {
+    color: '#E5EFE7',
+  },
+  cropLinkedCardDark: {
+    backgroundColor: '#142318',
+    borderColor: '#283D2C',
+  },
+  cropLinkedLabelDark: {
+    color: '#9CB3A0',
+  },
+  cropLinkedTitleDark: {
+    color: '#F0F5F1',
+  },
+  viewCropBtnDark: {
+    backgroundColor: '#233827',
+    borderColor: '#283D2C',
+  },
+  viewCropBtnTextDark: {
+    color: '#4ADE80',
+  },
+  invoiceCardDark: {
+    backgroundColor: '#142318',
+    borderColor: '#283D2C',
+  },
+  invoiceIconCircleDark: {
+    backgroundColor: '#233827',
+  },
+  invoiceCardLabelDark: {
+    color: '#9CB3A0',
+  },
+  invoiceCardTitleDark: {
+    color: '#F0F5F1',
+  },
+  messageBuyerTextDark: {
+    color: '#4ADE80',
   },
 });

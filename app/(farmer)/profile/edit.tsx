@@ -15,15 +15,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 import { useFarmerProfile } from '../../../src/store/farmerProfileStore';
+import { useDarkMode } from '../../../src/store/uiStore';
 
 const FARMING_METHODS = ['Organic', 'Transitioning to Organic', 'Conventional', 'Other'] as const;
 
 export default function EditFarmerProfileScreen() {
   const { profile, updateProfile } = useFarmerProfile();
+  const [darkMode] = useDarkMode();
 
   // Form local state prepopulated with saved profile
   const [fullName, setFullName] = useState(profile.fullName || '');
@@ -169,7 +172,8 @@ export default function EditFarmerProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, darkMode && styles.safeAreaDark]} edges={['top', 'left', 'right']}>
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -177,14 +181,14 @@ export default function EditFarmerProfileScreen() {
         {/* Header */}
         <View style={styles.headerBar}>
           <TouchableOpacity
-            style={styles.backCircleBtn}
+            style={[styles.backCircleBtn, darkMode && styles.backCircleBtnDark]}
             onPress={handleBack}
             activeOpacity={0.7}
           >
-            <Feather name="arrow-left" size={20} color="#16351E" />
+            <Feather name="arrow-left" size={20} color={darkMode ? '#E5EFE7' : '#16351E'} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>Edit Profile</Text>
 
           <TouchableOpacity
             style={[styles.saveHeaderBtn, isSaving && { opacity: 0.7 }]}
@@ -219,44 +223,44 @@ export default function EditFarmerProfileScreen() {
               </TouchableOpacity>
             </View>
             <TouchableOpacity onPress={() => setPhotoModalVisible(true)}>
-              <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+              <Text style={[styles.changePhotoText, darkMode && styles.changePhotoTextDark]}>Change Profile Photo</Text>
             </TouchableOpacity>
           </View>
 
           {/* B. Personal Details Card */}
-          <View style={styles.formCard}>
-            <Text style={styles.cardSectionTitle}>Personal Information</Text>
+          <View style={[styles.formCard, darkMode && styles.formCardDark]}>
+            <Text style={[styles.cardSectionTitle, darkMode && styles.cardSectionTitleDark]}>Personal Information</Text>
 
             {/* Full Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name *</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Full Name *</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, darkMode && styles.textInputDark]}
                 value={fullName}
                 onChangeText={setFullName}
                 placeholder="e.g. Priya Kumari"
-                placeholderTextColor="#9EB0A1"
+                placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
               />
             </View>
 
             {/* Phone */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Phone Number</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, darkMode && styles.textInputDark]}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="+94 77 123 4567"
-                placeholderTextColor="#9EB0A1"
+                placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
                 keyboardType="phone-pad"
               />
             </View>
 
             {/* Email (Read-Only) */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email Address (Account ID)</Text>
-              <View style={styles.readOnlyInput}>
-                <Text style={styles.readOnlyText}>{profile.email}</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Email Address (Account ID)</Text>
+              <View style={[styles.readOnlyInput, darkMode && styles.readOnlyInputDark]}>
+                <Text style={[styles.readOnlyText, darkMode && styles.readOnlyTextDark]}>{profile.email}</Text>
                 <View style={styles.verifiedTag}>
                   <Ionicons name="checkmark-circle" size={13} color="#266432" style={{ marginRight: 3 }} />
                   <Text style={styles.verifiedTagText}>Verified</Text>
@@ -266,13 +270,13 @@ export default function EditFarmerProfileScreen() {
 
             {/* Bio */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Profile Bio</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Profile Bio</Text>
               <TextInput
-                style={[styles.textInput, styles.multilineInput]}
+                style={[styles.textInput, styles.multilineInput, darkMode && styles.textInputDark]}
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Tell buyers about your farming methods, crops and values..."
-                placeholderTextColor="#9EB0A1"
+                placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
                 multiline
                 numberOfLines={3}
               />
@@ -280,61 +284,61 @@ export default function EditFarmerProfileScreen() {
           </View>
 
           {/* C. Farm Information Card */}
-          <View style={styles.formCard}>
-            <Text style={styles.cardSectionTitle}>Farm Information</Text>
+          <View style={[styles.formCard, darkMode && styles.formCardDark]}>
+            <Text style={[styles.cardSectionTitle, darkMode && styles.cardSectionTitleDark]}>Farm Information</Text>
 
             {/* Farm Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Farm Name</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Farm Name</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, darkMode && styles.textInputDark]}
                 value={farmName}
                 onChangeText={setFarmName}
                 placeholder="e.g. Green Valley Greenhouse"
-                placeholderTextColor="#9EB0A1"
+                placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
               />
             </View>
 
             {/* District & Province Row */}
             <View style={styles.rowInputs}>
               <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.inputLabel}>District</Text>
+                <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>District</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, darkMode && styles.textInputDark]}
                   value={district}
                   onChangeText={setDistrict}
                   placeholder="e.g. Kandy"
-                  placeholderTextColor="#9EB0A1"
+                  placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
                 />
               </View>
 
               <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.inputLabel}>Province</Text>
+                <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Province</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, darkMode && styles.textInputDark]}
                   value={province}
                   onChangeText={setProvince}
                   placeholder="e.g. Central"
-                  placeholderTextColor="#9EB0A1"
+                  placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
                 />
               </View>
             </View>
 
             {/* Farm Size */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Farm Size & Unit</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Farm Size & Unit</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, darkMode && styles.textInputDark]}
                 value={farmSize}
                 onChangeText={setFarmSize}
                 placeholder="e.g. 2 acres, 5000 sq ft"
-                placeholderTextColor="#9EB0A1"
+                placeholderTextColor={darkMode ? '#647D68' : '#9EB0A1'}
               />
             </View>
 
             {/* Farming Method Options */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Farming Method</Text>
+              <Text style={[styles.inputLabel, darkMode && styles.inputLabelDark]}>Farming Method</Text>
               <View style={styles.methodPillsRow}>
                 {FARMING_METHODS.map((method) => {
                   const isSelected = farmingMethod === method;
@@ -343,7 +347,7 @@ export default function EditFarmerProfileScreen() {
                       key={method}
                       style={[
                         styles.methodPill,
-                        isSelected ? styles.methodPillActive : styles.methodPillInactive,
+                        isSelected ? styles.methodPillActive : (darkMode ? styles.methodPillInactiveDark : styles.methodPillInactive),
                       ]}
                       onPress={() => setFarmingMethod(method)}
                       activeOpacity={0.8}
@@ -351,7 +355,7 @@ export default function EditFarmerProfileScreen() {
                       <Text
                         style={[
                           styles.methodPillText,
-                          isSelected ? styles.methodPillTextActive : styles.methodPillTextInactive,
+                          isSelected ? styles.methodPillTextActive : (darkMode ? styles.methodPillTextInactiveDark : styles.methodPillTextInactive),
                         ]}
                       >
                         {method}
@@ -390,33 +394,33 @@ export default function EditFarmerProfileScreen() {
         onRequestClose={() => setPhotoModalVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.photoOptionsContainer}>
-            <Text style={styles.photoModalTitle}>Profile Photo</Text>
+          <View style={[styles.photoOptionsContainer, darkMode && styles.photoOptionsContainerDark]}>
+            <Text style={[styles.photoModalTitle, darkMode && styles.photoModalTitleDark]}>Profile Photo</Text>
 
             <TouchableOpacity style={styles.photoOptionItem} onPress={handleTakePhoto}>
-              <Feather name="camera" size={20} color="#24522C" style={{ marginRight: 12 }} />
-              <Text style={styles.photoOptionText}>Take Photo</Text>
+              <Feather name="camera" size={20} color={darkMode ? '#4ADE80' : '#24522C'} style={{ marginRight: 12 }} />
+              <Text style={[styles.photoOptionText, darkMode && styles.photoOptionTextDark]}>Take Photo</Text>
             </TouchableOpacity>
 
-            <View style={styles.photoOptionDivider} />
+            <View style={[styles.photoOptionDivider, darkMode && styles.photoOptionDividerDark]} />
 
             <TouchableOpacity style={styles.photoOptionItem} onPress={handleChooseFromGallery}>
-              <Feather name="image" size={20} color="#24522C" style={{ marginRight: 12 }} />
-              <Text style={styles.photoOptionText}>Choose from Gallery</Text>
+              <Feather name="image" size={20} color={darkMode ? '#4ADE80' : '#24522C'} style={{ marginRight: 12 }} />
+              <Text style={[styles.photoOptionText, darkMode && styles.photoOptionTextDark]}>Choose from Gallery</Text>
             </TouchableOpacity>
 
-            <View style={styles.photoOptionDivider} />
+            <View style={[styles.photoOptionDivider, darkMode && styles.photoOptionDividerDark]} />
 
             <TouchableOpacity style={styles.photoOptionItem} onPress={handleRemovePhoto}>
-              <Feather name="trash-2" size={20} color="#C83B1A" style={{ marginRight: 12 }} />
-              <Text style={[styles.photoOptionText, { color: '#C83B1A' }]}>Remove Current Photo</Text>
+              <Feather name="trash-2" size={20} color="#F87171" style={{ marginRight: 12 }} />
+              <Text style={[styles.photoOptionText, { color: '#F87171' }]}>Remove Current Photo</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.cancelModalBtn}
+              style={[styles.cancelModalBtn, darkMode && styles.cancelModalBtnDark]}
               onPress={() => setPhotoModalVisible(false)}
             >
-              <Text style={styles.cancelModalBtnText}>Cancel</Text>
+              <Text style={[styles.cancelModalBtnText, darkMode && styles.cancelModalBtnTextDark]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -676,6 +680,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#455F4A',
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  backCircleBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  headerTitleDark: {
+    color: '#F0F5F1',
+  },
+  changePhotoTextDark: {
+    color: '#4ADE80',
+  },
+  formCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  cardSectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  inputLabelDark: {
+    color: '#9CB3A0',
+  },
+  textInputDark: {
+    backgroundColor: '#122015',
+    borderColor: '#283D2C',
+    color: '#F0F5F1',
+  },
+  readOnlyInputDark: {
+    backgroundColor: '#142318',
+    borderColor: '#283D2C',
+  },
+  readOnlyTextDark: {
+    color: '#9CB3A0',
+  },
+  methodPillInactiveDark: {
+    backgroundColor: '#122015',
+    borderColor: '#283D2C',
+  },
+  methodPillTextInactiveDark: {
+    color: '#9CB3A0',
+  },
+  photoOptionsContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  photoModalTitleDark: {
+    color: '#F0F5F1',
+  },
+  photoOptionTextDark: {
+    color: '#F0F5F1',
+  },
+  photoOptionDividerDark: {
+    backgroundColor: '#283D2C',
+  },
+  cancelModalBtnDark: {
+    backgroundColor: '#233827',
+  },
+  cancelModalBtnTextDark: {
+    color: '#A0B6A3',
   },
 });
 

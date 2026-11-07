@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mockFields, mockRecentRecords } from '../constants/farmerMockData';
+import { mockFields, mockRecentRecords, createStages } from '../constants/farmerMockData';
 import {
   FieldItem,
   RecentRecordItem,
   CustomStageActivity,
   ActivityApplicabilityRecord,
   StageApplicabilityRecord,
+  JourneyStage,
 } from '../types/farmer.types';
-import { FarmingStageKeyType } from '../constants/stages';
+import { FarmingStageKey, FarmingStageKeyType } from '../constants/stages';
 import { stageIndex, stageLabel } from '../utils/stageHelpers';
+import { supabase } from '../lib/supabase';
 
 // Storage keys for persistent local storage across refreshes and restarts
 const STORAGE_KEY_RECORDS = '@traceroot_records_v1';
@@ -97,6 +99,8 @@ async function loadFromStorage() {
     if (changed) {
       notify();
     }
+    // Attempt to pull user's cloud harvests if authenticated
+    syncFarmerHarvests();
   } catch (e) {
     console.warn('Failed to load TraceRoot records from AsyncStorage', e);
   }
@@ -104,6 +108,250 @@ async function loadFromStorage() {
 
 // Initial load attempt
 loadFromStorage();
+
+export interface CreateCropPayload {
+  cropName: string;
+  cropVariety?: string;
+  farmingType: 'Greenhouse' | 'Open field';
+  cultivationStartDate: string;
+  farmFieldName: string;
+  expectedHarvestDate?: string;
+  areaAcres?: number;
+  imageUrl?: string;
+}
+
+export function getCropEmoji(cropName: string): string {
+  const lower = cropName.toLowerCase().trim();
+  if (lower.includes('tomato')) return '🍅';
+  if (lower.includes('cucumber')) return '🥒';
+  if (lower.includes('chilli') || lower.includes('chili') || lower.includes('pepper')) return '🌶️';
+  if (lower.includes('bell pepper') || lower.includes('capsicum')) return '🫑';
+  if (lower.includes('carrot')) return '🥕';
+  if (lower.includes('corn') || lower.includes('maize')) return '🌽';
+  if (lower.includes('potato')) return '🥔';
+  if (lower.includes('onion')) return '🧅';
+  if (lower.includes('garlic')) return '🧄';
+  if (lower.includes('cabbage') || lower.includes('lettuce') || lower.includes('spinach')) return '🥬';
+  if (lower.includes('strawberry')) return '🍓';
+  if (lower.includes('eggplant') || lower.includes('brinjal') || lower.includes('aubergine')) return '🍆';
+  if (lower.includes('pumpkin')) return '🎃';
+  if (lower.includes('bean') || lower.includes('pea')) return '🫘';
+  if (lower.includes('mushroom')) return '🍄';
+  if (lower.includes('broccoli')) return '🥦';
+  if (lower.includes('beet')) return '🧅';
+  return '🌱';
+}
+
+export function generateUniqueBatchId(cropName: string): string {
+  const lettersOnly = cropName.replace(/[^a-zA-Z]/g, '');
+  const prefix = (lettersOnly.slice(0, 3) || 'CRP').toUpperCase();
+  const year = new Date().getFullYear();
+
+  // Find all existing batches for this prefix
+  const matchingBatches = currentFields
+    .map((f) => f.batchId || '')
+    .filter((b) => b.startsWith(`BATCH-${prefix}-${year}`));
+
+  let maxSeq = 0;
+  for (const b of matchingBatches) {
+    const parts = b.split('-');
+    const seqPart = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(seqPart) && seqPart > maxSeq) {
+      maxSeq = seqPart;
+    }
+  }
+
+  let nextSeq = maxSeq + 1;
+  let candidate = `BATCH-${prefix}-${year}-${String(nextSeq).padStart(3, '0')}`;
+  while (currentFields.some((f) => f.batchId === candidate)) {
+    nextSeq += 1;
+    candidate = `BATCH-${prefix}-${year}-${String(nextSeq).padStart(3, '0')}`;
+  }
+
+  return candidate;
+}
+
+export async function createNewCrop(payload: CreateCropPayload): Promise<FieldItem> {
+  const batchId = generateUniqueBatchId(payload.cropName);
+  const emoji = getCropEmoji(payload.cropName);
+  const id = `crop-${Date.now()}`;
+
+  const stages: JourneyStage[] = [
+    {
+      id: `${id}-s1`,
+      stageNumber: 1,
+      key: FarmingStageKey.PLANTING,
+      title: 'Planting',
+      subtitle: 'Nursery seedling establishment and soil prep',
+      date: payload.cultivationStartDate || 'Today',
+      status: 'in_progress',
+      iconName: 'seedling',
+      tags: [],
+      recordCount: 0,
+      stageEmoji: '🌱',
+    },
+    {
+      id: `${id}-s2`,
+      stageNumber: 2,
+      key: FarmingStageKey.VEGETATIVE_GROWTH,
+      title: 'Vegetative Growth',
+      subtitle: 'Trellising and nutrient delivery',
+      date: 'Upcoming',
+      status: 'upcoming',
+      iconName: 'water',
+      tags: [],
+      recordCount: 0,
+      stageEmoji: '🌿',
+    },
+    {
+      id: `${id}-s3`,
+      stageNumber: 3,
+      key: FarmingStageKey.FLOWERING,
+      title: 'Flowering',
+      subtitle: 'Blossom set and pollination check',
+      date: 'Upcoming',
+      status: 'upcoming',
+      iconName: 'flower',
+      tags: [],
+      recordCount: 0,
+      stageEmoji: '🌸',
+    },
+    {
+      id: `${id}-s4`,
+      stageNumber: 4,
+      key: FarmingStageKey.CROP_MATURITY,
+      title: 'Crop Maturity',
+      subtitle: 'Fruit sizing, ripening and cluster protection',
+      date: 'Upcoming',
+      status: 'upcoming',
+      iconName: 'fruit',
+      tags: [],
+      recordCount: 0,
+      stageEmoji: '🌾',
+    },
+    {
+      id: `${id}-s5`,
+      stageNumber: 5,
+      key: FarmingStageKey.HARVESTING,
+      title: 'Harvesting',
+      subtitle: 'Final picking and batch packaging',
+      date: payload.expectedHarvestDate || 'Upcoming',
+      status: 'upcoming',
+      iconName: 'basket',
+      tags: [],
+      recordCount: 0,
+      stageEmoji: '🌾',
+    },
+  ];
+
+  const newField: FieldItem = {
+    id,
+    name: payload.farmFieldName.trim(),
+    cropName: payload.cropName.trim(),
+    cropEmoji: emoji,
+    areaAcres: payload.areaAcres || 1.0,
+    stageName: 'Planting',
+    plotName: `${payload.farmFieldName.trim()} · Planting stage`,
+    daysToHarvest: 60,
+    growthPercentage: 0,
+    statusBadge: 'Growing',
+    category: 'Vegetable',
+    environmentType: payload.farmingType,
+    startDate: payload.cultivationStartDate,
+    daysCount: 1,
+    currentStageIndex: 1,
+    totalStages: 5,
+    recordCount: 0,
+    evidenceCount: 0,
+    isImmutable: true,
+    batchId,
+    nextStageName: 'Vegetative Growth',
+    nextStageEst: 'est. in 2 weeks',
+    imageUrl: payload.imageUrl,
+    stages,
+  };
+
+  currentFields = [newField, ...currentFields];
+  await persistToStorage();
+  notify();
+
+  // Non-blocking sync to Supabase if authenticated
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      await supabase.from('harvests').insert({
+        farmer_id: session.user.id,
+        crop_name: newField.cropName,
+        crop_emoji: newField.cropEmoji,
+        farming_type: payload.farmingType === 'Greenhouse' ? 'greenhouse' : 'open_field',
+        planted_date: payload.cultivationStartDate ? new Date(payload.cultivationStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        expected_harvest_date: payload.expectedHarvestDate ? new Date(payload.expectedHarvestDate).toISOString().split('T')[0] : null,
+        status: 'active',
+        current_stage: 'planting',
+        description: payload.cropVariety ? `Variety: ${payload.cropVariety}` : null,
+      });
+    }
+  } catch (err) {
+    console.log('Supabase sync skipped/offline for new crop:', err);
+  }
+
+  return newField;
+}
+
+export async function syncFarmerHarvests(): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const farmerId = session?.user?.id;
+    if (!farmerId) return;
+
+    const { data, error } = await supabase
+      .from('harvests')
+      .select('*')
+      .eq('farmer_id', farmerId)
+      .order('created_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      const existingIds = new Set(currentFields.map((f) => f.id));
+      const fetchedFields: FieldItem[] = [];
+
+      for (const h of data) {
+        if (!existingIds.has(h.id)) {
+          const stageIdx = stageIndex(h.current_stage || 'planting');
+          fetchedFields.push({
+            id: h.id,
+            name: h.description || `${h.crop_name} Field`,
+            cropName: h.crop_name,
+            cropEmoji: h.crop_emoji || getCropEmoji(h.crop_name),
+            areaAcres: 1.0,
+            stageName: stageLabel(stageIdx),
+            plotName: `${h.farming_type === 'greenhouse' ? 'Greenhouse' : 'Open field'} · ${stageLabel(stageIdx)}`,
+            daysToHarvest: 45,
+            growthPercentage: Math.min(100, (stageIdx - 1) * 25),
+            statusBadge: 'Growing',
+            category: 'Vegetable',
+            environmentType: h.farming_type === 'greenhouse' ? 'Greenhouse' : 'Open field',
+            startDate: h.planted_date,
+            currentStageIndex: stageIdx,
+            totalStages: 5,
+            recordCount: 0,
+            evidenceCount: 0,
+            isImmutable: true,
+            batchId: `BATCH-${h.crop_name.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase()}-2026-01`,
+            stages: createStages(stageIdx),
+          });
+        }
+      }
+
+      if (fetchedFields.length > 0) {
+        currentFields = [...fetchedFields, ...currentFields];
+        await persistToStorage();
+        notify();
+      }
+    }
+  } catch (err) {
+    console.warn('Could not sync harvests from Supabase:', err);
+  }
+}
 
 export function updateFieldPhoto(fieldId: string, newPhotoUri?: string) {
   currentFields = currentFields.map((field) =>
@@ -580,6 +828,7 @@ export function useCropsStore() {
 
   useEffect(() => {
     loadFromStorage();
+    syncFarmerHarvests();
     const handleUpdate = () => {
       setFields([...currentFields]);
       setRecords([...currentRecords]);
@@ -625,5 +874,7 @@ export function useCropsStore() {
     getActivityApplicability,
     setStageApplicability,
     getStageApplicability,
+    createNewCrop,
+    syncFarmerHarvests,
   };
 }
