@@ -245,7 +245,8 @@ class AuthService {
     details: FarmerProfileDetails
   ): Promise<{ success: boolean; error: string | null }> {
     try {
-      const payload: Record<string, any> = {
+      // 1. Upsert into farmer_profiles
+      const { error: farmerErr } = await supabase.from('farmer_profiles').upsert({
         id: userId,
         farming_type: details.farming_type,
         farm_name: details.farm_name,
@@ -253,20 +254,32 @@ class AuthService {
         farm_lat: details.farm_lat,
         farm_lng: details.farm_lng,
         nic_number: details.nic_number,
+        total_acreage: details.total_acreage || 1.0,
+        primary_crops: details.primary_crops || [],
         description: details.description,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (farmerErr) {
+        console.error('[AuthService] Error saving farmer_profiles:', farmerErr.message);
+        return { success: false, error: farmerErr.message };
+      }
+
+      // 2. Sync farm_name and phone to base profiles table
+      const profileUpdates: Record<string, any> = {
+        updated_at: new Date().toISOString(),
       };
+      if (details.farm_name) profileUpdates.farm_name = details.farm_name;
+      if (details.phone) profileUpdates.phone = details.phone;
 
-      if (details.farmer_name !== undefined && details.farmer_name.trim() !== '') {
-        payload.farmer_name = details.farmer_name.trim();
-      }
+      await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', userId);
 
-      const { error } = await supabase.from('farmer_profiles').upsert(payload);
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
       return { success: true, error: null };
     } catch (err: any) {
+      console.error('[AuthService] Exception in saveFarmerProfile:', err);
       return { success: false, error: err.message || 'Failed to save farmer profile' };
     }
   }

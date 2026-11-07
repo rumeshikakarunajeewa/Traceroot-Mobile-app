@@ -100,6 +100,17 @@ export default function OrderDetailsScreen() {
     } as any);
   };
 
+  const handleNavigateToBuyerProfile = () => {
+    const buyerId = order.buyer_id || 'buyer-saman';
+    router.push({
+      pathname: '/(farmer)/buyers',
+      params: {
+        id: buyerId,
+        name: order.buyer_name,
+      },
+    } as any);
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top', 'left', 'right']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -168,20 +179,29 @@ export default function OrderDetailsScreen() {
         <View style={[styles.card, isDark && styles.cardDark]}>
           <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Buyer Information</Text>
           <View style={styles.buyerRow}>
-            <View style={[styles.buyerAvatar, isDark && styles.buyerAvatarDark]}>
-              <Feather name="user" size={20} color={isDark ? '#4ADE80' : '#26542D'} />
-            </View>
-            <View style={styles.buyerTextCol}>
-              <Text style={[styles.buyerNameText, isDark && styles.buyerNameTextDark]}>{order.buyer_name}</Text>
-              {order.buyer_verified ? (
-                <View style={styles.verifiedTag}>
-                  <Ionicons name="shield-checkmark" size={13} color="#2E6838" style={{ marginRight: 3 }} />
-                  <Text style={styles.verifiedTagText}>Verified Organic Buyer</Text>
+            <TouchableOpacity
+              style={styles.buyerTouchableCol}
+              onPress={handleNavigateToBuyerProfile}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.buyerAvatar, isDark && styles.buyerAvatarDark]}>
+                <Feather name="user" size={20} color={isDark ? '#4ADE80' : '#26542D'} />
+              </View>
+              <View style={styles.buyerTextCol}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.buyerNameText, isDark && styles.buyerNameTextDark]}>{order.buyer_name}</Text>
+                  <Feather name="chevron-right" size={15} color={isDark ? '#4ADE80' : '#718475'} style={{ marginLeft: 4 }} />
                 </View>
-              ) : (
-                <Text style={styles.unverifiedText}>Community Buyer</Text>
-              )}
-            </View>
+                {order.buyer_verified ? (
+                  <View style={styles.verifiedTag}>
+                    <Ionicons name="shield-checkmark" size={13} color="#2E6838" style={{ marginRight: 3 }} />
+                    <Text style={styles.verifiedTagText}>Verified Organic Buyer</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.unverifiedText}>Community Buyer</Text>
+                )}
+              </View>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.contactBtn, isDark && styles.contactBtnDark]}
               onPress={() => router.push('/messages')}
@@ -427,6 +447,11 @@ const styles = StyleSheet.create({
   buyerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  buyerTouchableCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   buyerAvatar: {
     width: 44,

@@ -61,6 +61,12 @@ export default function FarmerLayout() {
       <Tabs.Screen name="contracts" />
       <Tabs.Screen name="suppliers" />
       <Tabs.Screen name="profile" />
+      <Tabs.Screen
+        name="buyers"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

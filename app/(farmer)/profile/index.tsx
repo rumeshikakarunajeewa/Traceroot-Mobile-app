@@ -10,6 +10,7 @@ import {
   Switch,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -25,7 +26,7 @@ import { useDarkMode } from '../../../src/store/uiStore';
 type ProfileTab = 'about' | 'products' | 'reviews' | 'documents';
 
 export default function FarmerProfileScreen() {
-  const { profile, settings, updateSettings } = useFarmerProfile();
+  const { profile, settings, isRefreshing, refresh, updateSettings } = useFarmerProfile();
   const { fields: crops } = useCropsStore();
   const [darkMode, setDarkMode] = useDarkMode();
 
@@ -127,6 +128,14 @@ export default function FarmerProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor={darkMode ? '#84C98E' : '#24542B'}
+            colors={['#24542B']}
+          />
+        }
       >
         {/* 2. Hero Profile Card with Lush Farm Background */}
         <ImageBackground
