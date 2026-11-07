@@ -13,6 +13,7 @@ export interface UserProfile {
 
 export interface FarmerProfileDetails {
   farming_type: 'greenhouse' | 'open_field';
+  farmer_name?: string;
   farm_name?: string;
   farm_location?: string;
   farm_lat?: number;

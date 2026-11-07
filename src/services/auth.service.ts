@@ -199,16 +199,19 @@ class AuthService {
           await supabase.from('farmer_profiles').upsert({
             id: data.user.id,
             farming_type: 'open_field',
+            farmer_name: fullName,
           });
         } else if (role === 'buyer') {
           await supabase.from('buyer_profiles').upsert({
             id: data.user.id,
             buyer_type: 'supermarket',
+            buyer_name: fullName,
             company_name: '',
           });
         } else if (role === 'supplier') {
           await supabase.from('supplier_profiles').upsert({
             id: data.user.id,
+            supplier_name: fullName,
             company_name: '',
           });
         }
@@ -242,7 +245,7 @@ class AuthService {
     details: FarmerProfileDetails
   ): Promise<{ success: boolean; error: string | null }> {
     try {
-      const { error } = await supabase.from('farmer_profiles').upsert({
+      const payload: Record<string, any> = {
         id: userId,
         farming_type: details.farming_type,
         farm_name: details.farm_name,
@@ -251,7 +254,13 @@ class AuthService {
         farm_lng: details.farm_lng,
         nic_number: details.nic_number,
         description: details.description,
-      });
+      };
+
+      if (details.farmer_name !== undefined && details.farmer_name.trim() !== '') {
+        payload.farmer_name = details.farmer_name.trim();
+      }
+
+      const { error } = await supabase.from('farmer_profiles').upsert(payload);
 
       if (error) {
         return { success: false, error: error.message };

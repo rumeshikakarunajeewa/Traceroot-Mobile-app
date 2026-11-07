@@ -106,27 +106,29 @@ export async function loadFarmerProfileFromStorage() {
     }
     notify();
 
-    // Optionally sync with Supabase profiles table if user is logged in
+    // Optionally sync with Supabase profiles and farmer_profiles table if user is logged in
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       const { data: dbProfile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, farmer_profiles(*)')
         .eq('id', session.user.id)
         .single();
 
       if (dbProfile) {
+        const farmerData = Array.isArray(dbProfile.farmer_profiles)
+          ? dbProfile.farmer_profiles[0]
+          : dbProfile.farmer_profiles;
+
         currentProfile = {
           ...currentProfile,
           id: dbProfile.id || currentProfile.id,
-          fullName: dbProfile.full_name || currentProfile.fullName,
+          fullName: dbProfile.full_name || farmerData?.farmer_name || currentProfile.fullName,
           phone: dbProfile.phone || currentProfile.phone,
           avatarUrl: dbProfile.avatar_url || currentProfile.avatarUrl,
-          bio: dbProfile.bio || currentProfile.bio,
-          farmName: dbProfile.farm_name || currentProfile.farmName,
-          district: dbProfile.district || currentProfile.district,
-          province: dbProfile.province || currentProfile.province,
-          location: dbProfile.district ? `${dbProfile.district}` : currentProfile.location,
+          bio: farmerData?.description || currentProfile.bio,
+          farmName: farmerData?.farm_name || currentProfile.farmName,
+          location: farmerData?.farm_location || currentProfile.location,
         };
         await persist();
         notify();
@@ -146,19 +148,26 @@ export async function updateFarmerProfile(updates: Partial<FarmerProfileData>): 
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
+      // 1. Update public.profiles (triggers automatic farmer_profiles.farmer_name update)
       await supabase
         .from('profiles')
         .update({
           full_name: currentProfile.fullName,
           phone: currentProfile.phone,
           avatar_url: currentProfile.avatarUrl,
-          bio: currentProfile.bio,
-          farm_name: currentProfile.farmName,
-          district: currentProfile.district,
-          province: currentProfile.province,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', session.user.id);
+
+      // 2. Update connected public.farmer_profiles
+      await supabase
+        .from('farmer_profiles')
+        .upsert({
+          id: session.user.id,
+          farmer_name: currentProfile.fullName,
+          farm_name: currentProfile.farmName,
+          farm_location: currentProfile.district ? `${currentProfile.district}, ${currentProfile.province}` : currentProfile.location,
+          description: currentProfile.bio,
+        });
     }
   } catch (e) {
     console.warn('Supabase profile update sync skipped/failed:', e);
