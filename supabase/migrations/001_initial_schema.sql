@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE TABLE IF NOT EXISTS farmer_profiles (
   id            UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   farming_type  TEXT NOT NULL CHECK (farming_type IN ('greenhouse','open_field')),
+  farmer_name   TEXT,
   farm_name     TEXT,
   farm_location TEXT,
   farm_lat      DECIMAL(10,8),
@@ -37,11 +38,12 @@ CREATE TABLE IF NOT EXISTS farmer_profiles (
 -- SUPPLIER PROFILES
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS supplier_profiles (
-  id           UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  company_name TEXT NOT NULL,
-  address      TEXT,
-  br_number    TEXT,
-  description  TEXT
+  id            UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  supplier_name TEXT,
+  company_name  TEXT NOT NULL,
+  address       TEXT,
+  br_number     TEXT,
+  description   TEXT
 );
 
 -- ─────────────────────────────────────────────────────────────────
@@ -50,6 +52,7 @@ CREATE TABLE IF NOT EXISTS supplier_profiles (
 CREATE TABLE IF NOT EXISTS buyer_profiles (
   id            UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   buyer_type    TEXT NOT NULL CHECK (buyer_type IN ('supermarket','retailer','restaurant')),
+  buyer_name    TEXT,
   company_name  TEXT NOT NULL,
   address       TEXT,
   br_number     TEXT

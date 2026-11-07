@@ -117,6 +117,9 @@ class ProfilesService {
 
       // 2. Update or upsert public.buyer_profiles
       const buyerUpdates: Record<string, any> = { id: userId };
+      if (data.fullName !== undefined) {
+        buyerUpdates.buyer_name = data.fullName.trim();
+      }
       if (data.company !== undefined) {
         buyerUpdates.company_name = data.company.trim();
       }

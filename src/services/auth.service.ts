@@ -193,6 +193,32 @@ class AuthService {
         console.warn('Profile creation error (trigger may handle it):', profileError.message);
       }
 
+      // Also ensure connected role-based profile row is initialized
+      try {
+        if (role === 'farmer') {
+          await supabase.from('farmer_profiles').upsert({
+            id: data.user.id,
+            farming_type: 'open_field',
+            farmer_name: fullName,
+          });
+        } else if (role === 'buyer') {
+          await supabase.from('buyer_profiles').upsert({
+            id: data.user.id,
+            buyer_type: 'supermarket',
+            buyer_name: fullName,
+            company_name: '',
+          });
+        } else if (role === 'supplier') {
+          await supabase.from('supplier_profiles').upsert({
+            id: data.user.id,
+            supplier_name: fullName,
+            company_name: '',
+          });
+        }
+      } catch (roleErr) {
+        console.warn('Role profile initialization error:', roleErr);
+      }
+
       return {
         user: data.user,
         profile: newProfile,
@@ -266,13 +292,19 @@ class AuthService {
     details: BuyerProfileDetails
   ): Promise<{ success: boolean; error: string | null }> {
     try {
-      const { error } = await supabase.from('buyer_profiles').upsert({
+      const payload: Record<string, any> = {
         id: userId,
         buyer_type: details.buyer_type,
         company_name: details.company_name,
         address: details.address,
         br_number: details.br_number,
-      });
+      };
+
+      if (details.buyer_name !== undefined && details.buyer_name.trim() !== '') {
+        payload.buyer_name = details.buyer_name.trim();
+      }
+
+      const { error } = await supabase.from('buyer_profiles').upsert(payload);
 
       if (error) {
         return { success: false, error: error.message };
@@ -291,13 +323,19 @@ class AuthService {
     details: SupplierProfileDetails
   ): Promise<{ success: boolean; error: string | null }> {
     try {
-      const { error } = await supabase.from('supplier_profiles').upsert({
+      const payload: Record<string, any> = {
         id: userId,
         company_name: details.company_name,
         address: details.address,
         br_number: details.br_number,
         description: details.description,
-      });
+      };
+
+      if (details.supplier_name !== undefined && details.supplier_name.trim() !== '') {
+        payload.supplier_name = details.supplier_name.trim();
+      }
+
+      const { error } = await supabase.from('supplier_profiles').upsert(payload);
 
       if (error) {
         return { success: false, error: error.message };

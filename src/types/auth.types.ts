@@ -20,6 +20,7 @@ export interface UserProfile {
 
 export interface FarmerProfileDetails {
   farming_type: 'greenhouse' | 'open_field';
+  farmer_name?: string;
   farm_name?: string;
   farm_location?: string;
   farm_lat?: number;
@@ -33,12 +34,14 @@ export interface FarmerProfileDetails {
 
 export interface BuyerProfileDetails {
   buyer_type: 'supermarket' | 'retailer' | 'restaurant';
+  buyer_name?: string;
   company_name: string;
   address?: string;
   br_number?: string;
 }
 
 export interface SupplierProfileDetails {
+  supplier_name?: string;
   company_name: string;
   address?: string;
   br_number?: string;
