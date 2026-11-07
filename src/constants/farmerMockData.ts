@@ -73,7 +73,7 @@ export const mockQuickFeatures: QuickFeatureCard[] = [
 ];
 
 // Stages template generator: exactly 5 stages in order
-const createStages = (currentStageIndex: number) => [
+export const createStages = (currentStageIndex: number) => [
   {
     id: 's-1',
     stageNumber: 1,

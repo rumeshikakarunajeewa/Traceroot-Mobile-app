@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useCropsStore } from '../../../src/store/cropStore';
+import { useCropsStore, CreateCropPayload } from '../../../src/store/cropStore';
+import { useDarkMode } from '../../../src/store/uiStore';
+import { AddNewCropModal } from '../../../src/components/farmer/AddNewCropModal';
+import { FieldItem } from '../../../src/types/farmer.types';
 import {
   FARMING_STAGES,
   FarmingStageKeyType,
@@ -76,6 +79,7 @@ const ACTIVITY_META: Record<string, { icon: string; iconFamily: 'mci' | 'feather
 };
 
 export default function NewFarmingRecordScreen() {
+  const [isDark, setDarkMode] = useDarkMode();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     cropId?: string;
@@ -84,14 +88,48 @@ export default function NewFarmingRecordScreen() {
     activityId?: string;
   }>();
 
-  const { fields, getFieldById, customActivities, saveActivityNotes } = useCropsStore();
+  const { fields, getFieldById, customActivities, saveActivityNotes, createNewCrop } = useCropsStore();
+
+  const [addCropModalVisible, setAddCropModalVisible] = useState(false);
 
   // Selected crop (defaults to param or primary crop)
-  const initialCrop = params.cropId
-    ? fields.find((f) => f.id === params.cropId) || fields[0]
-    : fields[0] || getFieldById('field-tomato');
+  const initialCrop = useMemo(() => {
+    if (params.cropId) {
+      return fields.find((f) => f.id === params.cropId) || fields[0] || null;
+    }
+    return fields[0] || null;
+  }, [params.cropId, fields]);
 
-  const [selectedCrop, setSelectedCrop] = useState(initialCrop);
+  const [selectedCrop, setSelectedCrop] = useState<FieldItem | null>(initialCrop);
+
+  // Keep selectedCrop synced if fields load or change
+  useEffect(() => {
+    if (!selectedCrop && fields.length > 0) {
+      setSelectedCrop(fields[0]);
+    } else if (selectedCrop && !fields.some((f) => f.id === selectedCrop.id)) {
+      setSelectedCrop(fields[0] || null);
+    }
+  }, [fields]);
+
+  const handleSelectCrop = (crop: FieldItem) => {
+    setSelectedCrop(crop);
+    // Switch to crop's current stage index
+    const stageIdx = crop.currentStageIndex ?? 1;
+    setSelectedStageNumber(stageIdx);
+    // Clear stale activity
+    setSelectedActivity(null);
+  };
+
+  const handleCreateNewCrop = async (payload: CreateCropPayload) => {
+    const newCrop = await createNewCrop(payload);
+    if (newCrop) {
+      setSelectedCrop(newCrop);
+      setSelectedStageNumber(1);
+      setSelectedActivity(null);
+      return newCrop;
+    }
+    return null;
+  };
 
   // Initial stage determination
   const initialStageNumber = useMemo(() => {
@@ -137,7 +175,7 @@ export default function NewFarmingRecordScreen() {
     const defaultList = STAGE_ACTIVITIES[key] || [];
 
     const customList: StageActivityTemplate[] = customActivities
-      .filter((ca) => ca.cropId === selectedCrop.id && ca.stageKey === key)
+      .filter((ca) => ca.cropId === selectedCrop?.id && ca.stageKey === key)
       .map((ca) => ({
         id: ca.id,
         name: ca.name,
@@ -209,6 +247,10 @@ export default function NewFarmingRecordScreen() {
 
   // Submit and lock record
   const handleSubmitAndLock = () => {
+    if (!selectedCrop) {
+      Alert.alert('Crop Required', 'Please select a crop to record activity.');
+      return;
+    }
     if (!selectedActivity) {
       Alert.alert('Missing Activity', 'Please select an activity.');
       return;
@@ -272,25 +314,25 @@ export default function NewFarmingRecordScreen() {
   };
 
   return (
-    <View style={styles.screenContainer}>
-      <StatusBar style="dark" />
+    <View style={[styles.screenContainer, isDark && styles.screenContainerDark]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Top Header */}
-      <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 14) }]}>
+      <View style={[styles.headerContainer, isDark && styles.headerContainerDark, { paddingTop: Math.max(insets.top, 14) }]}>
         <View style={styles.headerTopRow}>
           {/* Circular Back Button */}
           <TouchableOpacity
-            style={styles.backCircleBtn}
+            style={[styles.backCircleBtn, isDark && styles.backCircleBtnDark]}
             onPress={handleBack}
             activeOpacity={0.7}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Feather name="chevron-left" size={20} color="#1E3B2B" />
+            <Feather name="chevron-left" size={20} color={isDark ? '#E5EFE7' : '#1E3B2B'} />
           </TouchableOpacity>
 
           {/* Step Indicator */}
-          <View style={styles.stepIndicatorWrapper}>
-            <Text style={styles.stepIndicatorText}>
+          <View style={[styles.stepIndicatorWrapper, isDark && styles.stepIndicatorWrapperDark]}>
+            <Text style={[styles.stepIndicatorText, isDark && styles.stepIndicatorTextDark]}>
               Step {currentStep} of 6 ·{' '}
               {currentStep === 1
                 ? 'Stage'
@@ -304,16 +346,21 @@ export default function NewFarmingRecordScreen() {
             </Text>
           </View>
 
-          {/* Top-Right Status Ring Icon */}
-          <View style={styles.statusCircleBtn}>
-            <Feather name="sun" size={16} color="#457353" />
-          </View>
+          {/* Top-Right Theme Toggle Ring Icon */}
+          <TouchableOpacity
+            style={[styles.statusCircleBtn, isDark && styles.statusCircleBtnDark]}
+            onPress={() => setDarkMode(!isDark)}
+            activeOpacity={0.75}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name={isDark ? 'moon' : 'sun'} size={16} color={isDark ? '#4ADE80' : '#457353'} />
+          </TouchableOpacity>
         </View>
 
         {/* Big Serif Heading with Mint Highlight */}
         <View style={styles.titleWrapper}>
-          <Text style={styles.mainTitle}>
-            New <Text style={styles.highlightedTitle}>Farming Record</Text>
+          <Text style={[styles.mainTitle, isDark && styles.mainTitleDark]}>
+            New <Text style={[styles.highlightedTitle, isDark && styles.highlightedTitleDark]}>Farming Record</Text>
           </Text>
         </View>
 
@@ -328,41 +375,23 @@ export default function NewFarmingRecordScreen() {
                   ? styles.segmentCompleted
                   : s === currentStep
                   ? styles.segmentActive
+                  : isDark
+                  ? styles.segmentInactiveDark
                   : styles.segmentInactive,
               ]}
             />
           ))}
         </View>
 
-        {/* Crop / Batch Selector Chip Bar */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.cropSelectorContent}
-          style={styles.cropSelectorScroll}
-        >
-          {fields.map((field) => {
-            const isSelected = field.id === selectedCrop.id;
-            return (
-              <TouchableOpacity
-                key={field.id}
-                style={[styles.cropChip, isSelected && styles.cropChipSelected]}
-                onPress={() => setSelectedCrop(field)}
-                activeOpacity={0.75}
-              >
-                <MaterialCommunityIcons
-                  name="sprout"
-                  size={14}
-                  color={isSelected ? '#FFFFFF' : '#47634F'}
-                  style={{ marginRight: 5 }}
-                />
-                <Text style={[styles.cropChipText, isSelected && styles.cropChipTextSelected]}>
-                  {field.cropName} · {field.batchId || 'BATCH-01'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* In Steps 2-6: Show compact indicator of selected crop in header */}
+        {currentStep > 1 && selectedCrop && (
+          <View style={[styles.activeCropPillHeader, isDark && styles.activeCropPillHeaderDark]}>
+            <Text style={styles.activeCropEmoji}>{selectedCrop.cropEmoji || '🌱'}</Text>
+            <Text style={[styles.activeCropPillText, isDark && styles.activeCropPillTextDark]}>
+              {selectedCrop.cropName} · {selectedCrop.batchId || 'BATCH-01'} ({activeStage.title})
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Main Body */}
@@ -383,12 +412,130 @@ export default function NewFarmingRecordScreen() {
               ───────────────────────────────────────────────────────────── */}
           {currentStep === 1 && (
             <View style={styles.stepSection}>
-              <Text style={styles.questionHeading}>Which stage is your crop in?</Text>
+              {/* ─────────────────────────────────────────────────────────
+                  NEW SECTION: My Crops (Add New Crop + Existing Crops)
+                  ───────────────────────────────────────────────────────── */}
+              <View style={styles.myCropsSection}>
+                <View style={styles.myCropsHeaderRow}>
+                  <Text style={[styles.myCropsTitle, isDark && styles.myCropsTitleDark]}>
+                    My Crops
+                  </Text>
+                  {selectedCrop && (
+                    <View style={[styles.cropActiveBadge, isDark && styles.cropActiveBadgeDark]}>
+                      <Text style={[styles.cropActiveBadgeText, isDark && styles.cropActiveBadgeTextDark]}>
+                        {selectedCrop.cropName} · {selectedCrop.stageName || 'Planting'} ({selectedCrop.growthPercentage || 0}%)
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {fields.length === 0 ? (
+                  <View style={[styles.emptyCropsBanner, isDark && styles.emptyCropsBannerDark]}>
+                    <MaterialCommunityIcons
+                      name="sprout-outline"
+                      size={28}
+                      color={isDark ? '#4ADE80' : '#2A6638'}
+                      style={{ marginRight: 10 }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.emptyCropsText, isDark && styles.emptyCropsTextDark]}>
+                        No crops added yet.
+                      </Text>
+                      <Text style={[styles.emptyCropsSubtext, isDark && styles.emptyCropsSubtextDark]}>
+                        Create a new crop batch to start recording cultivation stages.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.emptyAddBtn}
+                      onPress={() => setAddCropModalVisible(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="plus" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.emptyAddBtnText}>Add Crop</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled={true}
+                    contentContainerStyle={styles.myCropsScrollContent}
+                    style={styles.myCropsScroll}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {/* 1. + Add New Crop Button at beginning of row */}
+                    <TouchableOpacity
+                      style={[styles.addNewCropBtn, isDark && styles.addNewCropBtnDark]}
+                      onPress={() => setAddCropModalVisible(true)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.addNewCropIconWrap}>
+                        <Feather name="plus" size={15} color="#FFFFFF" />
+                      </View>
+                      <Text style={styles.addNewCropBtnText}>Add New Crop</Text>
+                    </TouchableOpacity>
+
+                    {/* 2. All existing crops added by the logged-in farmer */}
+                    {fields.map((field) => {
+                      const isSelected = selectedCrop?.id === field.id;
+                      return (
+                        <TouchableOpacity
+                          key={field.id}
+                          style={[
+                            styles.cropCardChip,
+                            isDark && styles.cropCardChipDark,
+                            isSelected && (isDark ? styles.cropCardChipSelectedDark : styles.cropCardChipSelected),
+                          ]}
+                          onPress={() => handleSelectCrop(field)}
+                          activeOpacity={0.8}
+                        >
+                          <View
+                            style={[
+                              styles.cropCardEmojiWrap,
+                              isSelected && styles.cropCardEmojiWrapSelected,
+                            ]}
+                          >
+                            <Text style={styles.cropCardEmoji}>{field.cropEmoji || '🌱'}</Text>
+                          </View>
+                          <View style={{ marginLeft: 8 }}>
+                            <Text
+                              style={[
+                                styles.cropCardName,
+                                isDark && styles.cropCardNameDark,
+                                isSelected && styles.cropCardNameSelected,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {field.cropName}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.cropCardBatch,
+                                isDark && styles.cropCardBatchDark,
+                                isSelected && styles.cropCardBatchSelected,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {field.batchId || 'BATCH-01'}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+
+              {/* Heading: Which stage is your crop in? */}
+              <Text style={[styles.questionHeading, isDark && styles.questionHeadingDark]}>
+                Which stage is your crop in?
+              </Text>
 
               <View style={styles.stagesList}>
                 {FARMING_STAGES.map((stg) => {
                   const isSelected = selectedStageNumber === stg.stageNumber;
-                  const cropCurrentStage = selectedCrop.currentStageIndex ?? 3;
+                  const cropCurrentStage = selectedCrop?.currentStageIndex ?? 1;
+                  const cropRecordCount = selectedCrop?.recordCount ?? 0;
 
                   let statusLabel = 'Upcoming';
                   let isCompleted = false;
@@ -397,13 +544,23 @@ export default function NewFarmingRecordScreen() {
                     statusLabel = 'Completed';
                     isCompleted = true;
                   } else if (stg.stageNumber === cropCurrentStage) {
-                    statusLabel = 'Current stage';
+                    if (cropRecordCount === 0 && stg.stageNumber === 1) {
+                      statusLabel = 'Not Started';
+                    } else {
+                      statusLabel = 'Current stage';
+                    }
+                  } else {
+                    statusLabel = 'Upcoming';
                   }
 
                   return (
                     <TouchableOpacity
                       key={stg.key}
-                      style={[styles.stageCard, isSelected && styles.stageCardSelected]}
+                      style={[
+                        styles.stageCard,
+                        isDark && styles.stageCardDark,
+                        isSelected && (isDark ? styles.stageCardSelectedDark : styles.stageCardSelected),
+                      ]}
                       onPress={() => handleSelectStage(stg.stageNumber)}
                       activeOpacity={0.8}
                     >
@@ -411,6 +568,7 @@ export default function NewFarmingRecordScreen() {
                       <View
                         style={[
                           styles.stageIconWrap,
+                          isDark && styles.stageIconWrapDark,
                           isSelected && styles.stageIconWrapSelected,
                           isCompleted && !isSelected && styles.stageIconWrapCompleted,
                         ]}
@@ -431,17 +589,29 @@ export default function NewFarmingRecordScreen() {
                                 : 'basket-outline'
                             }
                             size={20}
-                            color={isSelected ? '#75C590' : '#457353'}
+                            color={isSelected ? '#75C590' : isDark ? '#4ADE80' : '#457353'}
                           />
                         )}
                       </View>
 
                       {/* Stage Name & Status */}
                       <View style={styles.stageTextCol}>
-                        <Text style={[styles.stageNameText, isSelected && styles.stageNameTextSelected]}>
+                        <Text
+                          style={[
+                            styles.stageNameText,
+                            isDark && styles.stageNameTextDark,
+                            isSelected && styles.stageNameTextSelected,
+                          ]}
+                        >
                           {stg.title}
                         </Text>
-                        <Text style={[styles.stageStatusText, isSelected && styles.stageStatusTextSelected]}>
+                        <Text
+                          style={[
+                            styles.stageStatusText,
+                            isDark && styles.stageStatusTextDark,
+                            isSelected && styles.stageStatusTextSelected,
+                          ]}
+                        >
                           {statusLabel}
                         </Text>
                       </View>
@@ -452,7 +622,7 @@ export default function NewFarmingRecordScreen() {
                           <Feather name="check" size={13} color="#FFFFFF" />
                         </View>
                       ) : (
-                        <View style={styles.unselectedRadioCircle} />
+                        <View style={[styles.unselectedRadioCircle, isDark && styles.unselectedRadioCircleDark]} />
                       )}
                     </TouchableOpacity>
                   );
@@ -461,13 +631,30 @@ export default function NewFarmingRecordScreen() {
 
               {/* Bottom Action Button */}
               <TouchableOpacity
-                style={styles.continueButton}
+                style={[
+                  styles.continueButton,
+                  isDark && styles.continueButtonDark,
+                  (!selectedCrop || fields.length === 0) && styles.continueButtonDisabled,
+                ]}
                 activeOpacity={0.85}
-                onPress={() => setCurrentStep(2)}
+                onPress={() => {
+                  if (!selectedCrop || fields.length === 0) {
+                    Alert.alert('Crop Required', 'Please add or select a crop to record farming activities.');
+                    return;
+                  }
+                  setCurrentStep(2);
+                }}
+                disabled={!selectedCrop || fields.length === 0}
               >
                 <Text style={styles.continueButtonText}>Continue</Text>
                 <Feather name="arrow-up-right" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
               </TouchableOpacity>
+
+              {(!selectedCrop || fields.length === 0) && (
+                <Text style={[styles.disabledHintText, isDark && styles.disabledHintTextDark]}>
+                  Please add or select a crop above to continue
+                </Text>
+              )}
             </View>
           )}
 
@@ -986,7 +1173,7 @@ export default function NewFarmingRecordScreen() {
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Crop & Batch</Text>
                   <Text style={styles.summaryValue}>
-                    {selectedCrop.cropName} ({selectedCrop.batchId || 'BATCH-01'})
+                    {selectedCrop?.cropName || 'Crop'} ({selectedCrop?.batchId || 'BATCH-01'})
                   </Text>
                 </View>
 
@@ -1024,7 +1211,7 @@ export default function NewFarmingRecordScreen() {
                 <View style={styles.summaryNotesBox}>
                   <Text style={styles.summaryNotesLabel}>Notes:</Text>
                   <Text style={styles.summaryNotesText}>
-                    {notes.trim() || `Verified ${selectedActivity?.name} performed for ${selectedCrop.cropName}.`}
+                    {notes.trim() || `Verified ${selectedActivity?.name} performed for ${selectedCrop?.cropName || 'crop'}.`}
                   </Text>
                 </View>
 
@@ -1088,7 +1275,7 @@ export default function NewFarmingRecordScreen() {
               onPress={() => {
                 setSubmittedRecordCode(null);
                 router.replace(
-                  `/(farmer)/harvests/${selectedCrop.id}/stage?stageNumber=${selectedStageNumber}` as any
+                  `/(farmer)/harvests/${selectedCrop?.id || 'field-tomato'}/stage?stageNumber=${selectedStageNumber}` as any
                 );
               }}
             >
@@ -1109,6 +1296,13 @@ export default function NewFarmingRecordScreen() {
           </View>
         </View>
       )}
+
+      {/* Add New Crop Modal */}
+      <AddNewCropModal
+        visible={addCropModalVisible}
+        onClose={() => setAddCropModalVisible(false)}
+        onCreateCrop={handleCreateNewCrop}
+      />
     </View>
   );
 }
@@ -1934,5 +2128,320 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#637A6A',
+  },
+
+  // Dark Mode Tokens
+  screenContainerDark: {
+    backgroundColor: '#0E1710',
+  },
+  headerContainerDark: {
+    backgroundColor: '#0E1710',
+  },
+  backCircleBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  stepIndicatorWrapperDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  stepIndicatorTextDark: {
+    color: '#9CB3A0',
+  },
+  statusCircleBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  mainTitleDark: {
+    color: '#F0F5F1',
+  },
+  highlightedTitleDark: {
+    backgroundColor: '#1E3E26',
+    color: '#4ADE80',
+  },
+  segmentInactiveDark: {
+    backgroundColor: '#283D2C',
+  },
+  questionHeadingDark: {
+    color: '#F0F5F1',
+  },
+  subHeadingNoticeDark: {
+    color: '#9CB3A0',
+  },
+  stageCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  stageCardSelectedDark: {
+    backgroundColor: '#1E3E26',
+    borderColor: '#4ADE80',
+  },
+  stageIconWrapDark: {
+    backgroundColor: '#223827',
+  },
+  stageNameTextDark: {
+    color: '#F0F5F1',
+  },
+  stageStatusTextDark: {
+    color: '#9CB3A0',
+  },
+  unselectedRadioCircleDark: {
+    borderColor: '#3A523E',
+  },
+  continueButtonDark: {
+    backgroundColor: '#2D5936',
+  },
+
+  // My Crops Section Styles
+  myCropsSection: {
+    marginBottom: 16,
+  },
+  myCropsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  myCropsTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#163820',
+    letterSpacing: -0.2,
+  },
+  myCropsTitleDark: {
+    color: '#F0F5F1',
+  },
+  cropActiveBadge: {
+    backgroundColor: '#EDF5EE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D4E4D6',
+  },
+  cropActiveBadgeDark: {
+    backgroundColor: '#1E3324',
+    borderColor: '#2D4E35',
+  },
+  cropActiveBadgeText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#2A6638',
+  },
+  cropActiveBadgeTextDark: {
+    color: '#4ADE80',
+  },
+  myCropsScroll: {
+    marginBottom: 4,
+  },
+  myCropsScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 24,
+    paddingVertical: 2,
+  },
+  addNewCropBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E3E26',
+    borderRadius: 22,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    shadowColor: '#173420',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addNewCropBtnDark: {
+    backgroundColor: '#2D5936',
+  },
+  addNewCropIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  addNewCropBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  cropCardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingRight: 14,
+    borderWidth: 1,
+    borderColor: '#E2DFD6',
+    shadowColor: '#173420',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cropCardChipDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  cropCardChipSelected: {
+    backgroundColor: '#1C3A24',
+    borderColor: '#1C3A24',
+    shadowOpacity: 0.18,
+    elevation: 4,
+  },
+  cropCardChipSelectedDark: {
+    backgroundColor: '#1C3E25',
+    borderColor: '#4ADE80',
+  },
+  cropCardEmojiWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EDF5EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cropCardEmojiWrapSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  cropCardEmoji: {
+    fontSize: 15,
+  },
+  cropCardName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#16351E',
+  },
+  cropCardNameDark: {
+    color: '#F0F5F1',
+  },
+  cropCardNameSelected: {
+    color: '#FFFFFF',
+  },
+  cropCardBatch: {
+    fontSize: 10.5,
+    color: '#657E6B',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+  cropCardBatchDark: {
+    color: '#9CB3A0',
+  },
+  cropCardBatchSelected: {
+    color: '#B2D8BD',
+  },
+  cropCardStageBadge: {
+    backgroundColor: '#F0F5F1',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  cropCardStageBadgeDark: {
+    backgroundColor: '#223827',
+  },
+  cropCardStageBadgeSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  cropCardStageText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2A6638',
+  },
+  cropCardStageTextDark: {
+    color: '#9CB3A0',
+  },
+  cropCardStageTextSelected: {
+    color: '#FFFFFF',
+  },
+  emptyCropsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2DFD6',
+  },
+  emptyCropsBannerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  emptyCropsText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#16351E',
+  },
+  emptyCropsTextDark: {
+    color: '#F0F5F1',
+  },
+  emptyCropsSubtext: {
+    fontSize: 12,
+    color: '#657E6B',
+    marginTop: 2,
+  },
+  emptyCropsSubtextDark: {
+    color: '#9CB3A0',
+  },
+  emptyAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E3E26',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginLeft: 8,
+  },
+  emptyAddBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  disabledHintText: {
+    fontSize: 12,
+    color: '#8A9E8F',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  disabledHintTextDark: {
+    color: '#657E6B',
+  },
+  activeCropPillHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2DFD6',
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  activeCropPillHeaderDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  activeCropEmoji: {
+    fontSize: 13,
+    marginRight: 6,
+  },
+  activeCropPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#16351E',
+  },
+  activeCropPillTextDark: {
+    color: '#4ADE80',
   },
 });
