@@ -160,6 +160,29 @@ export default function NewFarmingRecordScreen() {
   const [packagingType, setPackagingType] = useState<string>('Perforated Crates');
   const [storageMethod, setStorageMethod] = useState<string>('Controlled Cold Storage');
   const [locationName, setLocationName] = useState<string>(selectedCrop?.name || 'Greenhouse Bay 1');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (pos?.coords) {
+              setLatitude(pos.coords.latitude);
+              setLongitude(pos.coords.longitude);
+            }
+          },
+          (err) => {
+            console.log('[GPS] Geolocation sensor unavailable or denied:', err.message);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+        );
+      } catch {
+        // Fallback safely
+      }
+    }
+  }, []);
 
   // Purpose-Specific Activity Fields (Planting, Vegetative, Flowering, Maturity, Harvesting)
   const [cropVariety, setCropVariety] = useState<string>('');
@@ -323,7 +346,7 @@ export default function NewFarmingRecordScreen() {
   };
 
   // Submit and lock record
-  const handleSubmitAndLock = () => {
+  const handleSubmitAndLock = async () => {
     if (!selectedCrop) {
       Alert.alert('Crop Required', 'Please select a crop to record activity.');
       return;
@@ -445,7 +468,7 @@ export default function NewFarmingRecordScreen() {
     const finalNotes = notes.trim() || `Verified ${selectedActivity.name} performed for ${selectedCrop.cropName}.`;
 
     try {
-      const saved = saveActivityNotes({
+      const saved = await saveActivityNotes({
         cropId: selectedCrop.id,
         activityId: selectedActivity.id,
         activityName: selectedActivity.name,
@@ -455,13 +478,16 @@ export default function NewFarmingRecordScreen() {
         inputs,
         stage: activeStage.title,
         batchId: selectedCrop.batchId,
+        latitude,
+        longitude,
       });
 
       setSubmittedRecordCode(saved.recordCode);
       setIsSubmitting(false);
-    } catch {
+    } catch (err: any) {
       setIsSubmitting(false);
-      Alert.alert('Save Failed', 'Unable to record farming activity. Please retry.');
+      console.warn('[NewRecord] Submission failed:', err);
+      Alert.alert('Save Failed', err?.message || 'Unable to record farming activity. Please retry.');
     }
   };
 
@@ -2492,9 +2518,13 @@ export default function NewFarmingRecordScreen() {
               activeOpacity={0.85}
               onPress={() => {
                 setSubmittedRecordCode(null);
-                router.replace(
-                  `/(farmer)/harvests/${selectedCrop?.id || 'field-tomato'}/stage?stageNumber=${selectedStageNumber}` as any
-                );
+                if (selectedCrop?.id) {
+                  router.replace(
+                    `/(farmer)/harvests/${selectedCrop.id}/stage?stageNumber=${selectedStageNumber}` as any
+                  );
+                } else {
+                  router.replace('/(farmer)/crops');
+                }
               }}
             >
               <Text style={styles.modalPrimaryBtnText}>Return to {activeStage.title} Stage</Text>
@@ -2506,9 +2536,13 @@ export default function NewFarmingRecordScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 setSubmittedRecordCode(null);
-                router.replace(
-                  `/(farmer)/harvests/${selectedCrop?.id || 'field-tomato'}/stage?stageNumber=${selectedStageNumber}` as any
-                );
+                if (selectedCrop?.id) {
+                  router.replace(
+                    `/(farmer)/harvests/${selectedCrop.id}/stage?stageNumber=${selectedStageNumber}` as any
+                  );
+                } else {
+                  router.replace('/(farmer)/crops');
+                }
               }}
             >
               <Text style={[styles.modalSecondaryBtnText, isDark && styles.modalSecondaryBtnTextDark]}>Done</Text>

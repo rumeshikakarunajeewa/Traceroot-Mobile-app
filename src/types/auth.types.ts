@@ -8,7 +8,14 @@ export interface UserProfile {
   phone?: string | null;
   avatar_url?: string | null;
   is_verified?: boolean;
+  bio?: string | null;
+  farm_name?: string | null;
+  district?: string | null;
+  province?: string | null;
+  country?: string | null;
+  trust_score?: number | null;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface FarmerProfileDetails {
@@ -18,7 +25,10 @@ export interface FarmerProfileDetails {
   farm_lat?: number;
   farm_lng?: number;
   nic_number?: string;
+  total_acreage?: number;
+  primary_crops?: string[];
   description?: string;
+  phone?: string;
 }
 
 export interface BuyerProfileDetails {

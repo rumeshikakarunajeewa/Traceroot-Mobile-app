@@ -21,6 +21,8 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useFarmerProfile } from '../../../src/store/farmerProfileStore';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { uploadAvatar } from '../../../src/services/storage.service';
+import { supabase } from '../../../src/lib/supabase';
 
 const FARMING_METHODS = ['Organic', 'Transitioning to Organic', 'Conventional', 'Other'] as const;
 
@@ -147,11 +149,36 @@ export default function EditFarmerProfileScreen() {
 
     setIsSaving(true);
     try {
-      await updateProfile({
+      let finalAvatarUrl = avatarUrl.trim();
+
+      // If the avatar is a newly selected local device file, upload it to Supabase Storage
+      if (
+        finalAvatarUrl &&
+        (finalAvatarUrl.startsWith('file:') ||
+          finalAvatarUrl.startsWith('content:') ||
+          finalAvatarUrl.startsWith('ph:') ||
+          finalAvatarUrl.startsWith('blob:'))
+      ) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          const uploadRes = await uploadAvatar(session.user.id, finalAvatarUrl);
+          if (uploadRes.error) {
+            console.warn('[EditProfile] Avatar upload failed:', uploadRes.error);
+            Alert.alert(
+              'Avatar Notice',
+              'Could not upload new avatar to cloud storage. Other details will be saved.'
+            );
+          } else if (uploadRes.url) {
+            finalAvatarUrl = uploadRes.url;
+          }
+        }
+      }
+
+      const result = await updateProfile({
         fullName: fullName.trim(),
         phone: phone.trim(),
         bio: bio.trim(),
-        avatarUrl: avatarUrl.trim(),
+        avatarUrl: finalAvatarUrl,
         farmName: farmName.trim(),
         district: district.trim(),
         province: province.trim(),
@@ -161,11 +188,16 @@ export default function EditFarmerProfileScreen() {
         deliveryAvailable,
       });
 
-      Alert.alert('Profile Updated', 'Your profile information has been successfully saved.', [
+      if (!result.success && result.error) {
+        Alert.alert('Save Failed', result.error);
+        return;
+      }
+
+      Alert.alert('Profile Updated', 'Your profile information has been successfully saved to Supabase.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    } catch {
-      Alert.alert('Error', 'Could not save profile changes. Please try again.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not save profile changes. Please try again.');
     } finally {
       setIsSaving(false);
     }

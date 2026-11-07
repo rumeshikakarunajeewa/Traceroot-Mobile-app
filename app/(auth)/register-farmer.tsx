@@ -17,6 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../src/lib/theme';
 import { authService } from '../../src/services/auth.service';
+import { refreshFarmerProfile } from '../../src/store/farmerProfileStore';
 
 interface FormState {
   farmName: string;
@@ -176,20 +177,41 @@ export default function RegisterFarmerScreen() {
   const handleSaveAndContinue = async () => {
     if (validate()) {
       setIsSubmitting(true);
-      const session = await authService.getSession();
-      const currentUserId = params.userId || session?.user?.id;
+      try {
+        const session = await authService.getSession();
+        const currentUserId = params.userId || session?.user?.id;
 
-      if (currentUserId) {
-        await authService.saveFarmerProfile(currentUserId, {
-          farming_type: 'greenhouse',
-          farm_name: formData.farmName,
-          farm_location: formData.location,
-          description: `Size: ${formData.farmSize} acres, Crops: ${formData.mainCrops}, Experience: ${formData.experience}`,
-        });
+        if (currentUserId) {
+          const cropsList = formData.mainCrops
+            ? formData.mainCrops.split(',').map((c) => c.trim()).filter(Boolean)
+            : [];
+          const acreageNum = parseFloat(formData.farmSize) || 1.0;
+
+          const res = await authService.saveFarmerProfile(currentUserId, {
+            farming_type: 'greenhouse',
+            farm_name: formData.farmName.trim(),
+            farm_location: formData.location.trim(),
+            total_acreage: acreageNum,
+            primary_crops: cropsList,
+            phone: formData.contactNumber.trim(),
+            description: `Size: ${formData.farmSize} acres, Crops: ${formData.mainCrops}, Experience: ${formData.experience} years`,
+          });
+
+          if (!res.success && res.error) {
+            console.warn('[RegisterFarmer] Notice during profile save:', res.error);
+          }
+
+          // Refresh live store
+          await refreshFarmerProfile();
+        }
+
+        router.replace('/(farmer)');
+      } catch (err: any) {
+        console.error('[RegisterFarmer] Exception:', err);
+        router.replace('/(farmer)');
+      } finally {
+        setIsSubmitting(false);
       }
-
-      setIsSubmitting(false);
-      router.replace('/(farmer)');
     }
   };
 

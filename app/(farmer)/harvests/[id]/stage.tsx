@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -51,9 +51,18 @@ export default function StageDetailsScreen() {
     addCustomActivity,
     setActivityApplicability,
     setStageApplicability,
+    syncFarmerRecords,
+    syncStageAndActivityMetadata,
   } = useCropsStore();
 
-  const crop = params.id ? fields.find((f) => f.id === params.id) : getFieldById('field-tomato');
+  const crop = params.id ? fields.find((f) => f.id === params.id) : fields[0];
+
+  useEffect(() => {
+    if (crop?.id) {
+      syncFarmerRecords(crop.id).catch(() => {});
+      syncStageAndActivityMetadata().catch(() => {});
+    }
+  }, [crop?.id]);
 
   // Determine initial active viewing stage number (1..5)
   const initialStageNum = useMemo(() => {
@@ -151,31 +160,31 @@ export default function StageDetailsScreen() {
     );
   }
 
-  const handleSaveNewRecord = (recordData: {
+  const handleSaveNewRecord = async (recordData: {
     recordType: string;
     date: string;
     notes?: string;
     photoUri?: string;
     stage?: string;
   }) => {
-    addRecordToCrop(crop.id, {
+    const res = await addRecordToCrop(crop.id, {
       recordType: recordData.recordType,
       date: recordData.date,
       notes: recordData.notes,
       photoUri: recordData.photoUri,
       stage: activeStageDef.title,
     });
-    Alert.alert('Record Added', `Logged "${recordData.recordType}" for ${activeStageDef.title} stage.`);
+    Alert.alert('Record Added', `Logged "${recordData.recordType}" (Trace ID: ${res.recordCode}) for ${activeStageDef.title} stage.`);
   };
 
-  const handleSaveCorrection = (correction: {
+  const handleSaveCorrection = async (correction: {
     reason: string;
     correctedNotes?: string;
     correctedInputs?: string[];
     photoUri?: string;
   }) => {
     if (!correctionTargetRecord) return;
-    const result = addCorrectionToRecord(correctionTargetRecord.recordCode, correction);
+    const result = await addCorrectionToRecord(correctionTargetRecord.recordCode, correction);
     if (result) {
       Alert.alert(
         'Correction Submitted',
@@ -518,9 +527,9 @@ export default function StageDetailsScreen() {
             : []
         }
         onClose={() => setSelectedActivity(null)}
-        onSave={(notes, photoUri, details, inputs) => {
+        onSave={async (notes, photoUri, details, inputs) => {
           if (!selectedActivity) return;
-          saveActivityNotes({
+          await saveActivityNotes({
             cropId: crop.id,
             batchId: crop.batchId,
             stage: activeStageDef.title,

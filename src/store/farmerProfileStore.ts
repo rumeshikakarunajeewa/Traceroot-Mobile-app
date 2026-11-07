@@ -74,6 +74,7 @@ export const INITIAL_FARMER_SETTINGS: FarmerSettingsData = {
 let currentProfile: FarmerProfileData = { ...INITIAL_FARMER_PROFILE };
 let currentSettings: FarmerSettingsData = { ...INITIAL_FARMER_SETTINGS };
 let isLoaded = false;
+let isSyncing = false;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -91,6 +92,91 @@ async function persist() {
   }
 }
 
+/**
+ * Fetch fresh profile and related stats from Supabase
+ */
+export async function refreshFarmerProfile(): Promise<FarmerProfileData> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return currentProfile;
+    }
+
+    const userId = session.user.id;
+
+    // 1. Fetch profiles and farmer_profiles
+    const { data: dbProfile, error: profileErr } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        farmer_profiles (*)
+      `)
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileErr) {
+      console.warn('[ProfileStore] Error fetching profile:', profileErr.message);
+    }
+
+    // 2. Fetch live crops count from harvests table
+    const { count: liveCropsCount } = await supabase
+      .from('harvests')
+      .select('*', { count: 'exact', head: true })
+      .eq('farmer_id', userId);
+
+    // 3. Fetch live orders count from orders table
+    const { count: liveOrdersCount } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('farmer_id', userId);
+
+    if (dbProfile) {
+      const fp = Array.isArray(dbProfile.farmer_profiles)
+        ? dbProfile.farmer_profiles[0]
+        : dbProfile.farmer_profiles;
+
+      const farmLocation = fp?.farm_location || dbProfile.district || currentProfile.location;
+      const farmSizeStr = fp?.total_acreage ? `${fp.total_acreage} acres` : currentProfile.farmSize;
+      const farmerTypeStr = fp?.farming_type === 'open_field' ? 'Open field farmer' : 'Greenhouse farmer';
+
+      currentProfile = {
+        id: dbProfile.id,
+        fullName: dbProfile.full_name || currentProfile.fullName,
+        farmerType: farmerTypeStr,
+        farmName: fp?.farm_name || dbProfile.farm_name || currentProfile.farmName,
+        farmSize: farmSizeStr,
+        location: farmLocation,
+        district: dbProfile.district || currentProfile.district,
+        province: dbProfile.province || currentProfile.province,
+        country: dbProfile.country || currentProfile.country || 'Sri Lanka',
+        coordinates: fp?.farm_lat && fp?.farm_lng
+          ? `${Number(fp.farm_lat).toFixed(4)}° N, ${Number(fp.farm_lng).toFixed(4)}° E`
+          : currentProfile.coordinates,
+        avatarUrl: dbProfile.avatar_url || currentProfile.avatarUrl,
+        bio: dbProfile.bio ?? currentProfile.bio,
+        phone: dbProfile.phone || currentProfile.phone,
+        email: dbProfile.email || session.user.email || currentProfile.email,
+        registrationNo: fp?.nic_number || `TR-${dbProfile.id.slice(0, 4).toUpperCase()}`,
+        isVerified: Boolean(dbProfile.is_verified),
+        trustScore: dbProfile.trust_score ?? currentProfile.trustScore,
+        deliveryAvailable: currentProfile.deliveryAvailable ?? true,
+        farmingExperience: fp?.description?.match(/Experience:\s*([^,]+)/)?.[1] || currentProfile.farmingExperience,
+        farmingMethod: currentProfile.farmingMethod || 'Organic',
+        rating: currentProfile.rating || 4.9,
+        cropsCount: typeof liveCropsCount === 'number' ? liveCropsCount : currentProfile.cropsCount,
+        ordersCount: typeof liveOrdersCount === 'number' ? liveOrdersCount : currentProfile.ordersCount,
+      };
+
+      await persist();
+      notify();
+    }
+  } catch (err) {
+    console.warn('[ProfileStore] Error refreshing farmer profile:', err);
+  }
+
+  return currentProfile;
+}
+
 export async function loadFarmerProfileFromStorage() {
   if (isLoaded) return;
   isLoaded = true;
@@ -106,62 +192,76 @@ export async function loadFarmerProfileFromStorage() {
     }
     notify();
 
-    // Optionally sync with Supabase profiles table if user is logged in
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const { data: dbProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (dbProfile) {
-        currentProfile = {
-          ...currentProfile,
-          id: dbProfile.id || currentProfile.id,
-          fullName: dbProfile.full_name || currentProfile.fullName,
-          phone: dbProfile.phone || currentProfile.phone,
-          avatarUrl: dbProfile.avatar_url || currentProfile.avatarUrl,
-          bio: dbProfile.bio || currentProfile.bio,
-          farmName: dbProfile.farm_name || currentProfile.farmName,
-          district: dbProfile.district || currentProfile.district,
-          province: dbProfile.province || currentProfile.province,
-          location: dbProfile.district ? `${dbProfile.district}` : currentProfile.location,
-        };
-        await persist();
-        notify();
-      }
-    }
+    // Now sync with live database if online
+    await refreshFarmerProfile();
   } catch (err) {
     console.warn('Error loading farmer profile:', err);
   }
 }
 
-export async function updateFarmerProfile(updates: Partial<FarmerProfileData>): Promise<void> {
+export async function updateFarmerProfile(
+  updates: Partial<FarmerProfileData>
+): Promise<{ success: boolean; error: string | null }> {
   currentProfile = { ...currentProfile, ...updates };
   await persist();
   notify();
 
-  // Also update Supabase in background
+  // Sync with Supabase profiles and farmer_profiles
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await supabase
-        .from('profiles')
-        .update({
-          full_name: currentProfile.fullName,
-          phone: currentProfile.phone,
-          avatar_url: currentProfile.avatarUrl,
-          bio: currentProfile.bio,
-          farm_name: currentProfile.farmName,
-          district: currentProfile.district,
-          province: currentProfile.province,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.user.id);
+    if (!session?.user) {
+      return { success: true, error: null };
     }
-  } catch (e) {
-    console.warn('Supabase profile update sync skipped/failed:', e);
+
+    const userId = session.user.id;
+
+    // 1. Update public.profiles
+    const profileUpdates: Record<string, any> = {
+      full_name: currentProfile.fullName,
+      phone: currentProfile.phone,
+      avatar_url: currentProfile.avatarUrl,
+      bio: currentProfile.bio,
+      farm_name: currentProfile.farmName,
+      district: currentProfile.district,
+      province: currentProfile.province,
+      country: currentProfile.country,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: profileErr } = await supabase
+      .from('profiles')
+      .update(profileUpdates)
+      .eq('id', userId);
+
+    if (profileErr) {
+      console.error('[ProfileStore] Error updating profiles:', profileErr.message);
+      return { success: false, error: profileErr.message };
+    }
+
+    // 2. Upsert into public.farmer_profiles
+    const acreageNum = parseFloat(currentProfile.farmSize) || 1.0;
+    const farmingTypeVal = currentProfile.farmerType.toLowerCase().includes('open') ? 'open_field' : 'greenhouse';
+
+    const { error: farmerErr } = await supabase
+      .from('farmer_profiles')
+      .upsert({
+        id: userId,
+        farm_name: currentProfile.farmName,
+        farm_location: currentProfile.location,
+        farming_type: farmingTypeVal,
+        total_acreage: acreageNum,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (farmerErr) {
+      console.error('[ProfileStore] Error updating farmer_profiles:', farmerErr.message);
+      return { success: false, error: farmerErr.message };
+    }
+
+    return { success: true, error: null };
+  } catch (e: any) {
+    console.warn('[ProfileStore] Supabase profile update failed:', e);
+    return { success: false, error: e.message || 'Failed to sync profile update' };
   }
 }
 
@@ -173,6 +273,7 @@ export async function updateFarmerSettings(updates: Partial<FarmerSettingsData>)
 
 export function useFarmerProfile() {
   const [, setTick] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadFarmerProfileFromStorage();
@@ -183,11 +284,18 @@ export function useFarmerProfile() {
     };
   }, []);
 
+  const refresh = async () => {
+    setIsRefreshing(true);
+    await refreshFarmerProfile();
+    setIsRefreshing(false);
+  };
+
   return {
     profile: currentProfile,
     settings: currentSettings,
+    isRefreshing,
+    refresh,
     updateProfile: updateFarmerProfile,
     updateSettings: updateFarmerSettings,
   };
 }
-

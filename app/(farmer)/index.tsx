@@ -24,18 +24,23 @@ import { ActiveJourneyCard } from '../../src/components/farmer/ActiveJourneyCard
 import { RecentRecordCard } from '../../src/components/farmer/RecentRecordCard';
 import { UpcomingCard } from '../../src/components/farmer/UpcomingCard';
 import { PhotoOptionsModal } from '../../src/components/farmer/PhotoOptionsModal';
+import { AddNewCropModal } from '../../src/components/farmer/AddNewCropModal';
 import {
   mockFarmerProfile,
   mockWeatherMetrics,
   mockFarmerStats,
   mockQuickFeatures,
-  mockFields,
-  mockRecentRecords,
   mockUpcomingItems,
 } from '../../src/constants/farmerMockData';
 import { FieldItem, RecentRecordItem, UpcomingItem } from '../../src/types/farmer.types';
-import { useCropsStore, updateFieldPhoto } from '../../src/store/cropStore';
-import { useFarmerProfile } from '../../src/store/farmerProfileStore';
+import {
+  useCropsStore,
+  updateFieldPhoto,
+  syncFarmerHarvests,
+  syncFarmerRecords,
+  CreateCropPayload,
+} from '../../src/store/cropStore';
+import { useFarmerProfile, refreshFarmerProfile } from '../../src/store/farmerProfileStore';
 import { useDarkMode } from '../../src/store/uiStore';
 
 export default function FarmerHomeScreen() {
@@ -55,10 +60,11 @@ export default function FarmerHomeScreen() {
   const [activeJourneyIndex, setActiveJourneyIndex] = useState(0);
 
   // Reactive shared fields store across Dashboard, My Crops, and Journey page
-  const { fields } = useCropsStore();
+  const { fields, records, createNewCrop } = useCropsStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [selectedFieldForPhoto, setSelectedFieldForPhoto] = useState<FieldItem | null>(null);
+  const [addCropModalVisible, setAddCropModalVisible] = useState(false);
 
   const categories = ['All', 'Carrots', 'Vegetable', 'Fruit'];
 
@@ -130,24 +136,34 @@ export default function FarmerHomeScreen() {
 
     Animated.parallel([
       Animated.timing(countCropsAnim, {
-        toValue: mockFarmerStats.activeCrops,
+        toValue: fields.length,
         duration: 900,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(countRecordsAnim, {
-        toValue: mockFarmerStats.recordsMonthCount,
+        toValue: records.length,
         duration: 1100,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(countHarvestAnim, {
-        toValue: mockFarmerStats.readyToHarvestCount,
+        toValue: fields.filter(
+          (f) => f.currentStageIndex === 5 || f.statusBadge === 'Harvest soon' || f.daysToHarvest <= 0
+        ).length,
         duration: 800,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
     ]).start();
+
+    // 3. Sync farmer harvests and records from Supabase on mount
+    syncFarmerHarvests().catch((err) => {
+      console.warn('[Dashboard] Error syncing harvests on mount:', err);
+    });
+    syncFarmerRecords().catch((err) => {
+      console.warn('[Dashboard] Error syncing records on mount:', err);
+    });
 
     return () => {
       countCropsAnim.removeAllListeners();
@@ -156,12 +172,51 @@ export default function FarmerHomeScreen() {
     };
   }, []);
 
-  const onRefresh = () => {
+  // Update counts whenever crops list or records update in reactive store
+  useEffect(() => {
+    const readyCount = fields.filter(
+      (f) => f.currentStageIndex === 5 || f.statusBadge === 'Harvest soon' || f.daysToHarvest <= 0
+    ).length;
+
+    Animated.parallel([
+      Animated.timing(countCropsAnim, {
+        toValue: fields.length,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+      Animated.timing(countRecordsAnim, {
+        toValue: records.length,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+      Animated.timing(countHarvestAnim, {
+        toValue: readyCount,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [fields, records]);
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    // TODO: Connect to Supabase to refetch farmer stats, weather, and harvests
-    setTimeout(() => {
+    try {
+      await Promise.all([
+        syncFarmerHarvests(),
+        syncFarmerRecords(),
+        refreshFarmerProfile(),
+      ]);
+    } catch (err) {
+      console.warn('[Dashboard] Refresh error:', err);
+    } finally {
       setRefreshing(false);
-    }, 1200);
+    }
+  };
+
+  const handleCreateCrop = async (payload: CreateCropPayload) => {
+    return await createNewCrop(payload);
   };
 
   const handlePressInRecord = () => {
@@ -256,10 +311,10 @@ export default function FarmerHomeScreen() {
   };
 
   const handleNavigateToJourney = (field: FieldItem) => {
-    const targetId = field?.id || 'field-tomato';
+    if (!field?.id) return;
     router.push({
       pathname: '/harvests/[id]',
-      params: { id: targetId },
+      params: { id: field.id },
     });
   };
 
@@ -580,7 +635,7 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={[styles.addFieldCard, isDark && styles.addFieldCardDark]}
               activeOpacity={0.8}
-              onPress={() => router.push('/harvests/new')}
+              onPress={() => setAddCropModalVisible(true)}
             >
               <View style={[styles.addFieldIconCircle, isDark && styles.addFieldIconCircleDark]}>
                 <Feather name="plus" size={24} color={isDark ? '#4ADE80' : '#2D6B3C'} />
@@ -677,7 +732,7 @@ export default function FarmerHomeScreen() {
               <TouchableOpacity
                 style={styles.emptyJourneyBtn}
                 activeOpacity={0.8}
-                onPress={() => router.push('/harvests/new')}
+                onPress={() => setAddCropModalVisible(true)}
               >
                 <Feather name="plus" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.emptyJourneyBtnText}>Start New Journey</Text>
@@ -709,8 +764,8 @@ export default function FarmerHomeScreen() {
           </View>
 
           {/* Records mapped vertically */}
-          {mockRecentRecords.length > 0 ? (
-            mockRecentRecords.map((record) => (
+          {records.length > 0 ? (
+            records.slice(0, 5).map((record) => (
               <RecentRecordCard
                 key={record.id}
                 record={record}
@@ -799,6 +854,13 @@ export default function FarmerHomeScreen() {
         onTakePhoto={handleTakePhoto}
         onChooseFromGallery={handleChooseFromGallery}
         onRemovePhoto={handleRemovePhoto}
+      />
+
+      {/* Add New Crop Modal */}
+      <AddNewCropModal
+        visible={addCropModalVisible}
+        onClose={() => setAddCropModalVisible(false)}
+        onCreateCrop={handleCreateCrop}
       />
     </SafeAreaView>
   );
