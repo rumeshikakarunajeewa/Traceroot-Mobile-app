@@ -37,7 +37,7 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
           </View>
           <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Phone</Text>
           <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
-            {profile.phone || '+94 71 987 6543'}
+            {profile.phone || ' '}
           </Text>
         </TouchableOpacity>
 
@@ -58,7 +58,7 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
           </View>
           <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Email</Text>
           <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
-            {profile.email || 'saman.p@freshmart.lk'}
+            {profile.email || ' '}
           </Text>
         </TouchableOpacity>
 
@@ -75,7 +75,7 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
           </View>
           <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Business</Text>
           <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
-            {profile.businessType || 'Retail supermarket'}
+            {profile.businessType || ' '}
           </Text>
         </View>
 
@@ -92,7 +92,7 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
           </View>
           <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Reg. ID</Text>
           <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
-            {profile.registrationId || 'BR-99321'}
+            {profile.registrationId || ' '}
           </Text>
         </View>
       </View>
@@ -115,12 +115,12 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
             <Text style={styles.locationTag}>Location</Text>
           </View>
 
-          <Text style={styles.locationTitle}>{profile.district || 'Colombo District'}</Text>
+          <Text style={styles.locationTitle}>{profile.district || ' '}</Text>
           <Text style={styles.locationSubtitle}>
-            {profile.province || 'Western Province'}, {profile.country || 'Sri Lanka'}
+            {profile.country || ' '}
           </Text>
           <Text style={styles.coordinates}>
-            {profile.coordinates || '6.9271° N, 79.8612° E'}
+            {profile.coordinates || ' '}
           </Text>
         </View>
 

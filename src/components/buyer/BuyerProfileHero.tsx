@@ -81,7 +81,7 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
                   style={styles.pinIcon}
                 />
                 <Text style={styles.locationText} numberOfLines={1}>
-                  {profile.district || 'Colombo District'} • {profile.company || 'FreshMart Ltd'}
+                  {[profile.district, profile.company].filter((s) => s && s.trim()).join(' • ') || ' '}
                 </Text>
               </View>
             </View>
@@ -89,8 +89,7 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
 
           {/* Bio statement */}
           <Text style={styles.bioText}>
-            {profile.bio ||
-              'Lead purchasing manager for FreshMart Supermarkets, building long-term relationships with verified, sustainable farmers.'}
+            {profile.bio || ' '}
           </Text>
 
           {/* Frosted Glass 3-Column Stats Container */}
@@ -106,7 +105,7 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
                 size={18}
                 color="rgba(255, 255, 255, 0.85)"
               />
-              <Text style={styles.statValue}>{profile.ordersCount ?? 142}</Text>
+              <Text style={styles.statValue}>{profile.ordersCount ?? 0}</Text>
               <Text style={styles.statLabel}>Orders</Text>
             </TouchableOpacity>
 
@@ -123,7 +122,7 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
                 size={18}
                 color="rgba(255, 255, 255, 0.85)"
               />
-              <Text style={styles.statValue}>{profile.contractsCount ?? 5}</Text>
+              <Text style={styles.statValue}>{profile.contractsCount ?? 0}</Text>
               <Text style={styles.statLabel}>Contracts</Text>
             </TouchableOpacity>
 
@@ -140,7 +139,7 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
                 size={18}
                 color="rgba(255, 255, 255, 0.85)"
               />
-              <Text style={styles.statValue}>{profile.kgSourced ?? '12.5k'}</Text>
+              <Text style={styles.statValue}>{profile.kgSourced ?? '0 kg'}</Text>
               <Text style={styles.statLabel}>kg sourced</Text>
             </TouchableOpacity>
           </View>

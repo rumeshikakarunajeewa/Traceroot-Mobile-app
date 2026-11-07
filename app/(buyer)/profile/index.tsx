@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-
   Platform,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { mockBuyerProfile } from '../../../src/constants/buyerMockData';
 import { BuyerProfile } from '../../../src/types/buyer.types';
 import { BuyerProfileHero } from '../../../src/components/buyer/BuyerProfileHero';
 import { BuyerTrustScoreCard } from '../../../src/components/buyer/BuyerTrustScoreCard';
@@ -24,24 +23,73 @@ import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditPr
 import { useDarkMode } from '../../../src/store/uiStore';
 import { StatusBar } from 'expo-status-bar';
 import { authService } from '../../../src/services/auth.service';
-import { setAuthState } from '../../../src/store/authStore';
+import { useAuth, setAuthState } from '../../../src/store/authStore';
+import { profilesService } from '../../../src/services/profiles.service';
 
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
+const defaultEmptyBuyerProfile: BuyerProfile = {
+  id: '',
+  fullName: ' ',
+  initials: ' ',
+  isVerified: false,
+  roleTitle: 'Wholesale Buyer',
+  company: ' ',
+  district: ' ',
+  province: ' ',
+  country: 'Sri Lanka',
+  coordinates: ' ',
+  bio: ' ',
+  ordersCount: 0,
+  contractsCount: 0,
+  kgSourced: '0 kg',
+  trustScore: 85,
+  trustScoreLabel: 'Verified Buyer',
+  trustScoreDetail: 'Standard rating for verified accounts',
+  phone: ' ',
+  email: ' ',
+  businessType: ' ',
+  registrationId: ' ',
+};
+
 export default function BuyerProfileScreen() {
-  const [profile, setProfile] = useState<BuyerProfile>(mockBuyerProfile);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<BuyerProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('About');
   const [darkMode, setDarkMode] = useDarkMode();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const displayProfile = profile || defaultEmptyBuyerProfile;
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const currentUser = user || (await authService.getSession())?.user;
+      if (currentUser?.id) {
+        const realProfile = await profilesService.getBuyerProfile(currentUser.id);
+        if (realProfile) {
+          setProfile(realProfile);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load buyer profile:', err);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
   // Pull-to-refresh
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 500);
+    loadProfile();
   };
 
   const handleBack = () => {
@@ -56,11 +104,26 @@ export default function BuyerProfileScreen() {
     setIsEditModalVisible(true);
   };
 
-  const handleSaveProfile = (updatedFields: Partial<BuyerProfile>) => {
-    setProfile((prev) => ({
-      ...prev,
-      ...updatedFields,
-    }));
+  const handleSaveProfile = async (updatedFields: Partial<BuyerProfile>) => {
+    const currentUser = user || (await authService.getSession())?.user;
+    if (!currentUser?.id) return;
+
+    setIsSaving(true);
+    const res = await profilesService.updateBuyerProfile(currentUser.id, updatedFields);
+    setIsSaving(false);
+
+    if (res.success) {
+      setProfile((prev) => {
+        const base = prev || defaultEmptyBuyerProfile;
+        return {
+          ...base,
+          ...updatedFields,
+        };
+      });
+      setIsEditModalVisible(false);
+    } else {
+      Alert.alert('Update Failed', res.error || 'Failed to update profile.');
+    }
   };
 
   const handleLogout = () => {
@@ -115,6 +178,21 @@ export default function BuyerProfileScreen() {
       ]
     );
   };
+
+  if (isLoading && !profile) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.safeArea,
+          darkMode && styles.safeAreaDark,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color={darkMode ? '#4ADE80' : '#1B3220'} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -193,7 +271,7 @@ export default function BuyerProfileScreen() {
       >
         {/* 2. Hero Profile Card with Vegetable BG & Stats */}
         <BuyerProfileHero
-          profile={profile}
+          profile={displayProfile}
           onPressStatsOrders={() => router.push('/(buyer)/orders' as any)}
           onPressStatsContracts={() => router.push('/(buyer)/contracts' as any)}
           onPressStatsSourced={() => router.push('/(buyer)/orders' as any)}
@@ -201,14 +279,14 @@ export default function BuyerProfileScreen() {
 
         {/* 3. Trust Score Card */}
         <BuyerTrustScoreCard
-          score={profile.trustScore}
-          label={profile.trustScoreLabel}
-          detail={profile.trustScoreDetail}
+          score={displayProfile.trustScore}
+          label={displayProfile.trustScoreLabel}
+          detail={displayProfile.trustScoreDetail}
           isDark={darkMode}
           onPress={() =>
             Alert.alert(
-              'TraceRoot Trust Score: 96 / 100',
-              'Saman Perera holds an Exemplary commercial buyer rating based on prompt escrow settlements, 142 completed harvests, and zero payment disputes.',
+              'TraceRoot Trust Score',
+              `${displayProfile.fullName.trim() || 'User'} holds a verified commercial buyer rating based on prompt settlements and completed contracts.`,
               [{ text: 'OK' }]
             )
           }
@@ -218,7 +296,7 @@ export default function BuyerProfileScreen() {
         <View style={styles.tabsRow}>
           {(['About', 'Orders', 'Saved', 'Documents'] as ProfileTab[]).map((tab) => {
             const isActive = activeTab === tab;
-            return (
+                      return (
               <TouchableOpacity
                 key={tab}
                 activeOpacity={0.75}
@@ -248,19 +326,22 @@ export default function BuyerProfileScreen() {
         {/* 5. Dynamic Tab Content */}
         {activeTab === 'About' && (
           <BuyerProfileDetails
-            profile={profile}
+            profile={displayProfile}
             isDark={darkMode}
             onPressPhone={() =>
-              Alert.alert('Phone Contact', profile.phone || '+94 71 987 6543')
+              displayProfile.phone?.trim()
+                ? Alert.alert('Phone Contact', displayProfile.phone)
+                : undefined
             }
             onPressEmail={() =>
-              Alert.alert('Email Contact', profile.email || 'saman.p@freshmart.lk')
+              displayProfile.email?.trim()
+                ? Alert.alert('Email Contact', displayProfile.email)
+                : undefined
             }
             onPressLocation={() =>
-              Alert.alert(
-                'Warehouse & Logistics Hub',
-                'Colombo Central Distribution Warehouse, Western Province\nCoordinates: 6.9271° N, 79.8612° E'
-              )
+              displayProfile.district?.trim()
+                ? Alert.alert('Location / Address', displayProfile.district)
+                : undefined
             }
           />
         )}
@@ -342,14 +423,14 @@ export default function BuyerProfileScreen() {
               </Text>
             </View>
             <Text style={[styles.tabContentDesc, darkMode && styles.tabContentDescDark]}>
-              Business Reg: {profile.registrationId || 'BR-99321'} • Validated Tax Invoicing
+              Business Reg: {displayProfile.registrationId?.trim() ? displayProfile.registrationId : ' '} • Validated Invoicing
             </Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() =>
                 Alert.alert(
-                  'TraceRoot KYC Verified',
-                  'FreshMart Ltd commercial documentation is verified with the Department of Agriculture and TraceRoot Smart Contracts.'
+                  'TraceRoot KYC Verification',
+                  `${displayProfile.company?.trim() || 'Your account'} commercial documentation is verified with TraceRoot.`
                 )
               }
               style={[styles.tabActionBtn, darkMode && styles.tabActionBtnDark]}
@@ -492,8 +573,9 @@ export default function BuyerProfileScreen() {
       {/* Edit Profile Modal */}
       <BuyerEditProfileModal
         visible={isEditModalVisible}
-        profile={profile}
+        profile={displayProfile}
         isDark={darkMode}
+        isSaving={isSaving}
         onClose={() => setIsEditModalVisible(false)}
         onSave={handleSaveProfile}
       />

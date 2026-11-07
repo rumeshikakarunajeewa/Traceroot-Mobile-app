@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerProfile } from '../../types/buyer.types';
@@ -17,6 +18,7 @@ interface BuyerEditProfileModalProps {
   visible: boolean;
   profile: BuyerProfile;
   isDark?: boolean;
+  isSaving?: boolean;
   onClose: () => void;
   onSave: (updatedProfile: Partial<BuyerProfile>) => void;
 }
@@ -24,26 +26,30 @@ interface BuyerEditProfileModalProps {
 const EditProfileForm: React.FC<{
   profile: BuyerProfile;
   isDark?: boolean;
+  isSaving?: boolean;
   onClose: () => void;
   onSave: (updatedProfile: Partial<BuyerProfile>) => void;
-}> = ({ profile, isDark = false, onClose, onSave }) => {
-  const [fullName, setFullName] = useState(profile.fullName);
-  const [company, setCompany] = useState(profile.company || '');
-  const [phone, setPhone] = useState(profile.phone || '');
-  const [email, setEmail] = useState(profile.email || '');
-  const [businessType, setBusinessType] = useState(profile.businessType || '');
-  const [bio, setBio] = useState(profile.bio || '');
+}> = ({ profile, isDark = false, isSaving = false, onClose, onSave }) => {
+  const [fullName, setFullName] = useState(profile.fullName?.trim() || '');
+  const [company, setCompany] = useState(profile.company?.trim() || '');
+  const [phone, setPhone] = useState(profile.phone?.trim() || '');
+  const [email, setEmail] = useState(profile.email?.trim() || '');
+  const [businessType, setBusinessType] = useState(profile.businessType?.trim() || '');
+  const [district, setDistrict] = useState(profile.district?.trim() || '');
+  const [registrationId, setRegistrationId] = useState(profile.registrationId?.trim() || '');
+  const [bio, setBio] = useState(profile.bio?.trim() || '');
 
   const handleSave = () => {
     onSave({
       fullName: fullName.trim() || profile.fullName,
-      company: company.trim() || profile.company,
-      phone: phone.trim() || profile.phone,
-      email: email.trim() || profile.email,
-      businessType: businessType.trim() || profile.businessType,
-      bio: bio.trim() || profile.bio,
+      company: company.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      businessType: businessType.trim(),
+      district: district.trim(),
+      registrationId: registrationId.trim(),
+      bio: bio.trim(),
     });
-    onClose();
   };
 
   return (
@@ -129,6 +135,30 @@ const EditProfileForm: React.FC<{
           />
         </View>
 
+        {/* Location / Address */}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Location / Address</Text>
+          <TextInput
+            value={district}
+            onChangeText={setDistrict}
+            style={[styles.textInput, isDark && styles.textInputDark]}
+            placeholder="e.g. Colombo District, Western Province"
+            placeholderTextColor={isDark ? '#6E8573' : '#9AA89B'}
+          />
+        </View>
+
+        {/* Business Registration (BR) Number */}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>BR Number</Text>
+          <TextInput
+            value={registrationId}
+            onChangeText={setRegistrationId}
+            style={[styles.textInput, isDark && styles.textInputDark]}
+            placeholder="e.g. PV-123456"
+            placeholderTextColor={isDark ? '#6E8573' : '#9AA89B'}
+          />
+        </View>
+
         {/* Bio statement */}
         <View style={styles.inputGroup}>
           <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Professional Bio</Text>
@@ -148,6 +178,7 @@ const EditProfileForm: React.FC<{
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={onClose}
+            disabled={isSaving}
             style={[styles.cancelBtn, isDark && styles.cancelBtnDark]}
           >
             <Text style={[styles.cancelBtnText, isDark && styles.cancelBtnTextDark]}>Cancel</Text>
@@ -156,9 +187,14 @@ const EditProfileForm: React.FC<{
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleSave}
-            style={[styles.saveBtn, isDark && styles.saveBtnDark]}
+            disabled={isSaving}
+            style={[styles.saveBtn, isDark && styles.saveBtnDark, isSaving && { opacity: 0.7 }]}
           >
-            <Text style={styles.saveBtnText}>Save Changes</Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -170,6 +206,7 @@ export const BuyerEditProfileModal: React.FC<BuyerEditProfileModalProps> = ({
   visible,
   profile,
   isDark = false,
+  isSaving = false,
   onClose,
   onSave,
 }) => {
@@ -188,6 +225,7 @@ export const BuyerEditProfileModal: React.FC<BuyerEditProfileModalProps> = ({
           <EditProfileForm
             profile={profile}
             isDark={isDark}
+            isSaving={isSaving}
             onClose={onClose}
             onSave={onSave}
           />
