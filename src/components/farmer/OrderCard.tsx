@@ -61,6 +61,18 @@ export default function OrderCard({
     } as any);
   };
 
+  // Navigate to buyer profile
+  const handleNavigateToBuyerProfile = () => {
+    const buyerId = order.buyer_id || 'buyer-saman';
+    router.push({
+      pathname: '/(farmer)/buyers',
+      params: {
+        id: buyerId,
+        name: order.buyer_name,
+      },
+    } as any);
+  };
+
   // Navigate to messages
   const handleNavigateToMessages = () => {
     router.push('/(farmer)/messages' as any);
@@ -85,14 +97,20 @@ export default function OrderCard({
             {order.crop_name} • {order.quantity} {order.unit}
           </Text>
 
-          <View style={styles.buyerRow}>
-            <Feather name="user" size={13} color={isDark ? '#4ADE80' : '#556E5A'} style={{ marginRight: 4 }} />
-            <Text style={[styles.buyerName, isDark && styles.buyerNameDark]} numberOfLines={1}>{order.buyer_name}</Text>
-          </View>
+          <TouchableOpacity
+            onPress={handleNavigateToBuyerProfile}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <View style={styles.buyerRow}>
+              <Feather name="user" size={13} color={isDark ? '#4ADE80' : '#556E5A'} style={{ marginRight: 4 }} />
+              <Text style={[styles.buyerName, isDark && styles.buyerNameDark]} numberOfLines={1}>{order.buyer_name}</Text>
+            </View>
 
-          {order.buyer_verified && (
-            <Text style={[styles.verifiedText, isDark && styles.verifiedTextDark]}>Verified Buyer</Text>
-          )}
+            {order.buyer_verified && (
+              <Text style={[styles.verifiedText, isDark && styles.verifiedTextDark]}>Verified Buyer</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         <View style={styles.badgeWrapper}>

@@ -14,15 +14,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { CropSummaryCard } from '../../src/components/farmer/CropSummaryCard';
-import { mockFields } from '../../src/constants/farmerMockData';
+import { AddNewCropModal } from '../../src/components/farmer/AddNewCropModal';
 import { FieldItem } from '../../src/types/farmer.types';
-import { useCropsStore } from '../../src/store/cropStore';
+import { useCropsStore, CreateCropPayload } from '../../src/store/cropStore';
 import { useDarkMode } from '../../src/store/uiStore';
 
 export default function FarmerCropsScreen() {
   const [isDark] = useDarkMode();
   const [refreshing, setRefreshing] = useState(false);
-  const { fields: crops } = useCropsStore();
+  const [addCropModalVisible, setAddCropModalVisible] = useState(false);
+  const { fields: crops, syncCrops, createNewCrop } = useCropsStore();
 
   // Staggered Entrance Animations
   const headerFade = useRef(new Animated.Value(0)).current;
@@ -100,24 +101,31 @@ export default function FarmerCropsScreen() {
     };
   }, [totalCropsCount, totalRecordsCount, avgGrowthPercent]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    // TODO: Refetch crops and cultivation cycles from Supabase
-    setTimeout(() => {
+    try {
+      await syncCrops();
+    } catch (err) {
+      console.warn('[MyCrops] Error refreshing crops from Supabase:', err);
+    } finally {
       setRefreshing(false);
-    }, 1200);
+    }
   };
 
   const handleNavigateToJourney = (crop: FieldItem) => {
-    const targetId = crop?.id || 'field-tomato';
+    if (!crop?.id) return;
     router.push({
       pathname: '/harvests/[id]',
-      params: { id: targetId },
+      params: { id: crop.id },
     });
   };
 
   const handleAddNewCrop = () => {
-    router.push('/harvests/new');
+    setAddCropModalVisible(true);
+  };
+
+  const handleCreateCrop = async (payload: CreateCropPayload) => {
+    return await createNewCrop(payload);
   };
 
   return (
@@ -213,16 +221,34 @@ export default function FarmerCropsScreen() {
             },
           ]}
         >
-          {crops.map((crop) => (
-            <CropSummaryCard
-              key={crop.id}
-              crop={crop}
-              onPress={() => handleNavigateToJourney(crop)}
-              onBookmarkPress={() => {
-                // TODO: Save bookmark in user preferences / Supabase
-              }}
-            />
-          ))}
+          {crops.length === 0 ? (
+            <View style={[styles.emptyContainer, isDark && styles.emptyContainerDark]}>
+              <Text style={styles.emptyEmoji}>🌱</Text>
+              <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>No crops registered yet</Text>
+              <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+                Start your growing season by creating your first field plot or greenhouse crop cycle.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyActionBtn}
+                activeOpacity={0.85}
+                onPress={handleAddNewCrop}
+              >
+                <Feather name="plus" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyActionBtnText}>Register Crop</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            crops.map((crop) => (
+              <CropSummaryCard
+                key={crop.id}
+                crop={crop}
+                onPress={() => handleNavigateToJourney(crop)}
+                onBookmarkPress={() => {
+                  // Saved in preferences
+                }}
+              />
+            ))
+          )}
 
           {/* 4. Add New Crop Dashed Card */}
           <TouchableOpacity
@@ -243,6 +269,13 @@ export default function FarmerCropsScreen() {
         {/* Bottom Spacer so items are completely visible above floating tab bar */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Add New Crop Modal */}
+      <AddNewCropModal
+        visible={addCropModalVisible}
+        onClose={() => setAddCropModalVisible(false)}
+        onCreateCrop={handleCreateCrop}
+      />
     </SafeAreaView>
   );
 }
@@ -457,5 +490,57 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 35,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#ECEAE2',
+    marginBottom: 16,
+  },
+  emptyContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  emptyEmoji: {
+    fontSize: 36,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#15321B',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#657E6B',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptySubtitleDark: {
+    color: '#9CB3A0',
+  },
+  emptyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E3C25',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 16,
+  },
+  emptyActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

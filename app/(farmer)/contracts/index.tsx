@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,9 +26,15 @@ export default function TraceabilityTimelineScreen() {
   const { fields, records, getFieldById } = useCropsStore();
   const [isDark] = useDarkMode();
 
-  // Selected crop ID (defaults to passed id or tomato)
-  const initialCropId = params.id || 'field-tomato';
+  // Selected crop ID (defaults to passed id or first crop)
+  const initialCropId = params.id || fields[0]?.id || '';
   const [selectedCropId, setSelectedCropId] = useState<string>(initialCropId);
+
+  useEffect(() => {
+    if (!selectedCropId && fields.length > 0) {
+      setSelectedCropId(fields[0].id);
+    }
+  }, [fields, selectedCropId]);
 
   // QR Modal and Record Detail Modal state
   const [qrModalVisible, setQrModalVisible] = useState(false);

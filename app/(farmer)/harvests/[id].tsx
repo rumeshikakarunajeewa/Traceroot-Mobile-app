@@ -29,8 +29,26 @@ export default function CropFarmingJourneyScreen() {
   const { width: windowWidth } = useWindowDimensions();
 
   // Reactive shared crop store so photo changes and new records sync across all dashboard views and crops list
-  const { fields, getFieldById, updateFieldPhoto, addRecordToCrop, stageApplicabilities } = useCropsStore();
-  const field = id ? fields.find((f) => f.id === id) : getFieldById('field-tomato');
+  const {
+    fields,
+    records,
+    getFieldById,
+    updateFieldPhoto,
+    addRecordToCrop,
+    stageApplicabilities,
+    syncCrops,
+    syncFarmerRecords,
+  } = useCropsStore();
+  const field = id ? fields.find((f) => f.id === id) : fields[0];
+
+  useEffect(() => {
+    if (!field && id) {
+      syncCrops().catch(() => {});
+    }
+    if (id) {
+      syncFarmerRecords(id).catch(() => {});
+    }
+  }, [id, field]);
 
   // Photo change modal state
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
@@ -132,14 +150,14 @@ export default function CropFarmingJourneyScreen() {
     ]).start(() => setToastMessage(null));
   };
 
-  const handleSaveRecord = (record: {
+  const handleSaveRecord = async (record: {
     recordType: string;
     date: string;
     notes?: string;
     photoUri?: string;
   }) => {
     if (field) {
-      addRecordToCrop(field.id, record);
+      await addRecordToCrop(field.id, record);
       showToast(`Record "${record.recordType}" logged successfully!`);
     }
   };
