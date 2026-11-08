@@ -205,9 +205,15 @@ class ProfilesService {
         error: null,
       };
     } catch (err: any) {
+      const msg = err.message || '';
+      let friendlyError = msg;
+      if (msg.includes('infinite recursion')) {
+        friendlyError =
+          'Database RLS error: Please run the policy fix script in Supabase SQL Editor to remove recursive policies on profiles.';
+      }
       return {
         success: false,
-        error: err.message || 'Failed to update buyer profile',
+        error: friendlyError || 'Failed to update buyer profile',
       };
     }
   }
