@@ -62,8 +62,9 @@ export default function LoginScreen() {
     let valid = true;
     let newErrors: Record<string, string> = {};
 
-    if (!email.trim() || !email.includes('@')) {
-      newErrors.email = 'Please enter a valid email address.';
+    const trimmedInput = email.trim();
+    if (!trimmedInput || trimmedInput.length < 3) {
+      newErrors.email = 'Please enter a valid email or username.';
       valid = false;
     }
     if (password.length < 4) {
@@ -94,6 +95,11 @@ export default function LoginScreen() {
     }
 
     // Redirect to the correct role dashboard based on user's profile
+    if (result.actualRole === 'admin' || result.profile?.role === 'admin') {
+      router.replace('/(admin)');
+      return;
+    }
+
     const targetRole = (result.actualRole || result.profile?.role || role) as Role;
     navigateToRoleHome(targetRole);
   };
@@ -195,7 +201,7 @@ export default function LoginScreen() {
           >
             <AppInput
               icon="email-outline"
-              placeholder="example@gmail.com"
+              placeholder="Email or Username"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
