@@ -82,6 +82,10 @@ export async function initializeAuth() {
         isLoading: false,
       });
     } else {
+      // Don't wipe admin session if admin is currently active
+      if (currentState.profile?.role === 'admin') {
+        return;
+      }
       setAuthState({
         user: null,
         profile: null,

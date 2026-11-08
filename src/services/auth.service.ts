@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import {
   UserProfile,
@@ -6,6 +7,11 @@ import {
   BuyerProfileDetails,
   SupplierProfileDetails,
 } from '../types/auth.types';
+import {
+  isAdminCredentials,
+  isAdminIdentifier,
+  getAdminProfile,
+} from '../constants/adminConfig';
 
 export interface SignUpParams {
   email: string;
@@ -38,6 +44,55 @@ class AuthService {
    */
   async signIn({ email, password, selectedRole }: SignInParams): Promise<AuthResponse> {
     try {
+      // 1. Check fixed administrator authentication
+      if (isAdminCredentials(email, password)) {
+        const adminProfile = getAdminProfile();
+        const adminUser = {
+          id: adminProfile.id,
+          email: adminProfile.email,
+          user_metadata: {
+            full_name: adminProfile.full_name,
+            role: 'admin',
+          },
+        };
+
+        const adminSession = {
+          access_token: 'fixed-admin-access-token',
+          user: adminUser,
+        };
+
+        await AsyncStorage.setItem(
+          '@traceroot_admin_session',
+          JSON.stringify({
+            user: adminUser,
+            profile: adminProfile,
+            session: adminSession,
+            token: adminSession.access_token,
+          })
+        );
+
+        return {
+          user: adminUser,
+          profile: adminProfile,
+          session: adminSession,
+          token: adminSession.access_token,
+          roleMismatch: false,
+          actualRole: 'admin',
+          error: null,
+        };
+      }
+
+      // If the admin username/email was entered but password did not match
+      if (isAdminIdentifier(email)) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: 'Incorrect admin password. Please verify your credentials.',
+        };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -351,6 +406,10 @@ class AuthService {
    */
   async getProfile(userId: string): Promise<UserProfile | null> {
     try {
+      if (userId === 'admin-fixed-id') {
+        return getAdminProfile();
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -372,6 +431,7 @@ class AuthService {
    */
   async signOut(): Promise<{ error: string | null }> {
     try {
+      await AsyncStorage.removeItem('@traceroot_admin_session');
       const { error } = await supabase.auth.signOut();
       if (error) return { error: error.message };
       return { error: null };
@@ -384,6 +444,14 @@ class AuthService {
    * Get current active session
    */
   async getSession() {
+    try {
+      const adminSessionStr = await AsyncStorage.getItem('@traceroot_admin_session');
+      if (adminSessionStr) {
+        const parsed = JSON.parse(adminSessionStr);
+        if (parsed.session) return parsed.session;
+      }
+    } catch {}
+
     const { data } = await supabase.auth.getSession();
     return data.session;
   }
