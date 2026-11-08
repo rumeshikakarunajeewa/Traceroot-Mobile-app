@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { BuyerProfile } from '../types/buyer.types';
+import { uploadAvatar } from './storage.service';
 
 function getInitials(name?: string | null): string {
   if (!name || !name.trim()) return ' ';
@@ -8,11 +9,23 @@ function getInitials(name?: string | null): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Normalizes input string to one of the canonical buyer types allowed by database constraint:
+ * 'supermarket' | 'retailer' | 'restaurant'
+ */
+export function normalizeBuyerType(type?: string): 'supermarket' | 'retailer' | 'restaurant' {
+  if (!type) return 'supermarket';
+  const lower = type.trim().toLowerCase();
+  if (lower.includes('retail')) return 'retailer';
+  if (lower.includes('rest')) return 'restaurant';
+  return 'supermarket';
+}
+
 class ProfilesService {
   /**
    * Fetch real buyer profile from Supabase tables:
-   * - public.profiles
-   * - public.buyer_profiles
+   * - public.profiles (shared base)
+   * - public.buyer_profiles (role-specific)
    * - counts from buyer_orders and contracts
    */
   async getBuyerProfile(userId: string): Promise<BuyerProfile | null> {
@@ -55,9 +68,13 @@ class ProfilesService {
       const email = profile?.email?.trim() || ' ';
       const phone = profile?.phone?.trim() || ' ';
       const company = buyerProfile?.company_name?.trim() || ' ';
-      const businessType = buyerProfile?.buyer_type?.trim() || ' ';
-      const address = buyerProfile?.address?.trim() || ' ';
-      const brNumber = buyerProfile?.br_number?.trim() || ' ';
+      const businessType = buyerProfile?.buyer_type?.trim() || 'supermarket';
+      const district = buyerProfile?.district?.trim() || buyerProfile?.address?.trim() || ' ';
+      const province = buyerProfile?.province?.trim() || ' ';
+      const country = buyerProfile?.country?.trim() || 'Sri Lanka';
+      const coordinates = buyerProfile?.coordinates?.trim() || ' ';
+      const brNumber = buyerProfile?.br_number?.trim() || (buyerProfile as any)?.registration_id?.trim() || ' ';
+      const bio = buyerProfile?.bio?.trim() || profile?.bio?.trim() || ' ';
 
       return {
         id: userId,
@@ -67,16 +84,16 @@ class ProfilesService {
         avatarUrl: profile?.avatar_url || undefined,
         roleTitle: 'Wholesale Buyer',
         company,
-        district: address,
-        province: ' ',
-        country: 'Sri Lanka',
-        coordinates: ' ',
-        bio: ' ',
+        district,
+        province,
+        country,
+        coordinates,
+        bio,
         ordersCount: ordersRes.count || 0,
         contractsCount: contractsRes.count || 0,
         kgSourced: '0 kg',
-        trustScore: 85,
-        trustScoreLabel: 'Verified Buyer',
+        trustScore: buyerProfile?.trust_score ?? 85,
+        trustScoreLabel: buyerProfile?.trust_score_label || 'Verified Buyer',
         trustScoreDetail: 'Standard rating for verified accounts',
         phone,
         email,
@@ -90,33 +107,64 @@ class ProfilesService {
   }
 
   /**
-   * Update real buyer profile in Supabase
+   * Update real buyer profile in Supabase across both:
+   * 1. public.profiles (full_name, phone, bio, avatar_url, updated_at)
+   * 2. public.buyer_profiles (buyer_name, company_name, buyer_type, address, district, province, br_number, bio, updated_at)
    */
   async updateBuyerProfile(
     userId: string,
-    data: Partial<BuyerProfile>
-  ): Promise<{ success: boolean; error: string | null }> {
+    data: Partial<BuyerProfile>,
+    localAvatarUri?: string
+  ): Promise<{ success: boolean; avatarUrl?: string; error: string | null }> {
     try {
-      // 1. Update public.profiles
-      const profileUpdates: Record<string, any> = {};
+      let finalAvatarUrl = data.avatarUrl;
+
+      // Step A: Upload avatar image if local file URI provided
+      if (localAvatarUri) {
+        const uploadRes = await uploadAvatar(userId, localAvatarUri);
+        if (uploadRes.error) {
+          console.warn('Avatar upload failed, proceeding with other profile fields:', uploadRes.error);
+        } else if (uploadRes.url) {
+          finalAvatarUrl = uploadRes.url;
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+
+      // Step B: Update public.profiles
+      const profileUpdates: Record<string, any> = {
+        updated_at: nowIso,
+      };
+
       if (data.fullName !== undefined) {
         profileUpdates.full_name = data.fullName.trim();
       }
       if (data.phone !== undefined) {
         profileUpdates.phone = data.phone.trim();
       }
-
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error: pErr } = await supabase
-          .from('profiles')
-          .update(profileUpdates)
-          .eq('id', userId);
-
-        if (pErr) throw pErr;
+      if (data.bio !== undefined) {
+        profileUpdates.bio = data.bio.trim();
+      }
+      if (finalAvatarUrl !== undefined) {
+        profileUpdates.avatar_url = finalAvatarUrl;
       }
 
-      // 2. Update or upsert public.buyer_profiles
-      const buyerUpdates: Record<string, any> = { id: userId };
+      const { error: pErr } = await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', userId);
+
+      if (pErr) {
+        console.error('Error updating profiles table:', pErr.message);
+        throw pErr;
+      }
+
+      // Step C: Update or upsert public.buyer_profiles
+      const buyerUpdates: Record<string, any> = {
+        id: userId,
+        updated_at: nowIso,
+      };
+
       if (data.fullName !== undefined) {
         buyerUpdates.buyer_name = data.fullName.trim();
       }
@@ -124,27 +172,45 @@ class ProfilesService {
         buyerUpdates.company_name = data.company.trim();
       }
       if (data.businessType !== undefined) {
-        buyerUpdates.buyer_type = data.businessType.trim();
+        buyerUpdates.buyer_type = normalizeBuyerType(data.businessType);
       }
       if (data.district !== undefined) {
-        buyerUpdates.address = data.district.trim();
+        buyerUpdates.district = data.district.trim();
+        buyerUpdates.address = data.province
+          ? `${data.district.trim()}, ${data.province.trim()}`
+          : data.district.trim();
+      }
+      if (data.province !== undefined) {
+        buyerUpdates.province = data.province.trim();
       }
       if (data.registrationId !== undefined) {
         buyerUpdates.br_number = data.registrationId.trim();
+      }
+      if (data.bio !== undefined) {
+        buyerUpdates.bio = data.bio.trim();
       }
 
       const { error: bErr } = await supabase
         .from('buyer_profiles')
         .upsert(buyerUpdates);
 
-      if (bErr) throw bErr;
+      if (bErr) {
+        console.error('Error updating buyer_profiles table:', bErr.message);
+        throw bErr;
+      }
 
-      return { success: true, error: null };
+      return {
+        success: true,
+        avatarUrl: finalAvatarUrl,
+        error: null,
+      };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to update profile' };
+      return {
+        success: false,
+        error: err.message || 'Failed to update buyer profile',
+      };
     }
   }
 }
 
 export const profilesService = new ProfilesService();
-

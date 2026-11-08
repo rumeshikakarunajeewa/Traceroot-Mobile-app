@@ -83,8 +83,30 @@ export default function BuyerProfileScreen() {
   }, [user]);
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    let isMounted = true;
+    (async () => {
+      try {
+        const currentUser = user || (await authService.getSession())?.user;
+        if (currentUser?.id && isMounted) {
+          const realProfile = await profilesService.getBuyerProfile(currentUser.id);
+          if (realProfile && isMounted) {
+            setProfile(realProfile);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load buyer profile on mount:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   // Pull-to-refresh
   const onRefresh = () => {
@@ -104,23 +126,49 @@ export default function BuyerProfileScreen() {
     setIsEditModalVisible(true);
   };
 
-  const handleSaveProfile = async (updatedFields: Partial<BuyerProfile>) => {
+  const handleSaveProfile = async (
+    updatedFields: Partial<BuyerProfile>,
+    localAvatarUri?: string
+  ) => {
     const currentUser = user || (await authService.getSession())?.user;
     if (!currentUser?.id) return;
 
     setIsSaving(true);
-    const res = await profilesService.updateBuyerProfile(currentUser.id, updatedFields);
+    const res = await profilesService.updateBuyerProfile(
+      currentUser.id,
+      updatedFields,
+      localAvatarUri
+    );
     setIsSaving(false);
 
     if (res.success) {
+      const finalAvatar = res.avatarUrl || updatedFields.avatarUrl;
+      const mergedFields = {
+        ...updatedFields,
+        avatarUrl: finalAvatar,
+      };
+
       setProfile((prev) => {
         const base = prev || defaultEmptyBuyerProfile;
         return {
           ...base,
-          ...updatedFields,
+          ...mergedFields,
         };
       });
+
+      setAuthState({
+        profile: {
+          id: currentUser.id,
+          role: 'buyer',
+          full_name: updatedFields.fullName || currentUser.user_metadata?.full_name || 'Buyer',
+          email: updatedFields.email || currentUser.email || '',
+          phone: updatedFields.phone || null,
+          avatar_url: finalAvatar || null,
+        },
+      });
+
       setIsEditModalVisible(false);
+      Alert.alert('Profile Updated', 'Your profile changes have been successfully saved.');
     } else {
       Alert.alert('Update Failed', res.error || 'Failed to update profile.');
     }
