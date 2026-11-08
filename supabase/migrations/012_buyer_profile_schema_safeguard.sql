@@ -33,3 +33,35 @@ SET
 FROM public.profiles p
 WHERE bp.id = p.id;
 
+-- 4. FIX INFINITE RECURSION IN PROFILES RLS POLICY
+-- Problem: "Admin sees all profiles" policy queried profiles recursively:
+--   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
+-- Fix: Drop the self-referencing policy (public already has SELECT USING (true)),
+-- and use a SECURITY DEFINER function for any admin checks.
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Drop the recursive policy on profiles immediately
+DROP POLICY IF EXISTS "Admin sees all profiles" ON public.profiles;
+
+-- Ensure standard non-recursive policies on profiles
+DROP POLICY IF EXISTS "Public sees basic profile info" ON public.profiles;
+CREATE POLICY "Public sees basic profile info"
+  ON public.profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "User updates own profile" ON public.profiles;
+CREATE POLICY "User updates own profile"
+  ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admin updates all profiles" ON public.profiles;
+CREATE POLICY "Admin updates all profiles"
+  ON public.profiles FOR UPDATE USING (public.is_admin());
+
