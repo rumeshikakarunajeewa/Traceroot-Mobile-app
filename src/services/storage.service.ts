@@ -216,3 +216,56 @@ export async function uploadHarvestImage(
   }
 }
 
+/**
+ * Upload a public supplier catalogue product image.
+ * Uses the 'catalogue-images' bucket with path `{supplierId}/{itemId}/{timestamp}.jpg`
+ */
+export async function uploadCatalogueImage(
+  supplierId: string,
+  itemId: string,
+  localUri: string,
+  base64Data?: string
+): Promise<UploadResult> {
+  try {
+    const extension = localUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const cleanExt = ['jpg', 'jpeg', 'png', 'webp'].includes(extension) ? extension : 'jpg';
+    const mimeType = cleanExt === 'png' ? 'image/png' : cleanExt === 'webp' ? 'image/webp' : 'image/jpeg';
+    const fileName = `item-${Date.now()}.${cleanExt}`;
+    const filePath = `${supplierId}/${itemId}/${fileName}`;
+
+    let arrayBuffer: ArrayBuffer;
+    if (base64Data) {
+      arrayBuffer = base64ToArrayBuffer(base64Data);
+    } else {
+      arrayBuffer = await uriToArrayBuffer(localUri);
+    }
+
+    const { error } = await supabase.storage
+      .from('catalogue-images')
+      .upload(filePath, arrayBuffer, {
+        contentType: mimeType,
+        upsert: true,
+      });
+
+    if (error) {
+      console.error('[Storage] Error uploading catalogue image:', error.message);
+      return { url: null, path: null, error: error.message };
+    }
+
+    const { data: publicData } = supabase.storage.from('catalogue-images').getPublicUrl(filePath);
+
+    return {
+      url: publicData.publicUrl,
+      path: filePath,
+      error: null,
+    };
+  } catch (err: any) {
+    console.error('[Storage] Exception uploading catalogue image:', err);
+    return {
+      url: null,
+      path: null,
+      error: err.message || 'Failed to upload catalogue image.',
+    };
+  }
+}
+

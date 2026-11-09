@@ -22,6 +22,7 @@ import {
   markDelivered,
   OrderStatus,
 } from '../../../src/lib/api/orders';
+import { supabase } from '../../../src/lib/supabase';
 import StatusBadge from '../../../src/components/farmer/StatusBadge';
 import ProgressBar from '../../../src/components/farmer/ProgressBar';
 import AcceptDeclineModal from '../../../src/components/farmer/AcceptDeclineModal';
@@ -39,6 +40,57 @@ export default function OrderDetailsScreen() {
       INITIAL_MOCK_ORDERS[0]
     );
   });
+
+  useEffect(() => {
+    async function loadDetail() {
+      if (!orderId) return;
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            id, created_at, crop_id, quantity, unit, unit_price, status, status_timestamps,
+            decline_reason, deadline, buyer_notes, linked_crop_batch, crop_route_id, invoice_number, buyer_id,
+            crops(name, image_url, farming_type),
+            buyers(name, verified, phone, email, avatar_url)
+          `)
+          .eq('id', orderId)
+          .single();
+
+        if (data && !error) {
+          const qty = Number(data.quantity) || 1;
+          const price = Number(data.unit_price) || 0;
+          const buyer = data.buyers as any;
+          const crop = data.crops as any;
+
+          setOrder({
+            id: data.id,
+            created_at: data.created_at,
+            crop_id: data.crop_id || '',
+            crop_name: crop?.name || data.linked_crop_batch || 'Organic Crop',
+            crop_image: crop?.image_url || undefined,
+            quantity: qty,
+            unit: data.unit || 'kg',
+            buyer_id: data.buyer_id || '',
+            buyer_name: buyer?.name || 'Verified Buyer',
+            buyer_verified: Boolean(buyer?.verified),
+            unit_price: price,
+            total_price: qty * price,
+            status: (data.status as OrderStatus) || 'new',
+            status_timestamps: data.status_timestamps || {},
+            decline_reason: data.decline_reason || null,
+            deadline: data.deadline || 'Standard Dispatch',
+            buyer_notes: data.buyer_notes || undefined,
+            linked_crop_batch: data.linked_crop_batch || undefined,
+            crop_route_id: data.crop_route_id || (data.crop_id ? `field-${data.crop_id}` : undefined),
+            invoice_number: data.invoice_number || `INV-${data.id}`,
+          });
+        }
+      } catch (e) {
+        console.warn('Error loading order detail from Supabase:', e);
+      }
+    }
+    loadDetail();
+  }, [orderId]);
 
   const [modalAction, setModalAction] = useState<'accept' | 'decline' | null>(null);
   const [invoiceVisible, setInvoiceVisible] = useState<boolean>(false);
