@@ -21,6 +21,7 @@ import {
   acceptAndPackOrder,
   declineOrder,
   useSupplierOrders,
+  loadSupplierOrders,
 } from '../../../src/store/supplierOrdersStore';
 import { useDarkMode } from '../../../src/store/uiStore';
 import { useLanguage } from '../../../src/i18n/languageStore';
@@ -87,11 +88,15 @@ export default function SupplierOrdersScreen() {
     });
   }, [orders, activeTab, searchQuery]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
+    try {
+      await loadSupplierOrders(undefined, true);
+    } catch (e) {
+      console.warn('Error refreshing orders:', e);
+    } finally {
       setRefreshing(false);
-    }, 600);
+    }
   };
 
   const handleAcceptAndPack = (order: SupplierOrderRequest) => {

@@ -80,7 +80,8 @@ export interface SupplierOrderItem {
 }
 
 export interface SupplierOrderRequest {
-  id: string; // e.g. 'REQ-2041'
+  id: string; // e.g. 'REQ-2041' or UUID
+  dbId?: string; // Supabase UUID
   farmerName: string;
   farmerAvatar: any;
   district: string;
@@ -90,6 +91,12 @@ export interface SupplierOrderRequest {
   totalAmount: number;
   deliveryMethod: string;
   stepperStage: 'Received' | 'Packing' | 'Delivered';
+  farmerId?: string;
+  supplierId?: string;
+  supplierName?: string;
+  supplierAvatar?: any;
+  createdAt?: string;
+  notes?: string;
 }
 
 export interface FarmerRequestItem {
@@ -136,5 +143,7 @@ export interface CatalogueProduct {
   description?: string;
   suitableFor?: string[];
   isOrganicCertified?: boolean;
+  supplierId?: string;
+  supplierName?: string;
 }
 

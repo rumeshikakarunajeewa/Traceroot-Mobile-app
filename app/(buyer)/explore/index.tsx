@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Modal,
   Image,
   RefreshControl,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +22,8 @@ import { colors } from '../../../src/lib/theme';
 import { useDarkMode } from '../../../src/store/uiStore';
 import { mockProduceListings } from '../../../src/constants/buyerMockData';
 import { ProduceListing } from '../../../src/types/buyer.types';
+import { ordersService } from '../../../src/services/orders.service';
+import { useAuth } from '../../../src/store/authStore';
 import {
   FilterBar,
   FarmingFilterOption,
@@ -31,6 +35,7 @@ type SortOption = 'recommended' | 'price_asc' | 'price_desc' | 'records' | 'stag
 
 export default function BuyerExploreScreen() {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ search?: string; crop?: string }>();
 
   const paramSearch = params.search || params.crop || '';
@@ -42,24 +47,52 @@ export default function BuyerExploreScreen() {
   const [sortOption, setSortOption] = useState<SortOption>('recommended');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [listings, setListings] = useState<ProduceListing[]>(mockProduceListings);
   const [selectedListing, setSelectedListing] = useState<ProduceListing | null>(null);
+
+  // Direct Order Placement state
+  const [orderModalVisible, setOrderModalVisible] = useState(false);
+  const [orderQuantity, setOrderQuantity] = useState('10');
+  const [orderNotes, setOrderNotes] = useState('');
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  const loadListings = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      const data = await ordersService.fetchMarketplaceListings();
+      if (data && data.length > 0) {
+        setListings(data);
+      }
+    } catch (e) {
+      console.warn('Error loading marketplace listings:', e);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
 
   if (paramSearch !== prevParam) {
     setPrevParam(paramSearch);
     setSearchQuery(paramSearch);
   }
 
-  // Pull-to-refresh simulation
+  // Pull-to-refresh
   const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 600);
+    loadListings(true);
   };
 
   // Filter and sort listings
   const filteredListings = useMemo(() => {
-    return mockProduceListings
+    return listings
       .filter((item) => {
         // Farming type filter
         if (farmingType !== 'all' && item.farmingType !== farmingType) {
@@ -111,6 +144,68 @@ export default function BuyerExploreScreen() {
 
   const handleListingPress = (listing: ProduceListing) => {
     setSelectedListing(listing);
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!selectedListing) return;
+    const qty = parseFloat(orderQuantity);
+    if (isNaN(qty) || qty <= 0) {
+      Alert.alert('Invalid Quantity', 'Please enter a valid quantity in kg.');
+      return;
+    }
+    if (selectedListing.quantityKg > 0 && qty > selectedListing.quantityKg) {
+      Alert.alert('Insufficient Stock', `Only ${selectedListing.quantityKg} kg is available.`);
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      const buyerId = user?.id || 'buyer-1';
+      const res = await ordersService.placeBuyerOrder({
+        buyerId,
+        cropId: (selectedListing as any).harvest_id || (selectedListing as any).harvestId || selectedListing.id,
+        listingId: selectedListing.id,
+        farmerId: selectedListing.farmerId,
+        quantity: qty,
+        unit: 'kg',
+        unitPrice: selectedListing.pricePerKg,
+        deadline: 'Within 5-7 business days',
+        buyerNotes: orderNotes.trim() || undefined,
+        linkedCropBatch: `${selectedListing.cropName} — Batch #${Math.floor(1 + Math.random() * 9)}`,
+        cropName: selectedListing.cropName,
+      });
+
+      if (res.success) {
+        // Decrement local quantity
+        setListings((prev) =>
+          prev.map((l) =>
+            l.id === selectedListing.id
+              ? { ...l, quantityKg: Math.max(0, l.quantityKg - qty) }
+              : l
+          )
+        );
+        setOrderModalVisible(false);
+        setSelectedListing(null);
+
+        Alert.alert(
+          'Order Placed Successfully! 🎉',
+          `Order ${res.orderId} for ${qty} kg of ${selectedListing.cropName} has been submitted to ${selectedListing.farmerName}.`,
+          [
+            {
+              text: 'View My Orders',
+              onPress: () => router.push('/(buyer)/orders' as any),
+            },
+            { text: 'Done', style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert('Order Failed', res.error || 'Could not place order. Please try again.');
+      }
+    } catch (e: any) {
+      Alert.alert('Order Failed', e.message || 'An unexpected error occurred.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   const getSortLabel = (opt: SortOption) => {
@@ -593,22 +688,169 @@ export default function BuyerExploreScreen() {
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={() => {
-                    setSelectedListing(null);
-                    router.push('/(buyer)/contracts/new');
+                    setOrderQuantity('10');
+                    setOrderNotes('');
+                    setOrderModalVisible(true);
                   }}
-                  style={styles.primaryContractBtn}
+                  style={styles.primaryOrderBtn}
                 >
                   <MaterialCommunityIcons
-                    name="file-document-edit-outline"
+                    name="basket-plus-outline"
                     size={18}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.primaryContractBtnText}>Request Contract</Text>
+                  <Text style={styles.primaryOrderBtnText}>Place Direct Order</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setSelectedListing(null);
+                    router.push('/(buyer)/contracts/new');
+                  }}
+                  style={[styles.secondaryContractBtn, isDark && styles.secondaryContractBtnDark]}
+                >
+                  <MaterialCommunityIcons
+                    name="file-document-edit-outline"
+                    size={17}
+                    color={isDark ? '#4ADE80' : colors.buyer.forestDark}
+                  />
+                  <Text style={[styles.secondaryContractBtnText, isDark && styles.secondaryContractBtnTextDark]}>
+                    Request Contract Farming
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         )}
+      </Modal>
+
+      {/* Order Placement Modal */}
+      <Modal
+        visible={orderModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isPlacingOrder) {
+            setOrderModalVisible(false);
+          }
+        }}
+      >
+        <View style={styles.orderOverlay}>
+          <View style={[styles.orderCard, isDark && styles.orderCardDark]}>
+            <View style={styles.orderHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.orderTitle, isDark && styles.orderTitleDark]}>
+                  Place Direct Order
+                </Text>
+                <Text style={[styles.orderSubtitle, isDark && styles.orderSubtitleDark]}>
+                  {selectedListing?.cropName} • {selectedListing?.farmerName}
+                </Text>
+              </View>
+              <TouchableOpacity
+                disabled={isPlacingOrder}
+                onPress={() => setOrderModalVisible(false)}
+                style={[styles.orderCloseBtn, isDark && styles.orderCloseBtnDark]}
+              >
+                <MaterialCommunityIcons name="close" size={18} color={isDark ? '#FFF' : '#333'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quantity Selector */}
+            <View style={[styles.orderSection, isDark && styles.orderSectionDark]}>
+              <Text style={[styles.orderSectionLabel, isDark && styles.orderSectionLabelDark]}>
+                Order Quantity (kg)
+              </Text>
+              <View style={styles.qtyControlRow}>
+                <TouchableOpacity
+                  style={[styles.qtyStepBtn, isDark && styles.qtyStepBtnDark]}
+                  onPress={() => {
+                    const cur = parseFloat(orderQuantity) || 10;
+                    setOrderQuantity(String(Math.max(1, cur - 5)));
+                  }}
+                >
+                  <MaterialCommunityIcons name="minus" size={20} color={isDark ? '#4ADE80' : '#1E3523'} />
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.qtyInput, isDark && styles.qtyInputDark]}
+                  keyboardType="numeric"
+                  value={orderQuantity}
+                  onChangeText={setOrderQuantity}
+                />
+                <TouchableOpacity
+                  style={[styles.qtyStepBtn, isDark && styles.qtyStepBtnDark]}
+                  onPress={() => {
+                    const cur = parseFloat(orderQuantity) || 10;
+                    const max = selectedListing?.quantityKg || 9999;
+                    setOrderQuantity(String(Math.min(max, cur + 5)));
+                  }}
+                >
+                  <MaterialCommunityIcons name="plus" size={20} color={isDark ? '#4ADE80' : '#1E3523'} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.availableStockText, isDark && styles.availableStockTextDark]}>
+                Max available: {selectedListing?.quantityKg} kg
+              </Text>
+            </View>
+
+            {/* Price Breakdown */}
+            <View style={[styles.calcBox, isDark && styles.calcBoxDark]}>
+              <View style={styles.calcRow}>
+                <Text style={[styles.calcLabel, isDark && styles.calcLabelDark]}>Unit Price</Text>
+                <Text style={[styles.calcValue, isDark && styles.calcValueDark]}>
+                  LKR {selectedListing?.pricePerKg || 0} / kg
+                </Text>
+              </View>
+              <View style={styles.calcRow}>
+                <Text style={[styles.calcLabel, isDark && styles.calcLabelDark]}>Subtotal</Text>
+                <Text style={[styles.calcValue, isDark && styles.calcValueDark]}>
+                  LKR {Math.round((parseFloat(orderQuantity) || 0) * (selectedListing?.pricePerKg || 0)).toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.calcRow}>
+                <Text style={[styles.calcLabel, isDark && styles.calcLabelDark]}>Logistics & Quality Escrow</Text>
+                <Text style={[styles.calcValue, isDark && styles.calcValueDark]}>
+                  LKR {Math.round((parseFloat(orderQuantity) || 0) * (selectedListing?.pricePerKg || 0) * 0.08).toLocaleString()}
+                </Text>
+              </View>
+              <View style={[styles.calcDivider, isDark && styles.calcDividerDark]} />
+              <View style={styles.calcRow}>
+                <Text style={[styles.calcTotalLabel, isDark && styles.calcTotalLabelDark]}>Estimated Total</Text>
+                <Text style={[styles.calcTotalValue, isDark && styles.calcTotalValueDark]}>
+                  LKR {Math.round((parseFloat(orderQuantity) || 0) * (selectedListing?.pricePerKg || 0) * 1.08).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            {/* Notes */}
+            <TextInput
+              style={[styles.notesInput, isDark && styles.notesInputDark]}
+              placeholder="Delivery notes or packing preferences (optional)"
+              placeholderTextColor={isDark ? '#7E9983' : '#8A998E'}
+              value={orderNotes}
+              onChangeText={setOrderNotes}
+              multiline
+              numberOfLines={2}
+            />
+
+            {/* Confirm Button */}
+            <TouchableOpacity
+              activeOpacity={0.88}
+              disabled={isPlacingOrder}
+              onPress={handleConfirmOrder}
+              style={[styles.confirmOrderBtn, isPlacingOrder && { opacity: 0.7 }]}
+            >
+              {isPlacingOrder ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="check-circle-outline" size={18} color="#FFF" />
+                  <Text style={styles.confirmOrderBtnText}>Confirm & Place Order</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1121,6 +1363,234 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   primaryContractBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  primaryOrderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E3523',
+    borderRadius: 22,
+    paddingVertical: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+    marginBottom: 10,
+  },
+  primaryOrderBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryContractBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAE6DB',
+    borderRadius: 22,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  secondaryContractBtnDark: {
+    backgroundColor: '#1C2E20',
+  },
+  secondaryContractBtnText: {
+    color: '#1E3523',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  secondaryContractBtnTextDark: {
+    color: '#4ADE80',
+  },
+  orderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  orderCard: {
+    width: '100%',
+    backgroundColor: '#FAF8F3',
+    borderRadius: 24,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  orderCardDark: {
+    backgroundColor: '#162218',
+  },
+  orderHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  orderTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#16301A',
+  },
+  orderTitleDark: {
+    color: '#F0F5F1',
+  },
+  orderSubtitle: {
+    fontSize: 13,
+    color: '#6A7B6B',
+    marginTop: 2,
+  },
+  orderSubtitleDark: {
+    color: '#98B39B',
+  },
+  orderCloseBtn: {
+    padding: 4,
+  },
+  orderCloseBtnDark: {},
+  orderSection: {
+    marginBottom: 14,
+  },
+  orderSectionDark: {},
+  orderSectionLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#344E39',
+    marginBottom: 8,
+  },
+  orderSectionLabelDark: {
+    color: '#98B39B',
+  },
+  qtyControlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  qtyStepBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E2DFD4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyStepBtnDark: {
+    backgroundColor: '#263B2B',
+  },
+  qtyInput: {
+    width: 90,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#16301A',
+    borderWidth: 1,
+    borderColor: '#D4CFBE',
+  },
+  qtyInputDark: {
+    backgroundColor: '#1E2F22',
+    color: '#F0F5F1',
+    borderColor: '#36533B',
+  },
+  availableStockText: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: '#6A7B6B',
+    marginTop: 6,
+  },
+  availableStockTextDark: {
+    color: '#98B39B',
+  },
+  calcBox: {
+    backgroundColor: '#EFECE2',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+  },
+  calcBoxDark: {
+    backgroundColor: '#1C2E20',
+  },
+  calcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  calcLabel: {
+    fontSize: 12,
+    color: '#556E58',
+  },
+  calcLabelDark: {
+    color: '#98B39B',
+  },
+  calcValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#16301A',
+  },
+  calcValueDark: {
+    color: '#F0F5F1',
+  },
+  calcDivider: {
+    height: 1,
+    backgroundColor: '#D4CFBE',
+    marginVertical: 6,
+  },
+  calcDividerDark: {
+    backgroundColor: '#2D4433',
+  },
+  calcTotalLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#16301A',
+  },
+  calcTotalLabelDark: {
+    color: '#F0F5F1',
+  },
+  calcTotalValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E3523',
+  },
+  calcTotalValueDark: {
+    color: '#4ADE80',
+  },
+  notesInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D4CFBE',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#16301A',
+    marginBottom: 16,
+    minHeight: 50,
+    textAlignVertical: 'top',
+  },
+  notesInputDark: {
+    backgroundColor: '#1E2F22',
+    borderColor: '#36533B',
+    color: '#F0F5F1',
+  },
+  confirmOrderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E3523',
+    borderRadius: 22,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  confirmOrderBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',

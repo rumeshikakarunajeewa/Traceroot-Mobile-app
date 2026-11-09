@@ -1,7 +1,7 @@
 // src/lib/api/orders.ts
 // Supabase helper functions and types for the Orders feature.
 
-import { supabase } from '../supabase';
+import { ordersService } from '../../services/orders.service';
 
 export type OrderStatus =
   | 'new'
@@ -134,39 +134,15 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
   },
 ];
 
-/** Fetch all orders belonging to the current farmer with fallback sample data */
+/** Fetch all orders belonging to the current farmer */
 export const fetchOrders = async (farmerId: string): Promise<Order[]> => {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(
-        `id, created_at, crop_id, quantity, unit, unit_price, status, status_timestamps, decline_reason,
-         crops(name, image_url),
-         buyers(name, verified)`
-      )
-      .eq('farmer_id', farmerId);
-
-    if (error || !data || data.length === 0) {
-      return INITIAL_MOCK_ORDERS;
+    const realOrders = await ordersService.fetchFarmerOrders(farmerId);
+    if (realOrders.length > 0) {
+      return realOrders;
     }
-
-    return (data as any[]).map(row => ({
-      id: row.id,
-      created_at: row.created_at,
-      crop_id: row.crop_id,
-      crop_name: row.crops?.name || 'Organic Crop',
-      crop_image: row.crops?.image_url || undefined,
-      quantity: Number(row.quantity) || 1,
-      unit: row.unit || 'kg',
-      buyer_id: row.buyer_id,
-      buyer_name: row.buyers?.name || 'Buyer',
-      buyer_verified: Boolean(row.buyers?.verified),
-      unit_price: Number(row.unit_price) || 0,
-      total_price: (Number(row.quantity) || 1) * (Number(row.unit_price) || 0),
-      status: (row.status as OrderStatus) || 'new',
-      status_timestamps: row.status_timestamps || {},
-      decline_reason: row.decline_reason || null,
-    }));
+    // Return empty array if farmer has no orders yet (or mock during development testing)
+    return realOrders;
   } catch {
     return INITIAL_MOCK_ORDERS;
   }
@@ -174,61 +150,20 @@ export const fetchOrders = async (farmerId: string): Promise<Order[]> => {
 
 /** Accept a pending order */
 export const acceptOrder = async (orderId: string) => {
-  try {
-    return await supabase
-      .from('orders')
-      .update({
-        status: 'accepted',
-        status_timestamps: { accepted: new Date().toISOString() },
-      })
-      .eq('id', orderId);
-  } catch {
-    return null;
-  }
+  return await ordersService.updateOrderStatus(orderId, 'accepted');
 };
 
 /** Decline a pending order (optional reason) */
 export const declineOrder = async (orderId: string, reason?: string) => {
-  try {
-    return await supabase
-      .from('orders')
-      .update({
-        status: 'declined',
-        decline_reason: reason ?? null,
-        status_timestamps: { declined: new Date().toISOString() },
-      })
-      .eq('id', orderId);
-  } catch {
-    return null;
-  }
+  return await ordersService.updateOrderStatus(orderId, 'declined', reason);
 };
 
 /** Mark an accepted order as ready for delivery */
 export const markReady = async (orderId: string) => {
-  try {
-    return await supabase
-      .from('orders')
-      .update({
-        status: 'ready',
-        status_timestamps: { ready: new Date().toISOString() },
-      })
-      .eq('id', orderId);
-  } catch {
-    return null;
-  }
+  return await ordersService.updateOrderStatus(orderId, 'ready');
 };
 
 /** Mark a ready order as delivered */
 export const markDelivered = async (orderId: string) => {
-  try {
-    return await supabase
-      .from('orders')
-      .update({
-        status: 'delivered',
-        status_timestamps: { delivered: new Date().toISOString() },
-      })
-      .eq('id', orderId);
-  } catch {
-    return null;
-  }
+  return await ordersService.updateOrderStatus(orderId, 'delivered');
 };
