@@ -54,8 +54,7 @@ SET public = true,
     allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
 
 -- 5. Safe idempotent RLS policies for avatars in storage.objects
-ALTER TABLE IF EXISTS storage.objects ENABLE ROW LEVEL SECURITY;
-
+-- Note: storage.objects already has RLS enabled by Supabase infrastructure.
 DROP POLICY IF EXISTS "Public avatar read" ON storage.objects;
 CREATE POLICY "Public avatar read"
   ON storage.objects FOR SELECT
