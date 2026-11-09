@@ -23,7 +23,11 @@ interface BuyerEditProfileModalProps {
   isDark?: boolean;
   isSaving?: boolean;
   onClose: () => void;
-  onSave: (updatedProfile: Partial<BuyerProfile>, localAvatarUri?: string) => void;
+  onSave: (
+    updatedProfile: Partial<BuyerProfile>,
+    localAvatarUri?: string,
+    avatarBase64?: string
+  ) => void;
 }
 
 const BUSINESS_TYPES = [
@@ -37,7 +41,11 @@ const EditProfileForm: React.FC<{
   isDark?: boolean;
   isSaving?: boolean;
   onClose: () => void;
-  onSave: (updatedProfile: Partial<BuyerProfile>, localAvatarUri?: string) => void;
+  onSave: (
+    updatedProfile: Partial<BuyerProfile>,
+    localAvatarUri?: string,
+    avatarBase64?: string
+  ) => void;
 }> = ({ profile, isDark = false, isSaving = false, onClose, onSave }) => {
   const [fullName, setFullName] = useState(profile.fullName?.trim() || '');
   const [company, setCompany] = useState(profile.company?.trim() || '');
@@ -57,6 +65,7 @@ const EditProfileForm: React.FC<{
 
   // Local avatar selection state
   const [selectedAvatarUri, setSelectedAvatarUri] = useState<string | null>(null);
+  const [selectedAvatarBase64, setSelectedAvatarBase64] = useState<string | null>(null);
 
   const handlePickImage = async () => {
     try {
@@ -74,10 +83,12 @@ const EditProfileForm: React.FC<{
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.85,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedAvatarUri(result.assets[0].uri);
+        setSelectedAvatarBase64(result.assets[0].base64 || null);
       }
     } catch (err) {
       console.warn('Error selecting image from gallery:', err);
@@ -99,10 +110,12 @@ const EditProfileForm: React.FC<{
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.85,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedAvatarUri(result.assets[0].uri);
+        setSelectedAvatarBase64(result.assets[0].base64 || null);
       }
     } catch (err) {
       console.warn('Error taking photo:', err);
@@ -118,7 +131,10 @@ const EditProfileForm: React.FC<{
             {
               text: 'Remove Photo',
               style: 'destructive' as const,
-              onPress: () => setSelectedAvatarUri(''),
+              onPress: () => {
+                setSelectedAvatarUri('');
+                setSelectedAvatarBase64(null);
+              },
             },
           ]
         : []),
@@ -132,6 +148,9 @@ const EditProfileForm: React.FC<{
       return;
     }
 
+    const hasPhotoRemoval = selectedAvatarUri === '';
+    const hasNewLocalPhoto = Boolean(selectedAvatarUri && selectedAvatarUri !== '');
+
     onSave(
       {
         fullName: fullName.trim(),
@@ -143,9 +162,10 @@ const EditProfileForm: React.FC<{
         province: province.trim(),
         registrationId: registrationId.trim(),
         bio: bio.trim(),
-        avatarUrl: selectedAvatarUri === '' ? undefined : selectedAvatarUri || profile.avatarUrl,
+        avatarUrl: hasPhotoRemoval ? null : (hasNewLocalPhoto ? selectedAvatarUri! : profile.avatarUrl),
       },
-      selectedAvatarUri && selectedAvatarUri !== '' ? selectedAvatarUri : undefined
+      hasNewLocalPhoto ? selectedAvatarUri! : undefined,
+      hasNewLocalPhoto && selectedAvatarBase64 ? selectedAvatarBase64 : undefined
     );
   };
 

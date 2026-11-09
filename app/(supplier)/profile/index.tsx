@@ -4,11 +4,13 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -18,10 +20,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 
 import { useLanguage } from '../../../src/i18n/languageStore';
 import { AppLanguage, SUPPORTED_LANGUAGES } from '../../../src/i18n/translations';
-import { useSupplierProfile } from '../../../src/store/supplierProfileStore';
+import { useSupplierProfile, loadSupplierProfile } from '../../../src/store/supplierProfileStore';
 import { toggleDarkMode, useDarkMode } from '../../../src/store/uiStore';
 import { authService } from '../../../src/services/auth.service';
 import { setAuthState } from '../../../src/store/authStore';
@@ -40,33 +43,161 @@ export default function SupplierProfileScreen() {
 
   // Edit Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [editName, setEditName] = useState(profile.name);
-  const [editPhone, setEditPhone] = useState(profile.phone);
-  const [editEmail, setEditEmail] = useState(profile.email);
-  const [editStore, setEditStore] = useState(profile.store);
-  const [editBio, setEditBio] = useState(profile.bio);
+  const [isSaving, setIsSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedAvatarUri, setSelectedAvatarUri] = useState<string | null>(null);
+  const [selectedAvatarBase64, setSelectedAvatarBase64] = useState<string | null>(null);
+
+  const [editCompanyName, setEditCompanyName] = useState(profile.name || '');
+  const [editContactName, setEditContactName] = useState(profile.contactName || '');
+  const [editPhone, setEditPhone] = useState(profile.phone || '');
+  const [editEmail, setEditEmail] = useState(profile.email || '');
+  const [editStore, setEditStore] = useState(profile.store || '');
+  const [editLicence, setEditLicence] = useState(profile.licence || '');
+  const [editBio, setEditBio] = useState(profile.bio || '');
 
   // Language Picker Modal State
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
 
   const handleOpenEdit = () => {
-    setEditName(profile.name);
-    setEditPhone(profile.phone);
-    setEditEmail(profile.email);
-    setEditStore(profile.store);
-    setEditBio(profile.bio);
+    setEditCompanyName(profile.name?.trim() || '');
+    setEditContactName(profile.contactName?.trim() || '');
+    setEditPhone(profile.phone?.trim() || '');
+    setEditEmail(profile.email?.trim() || '');
+    setEditStore(profile.store?.trim() || '');
+    setEditLicence(profile.licence?.trim() || '');
+    setEditBio(profile.bio?.trim() || '');
+    setSelectedAvatarUri(null);
+    setSelectedAvatarBase64(null);
     setIsEditModalVisible(true);
   };
 
-  const handleSaveProfile = () => {
-    updateProfile({
-      name: editName.trim() || profile.name,
-      phone: editPhone.trim() || profile.phone,
-      email: editEmail.trim() || profile.email,
-      store: editStore.trim() || profile.store,
-      bio: editBio.trim() || profile.bio,
-    });
-    setIsEditModalVisible(false);
+  const handlePickImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow photo library access in device settings to change your avatar.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedAvatarUri(result.assets[0].uri);
+        setSelectedAvatarBase64(result.assets[0].base64 || null);
+      }
+    } catch (err) {
+      console.warn('Error selecting image from gallery:', err);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow camera access in device settings to take a profile photo.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedAvatarUri(result.assets[0].uri);
+        setSelectedAvatarBase64(result.assets[0].base64 || null);
+      }
+    } catch (err) {
+      console.warn('Error taking photo:', err);
+    }
+  };
+
+  const handlePhotoOptions = () => {
+    Alert.alert('Profile Photo', 'Choose an option to update your profile photo', [
+      { text: 'Choose from Gallery', onPress: handlePickImage },
+      { text: 'Take Photo', onPress: handleTakePhoto },
+      ...(selectedAvatarUri || profile.avatarUrl
+        ? [
+            {
+              text: 'Remove Photo',
+              style: 'destructive' as const,
+              onPress: () => {
+                setSelectedAvatarUri('');
+                setSelectedAvatarBase64(null);
+              },
+            },
+          ]
+        : []),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editCompanyName.trim()) {
+      Alert.alert('Required Field', 'Please enter your Store / Company Name.');
+      return;
+    }
+
+    const hasPhotoRemoval = selectedAvatarUri === '';
+    const hasNewLocalPhoto = Boolean(selectedAvatarUri && selectedAvatarUri !== '');
+
+    setIsSaving(true);
+    const res = await updateProfile(
+      {
+        name: editCompanyName.trim(),
+        contactName: editContactName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+        store: editStore.trim(),
+        licence: editLicence.trim(),
+        bio: editBio.trim(),
+        avatarUrl: hasPhotoRemoval ? undefined : (hasNewLocalPhoto ? selectedAvatarUri! : profile.avatarUrl),
+      },
+      hasNewLocalPhoto ? selectedAvatarUri! : undefined,
+      hasNewLocalPhoto && selectedAvatarBase64 ? selectedAvatarBase64 : undefined
+    );
+    setIsSaving(false);
+
+    if (res.success) {
+      const session = await authService.getSession();
+      if (session?.user?.id) {
+        setAuthState({
+          profile: {
+            id: session.user.id,
+            role: 'supplier',
+            full_name: editContactName.trim() || editCompanyName.trim(),
+            email: editEmail.trim() || session.user.email || '',
+            phone: editPhone.trim() || null,
+            avatar_url: res.avatarUrl || (profile.avatarUrl?.uri ? profile.avatarUrl.uri : null),
+          },
+        });
+      }
+      setIsEditModalVisible(false);
+      Alert.alert('Profile Updated', 'Your supplier profile has been successfully saved.');
+    } else {
+      Alert.alert('Update Failed', res.error || 'Failed to update supplier profile.');
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSupplierProfile(true);
+    setRefreshing(false);
   };
 
   const handleLogOut = () => {
@@ -122,6 +253,14 @@ export default function SupplierProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={isDark ? '#4ADE80' : '#1B3220'}
+            colors={['#1B3220']}
+          />
+        }
       >
         {/* 1. HEADER ROW */}
         <View style={styles.headerRow}>
@@ -215,10 +354,18 @@ export default function SupplierProfileScreen() {
             <View style={styles.executiveRow}>
               {/* Avatar with Verified Check Badge */}
               <View style={styles.avatarWrapper}>
-                <Image
-                  source={profile.avatarUrl}
-                  style={styles.avatarImage}
-                />
+                {profile.avatarUrl ? (
+                  <Image
+                    source={typeof profile.avatarUrl === 'string' ? { uri: profile.avatarUrl } : profile.avatarUrl}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={[styles.avatarPlaceholder, isDark && styles.avatarPlaceholderDark]}>
+                    <Text style={styles.avatarInitials}>
+                      {(profile.name || profile.contactName || 'TR').trim().substring(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
                 {profile.isVerified && (
                   <View style={styles.verifiedBadge}>
                     <MaterialCommunityIcons
@@ -920,7 +1067,11 @@ export default function SupplierProfileScreen() {
         visible={isEditModalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setIsEditModalVisible(false)}
+        onRequestClose={() => {
+          if (!isSaving) {
+            setIsEditModalVisible(false);
+          }
+        }}
       >
         <SafeAreaView
           style={[
@@ -949,7 +1100,8 @@ export default function SupplierProfileScreen() {
               </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => setIsEditModalVisible(false)}
+                onPress={() => !isSaving && setIsEditModalVisible(false)}
+                disabled={isSaving}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <MaterialCommunityIcons
@@ -965,7 +1117,50 @@ export default function SupplierProfileScreen() {
               contentContainerStyle={{ paddingBottom: 40 }}
               showsVerticalScrollIndicator={false}
             >
-              {/* Field: Company Name */}
+              {/* Avatar Section */}
+              <View style={styles.modalAvatarSection}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handlePhotoOptions}
+                  style={styles.modalAvatarWrapper}
+                >
+                  {selectedAvatarUri === '' ? (
+                    <View style={[styles.modalAvatarPlaceholder, isDark && styles.modalAvatarPlaceholderDark]}>
+                      <Text style={[styles.modalAvatarInitials, isDark && styles.modalAvatarInitialsDark]}>
+                        {(editCompanyName || editContactName || 'TR').trim().substring(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                  ) : selectedAvatarUri ? (
+                    <Image source={{ uri: selectedAvatarUri }} style={styles.modalAvatarImage} />
+                  ) : profile.avatarUrl ? (
+                    <Image
+                      source={typeof profile.avatarUrl === 'string' ? { uri: profile.avatarUrl } : profile.avatarUrl}
+                      style={styles.modalAvatarImage}
+                    />
+                  ) : (
+                    <View style={[styles.modalAvatarPlaceholder, isDark && styles.modalAvatarPlaceholderDark]}>
+                      <Text style={[styles.modalAvatarInitials, isDark && styles.modalAvatarInitialsDark]}>
+                        {(editCompanyName || editContactName || 'TR').trim().substring(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={[styles.modalCameraBadge, isDark && styles.modalCameraBadgeDark]}>
+                    <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handlePhotoOptions}
+                  style={styles.modalChangePhotoBtn}
+                  disabled={isSaving}
+                >
+                  <Text style={[styles.modalChangePhotoText, isDark && styles.modalChangePhotoTextDark]}>
+                    Change Profile Photo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Field: Store / Company Name */}
               <View style={styles.modalFieldGroup}>
                 <Text
                   style={[
@@ -973,12 +1168,34 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  {t('companyName')}
+                  {t('companyName') || 'Store / Business Name'} <Text style={styles.requiredStar}>*</Text>
                 </Text>
                 <TextInput
-                  value={editName}
-                  onChangeText={setEditName}
+                  value={editCompanyName}
+                  onChangeText={setEditCompanyName}
                   placeholder="e.g. AgriSupply Co."
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Contact Person Full Name */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  Contact Person Full Name
+                </Text>
+                <TextInput
+                  value={editContactName}
+                  onChangeText={setEditContactName}
+                  placeholder="e.g. Ruwan Silva"
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   style={[
                     styles.modalInput,
@@ -1026,6 +1243,7 @@ export default function SupplierProfileScreen() {
                   placeholder="sales@agrisupply.lk"
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   keyboardType="email-address"
+                  autoCapitalize="none"
                   style={[
                     styles.modalInput,
                     isDark && styles.modalInputDark,
@@ -1041,12 +1259,34 @@ export default function SupplierProfileScreen() {
                     isDark && styles.modalLabelDark,
                   ]}
                 >
-                  {t('storeLocation')}
+                  {t('storeLocation') || 'Store / Warehouse Address'}
                 </Text>
                 <TextInput
                   value={editStore}
                   onChangeText={setEditStore}
-                  placeholder="Peradeniya Rd, Kandy"
+                  placeholder="e.g. Peradeniya Rd, Kandy"
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Licence / BR Number */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  Licence / BR Number
+                </Text>
+                <TextInput
+                  value={editLicence}
+                  onChangeText={setEditLicence}
+                  placeholder="e.g. BR-2024-KND-089"
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   style={[
                     styles.modalInput,
@@ -1084,12 +1324,21 @@ export default function SupplierProfileScreen() {
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={handleSaveProfile}
+                disabled={isSaving}
                 style={[
                   styles.modalSaveButton,
                   isDark && styles.modalSaveButtonDark,
+                  isSaving && { opacity: 0.7 },
                 ]}
               >
-                <Text style={styles.modalSaveButtonText}>{t('saveChanges')}</Text>
+                {isSaving ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.modalSaveButtonText}>Saving...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.modalSaveButtonText}>{t('saveChanges')}</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -1959,5 +2208,104 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  avatarPlaceholder: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#1E3E26',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarPlaceholderDark: {
+    backgroundColor: '#142E1B',
+    borderColor: '#4ADE80',
+  },
+  avatarInitials: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: serifFont,
+  },
+  modalAvatarSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 6,
+  },
+  modalAvatarWrapper: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+  },
+  modalAvatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: '#1C3723',
+  },
+  modalAvatarPlaceholder: {
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    backgroundColor: '#E2EBE3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1C3723',
+  },
+  modalAvatarPlaceholderDark: {
+    backgroundColor: '#18331E',
+    borderColor: '#4ADE80',
+  },
+  modalAvatarInitials: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#1C3723',
+    fontFamily: serifFont,
+  },
+  modalAvatarInitialsDark: {
+    color: '#E8F0EA',
+  },
+  modalCameraBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#1C3723',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  modalCameraBadgeDark: {
+    backgroundColor: '#264B30',
+    borderColor: '#0E1710',
+  },
+  modalChangePhotoBtn: {
+    marginTop: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  modalChangePhotoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C3723',
+  },
+  modalChangePhotoTextDark: {
+    color: '#4ADE80',
+  },
+  requiredStar: {
+    color: '#D32F2F',
   },
 });

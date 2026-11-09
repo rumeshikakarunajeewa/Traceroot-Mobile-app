@@ -128,7 +128,8 @@ export default function BuyerProfileScreen() {
 
   const handleSaveProfile = async (
     updatedFields: Partial<BuyerProfile>,
-    localAvatarUri?: string
+    localAvatarUri?: string,
+    avatarBase64?: string
   ) => {
     const currentUser = user || (await authService.getSession())?.user;
     if (!currentUser?.id) return;
@@ -137,15 +138,16 @@ export default function BuyerProfileScreen() {
     const res = await profilesService.updateBuyerProfile(
       currentUser.id,
       updatedFields,
-      localAvatarUri
+      localAvatarUri,
+      avatarBase64
     );
     setIsSaving(false);
 
     if (res.success) {
-      const finalAvatar = res.avatarUrl || updatedFields.avatarUrl;
+      const finalAvatar = res.avatarUrl !== undefined ? res.avatarUrl : updatedFields.avatarUrl;
       const mergedFields = {
         ...updatedFields,
-        avatarUrl: finalAvatar,
+        avatarUrl: finalAvatar || undefined,
       };
 
       setProfile((prev) => {

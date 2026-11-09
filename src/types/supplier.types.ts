@@ -7,6 +7,30 @@ export interface SupplierProfile {
   unreadNotificationsCount?: number;
 }
 
+export interface SupplierProfileData {
+  id?: string;
+  name: string;
+  contactName?: string;
+  avatarUrl: any;
+  isVerified: boolean;
+  district: string;
+  province: string;
+  coordinates: string;
+  partnerTag: string;
+  bio: string;
+  productsCount: number;
+  farmersCount: number;
+  rating: number;
+  trustScore: number;
+  trustScoreSubtitle: string;
+  phone: string;
+  email: string;
+  store: string;
+  licence: string;
+  notificationsEnabled: boolean;
+  language: string;
+}
+
 export interface SupplierStats {
   productsCount: number;
   pendingOrdersCount: number;
