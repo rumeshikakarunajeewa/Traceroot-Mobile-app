@@ -5,7 +5,7 @@ export interface BuyerProfile {
   fullName: string;
   initials: string;
   isVerified: boolean;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   roleTitle?: string;
   company?: string;
   district?: string;

@@ -18,15 +18,27 @@ DROP POLICY IF EXISTS "User updates own profile" ON profiles;
 CREATE POLICY "User updates own profile"
   ON profiles FOR UPDATE USING (auth.uid() = id);
 
+-- Security definer helper to check admin role without triggering RLS recursion
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
 DROP POLICY IF EXISTS "Public sees basic profile info" ON profiles;
 CREATE POLICY "Public sees basic profile info"
   ON profiles FOR SELECT USING (true);
 
+-- Drop recursive policy that causes infinite recursion error on profiles
 DROP POLICY IF EXISTS "Admin sees all profiles" ON profiles;
-CREATE POLICY "Admin sees all profiles"
-  ON profiles FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+
+DROP POLICY IF EXISTS "Admin updates all profiles" ON profiles;
+CREATE POLICY "Admin updates all profiles"
+  ON profiles FOR UPDATE USING (public.is_admin());
 
 -- ── ROLE SUB-PROFILES ───────────────────────────────────────────
 ALTER TABLE farmer_profiles ENABLE ROW LEVEL SECURITY;

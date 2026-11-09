@@ -1,53 +1,40 @@
 import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SupplierProfileData } from '../types/supplier.types';
+import { authService } from '../services/auth.service';
+import { profilesService } from '../services/profiles.service';
 
-export interface SupplierProfileData {
-  name: string;
-  avatarUrl: any;
-  isVerified: boolean;
-  district: string;
-  province: string;
-  coordinates: string;
-  partnerTag: string;
-  bio: string;
-  productsCount: number;
-  farmersCount: number;
-  rating: number;
-  trustScore: number;
-  trustScoreSubtitle: string;
-  phone: string;
-  email: string;
-  store: string;
-  licence: string;
-  notificationsEnabled: boolean;
-  language: string;
-}
+export { SupplierProfileData };
 
-export const INITIAL_SUPPLIER_PROFILE: SupplierProfileData = {
-  name: 'AgriSupply Co.',
-  avatarUrl: {
-    uri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-  },
-  isVerified: true,
-  district: 'Kandy District',
-  province: 'Central Province, Sri Lanka',
-  coordinates: '7.2735° N, 80.5965° E',
+export const DEFAULT_EMPTY_SUPPLIER_PROFILE: SupplierProfileData = {
+  id: '',
+  name: ' ',
+  contactName: ' ',
+  avatarUrl: undefined,
+  isVerified: false,
+  district: ' ',
+  province: ' ',
+  coordinates: ' ',
   partnerTag: 'Buy-back partner',
-  bio: 'Certified seeds, organic fertilizers and irrigation kits for smallholder farms across the Central Province since 2018.',
-  productsCount: 36,
-  farmersCount: 218,
-  rating: 4.7,
+  bio: ' ',
+  productsCount: 0,
+  farmersCount: 0,
+  rating: 5.0,
   trustScore: 94,
-  trustScoreSubtitle: '98% of requests fulfilled within 48 hours',
-  phone: '+94 81 222 4410',
-  email: 'sales@agrisupply.lk',
-  store: 'Peradeniya Rd, Kandy',
-  licence: 'SUP-2210',
+  trustScoreSubtitle: 'Verified agricultural supplier',
+  phone: ' ',
+  email: ' ',
+  store: ' ',
+  licence: ' ',
   notificationsEnabled: true,
   language: 'English',
 };
 
-let profileState: SupplierProfileData = { ...INITIAL_SUPPLIER_PROFILE };
+const STORAGE_KEY = '@traceroot_supplier_profile_v1';
+
+let profileState: SupplierProfileData = { ...DEFAULT_EMPTY_SUPPLIER_PROFILE };
 const listeners = new Set<(profile: SupplierProfileData) => void>();
+let isLoaded = false;
 
 function notify() {
   listeners.forEach((listener) => listener({ ...profileState }));
@@ -57,18 +44,74 @@ export function getSupplierProfile(): SupplierProfileData {
   return { ...profileState };
 }
 
-export function updateSupplierProfile(updates: Partial<SupplierProfileData>) {
+export async function loadSupplierProfile(forceRefresh = false) {
+  if (isLoaded && !forceRefresh) return;
+  isLoaded = true;
+
+  try {
+    const cached = await AsyncStorage.getItem(STORAGE_KEY);
+    if (cached) {
+      profileState = { ...profileState, ...JSON.parse(cached) };
+      notify();
+    }
+
+    const session = await authService.getSession();
+    if (session?.user?.id) {
+      const realProfile = await profilesService.getSupplierProfile(session.user.id);
+      if (realProfile) {
+        profileState = { ...profileState, ...realProfile };
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profileState));
+        notify();
+      }
+    }
+  } catch (err) {
+    console.warn('Error loading supplier profile:', err);
+  }
+}
+
+export async function updateSupplierProfile(
+  updates: Partial<SupplierProfileData>,
+  localAvatarUri?: string,
+  avatarBase64?: string
+): Promise<{ success: boolean; avatarUrl?: string; error: string | null }> {
   profileState = { ...profileState, ...updates };
   notify();
+
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profileState));
+    const session = await authService.getSession();
+    if (session?.user?.id) {
+      const res = await profilesService.updateSupplierProfile(
+        session.user.id,
+        updates,
+        localAvatarUri,
+        avatarBase64
+      );
+      if (res.success && res.avatarUrl) {
+        profileState = { ...profileState, avatarUrl: { uri: res.avatarUrl } };
+        notify();
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profileState));
+      }
+      return res;
+    }
+    return { success: true, error: null };
+  } catch (err: any) {
+    console.warn('Error persisting supplier profile:', err);
+    return {
+      success: false,
+      error: err.message || 'Failed to persist supplier profile',
+    };
+  }
 }
 
 export function useSupplierProfile(): [
   SupplierProfileData,
-  (updates: Partial<SupplierProfileData>) => void
+  (updates: Partial<SupplierProfileData>, localAvatarUri?: string, avatarBase64?: string) => Promise<any>
 ] {
   const [currentProfile, setCurrentProfile] = useState<SupplierProfileData>(profileState);
 
   useEffect(() => {
+    loadSupplierProfile();
     const listener = (newProfile: SupplierProfileData) => setCurrentProfile(newProfile);
     listeners.add(listener);
     return () => {

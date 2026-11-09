@@ -75,7 +75,9 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
           </View>
           <Text style={[styles.rowLabel, isDark && styles.rowLabelDark]}>Business</Text>
           <Text style={[styles.rowValue, isDark && styles.rowValueDark]}>
-            {profile.businessType || ' '}
+            {profile.businessType && profile.businessType.trim()
+              ? profile.businessType.trim().charAt(0).toUpperCase() + profile.businessType.trim().slice(1)
+              : ' '}
           </Text>
         </View>
 
@@ -115,7 +117,9 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
             <Text style={styles.locationTag}>Location</Text>
           </View>
 
-          <Text style={styles.locationTitle}>{profile.district || ' '}</Text>
+          <Text style={styles.locationTitle}>
+            {[profile.district, profile.province].filter((s) => s && s.trim()).join(', ') || ' '}
+          </Text>
           <Text style={styles.locationSubtitle}>
             {profile.country || ' '}
           </Text>

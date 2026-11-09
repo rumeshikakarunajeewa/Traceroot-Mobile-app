@@ -29,10 +29,54 @@ async function uriToArrayBuffer(localUri: string): Promise<ArrayBuffer> {
 }
 
 /**
+ * Converts a base64 string directly into an ArrayBuffer for cross-platform
+ * binary upload to Supabase Storage (bypassing flaky mobile file:// fetch streams).
+ */
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const clean = base64.includes(',') ? base64.split(',')[1] : base64;
+
+  if (typeof atob === 'function') {
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer as ArrayBuffer;
+  }
+
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let bufferLength = clean.length * 0.75;
+  if (clean.endsWith('==')) bufferLength -= 2;
+  else if (clean.endsWith('=')) bufferLength -= 1;
+
+  const bytes = new Uint8Array(bufferLength);
+  let p = 0;
+  for (let i = 0; i < clean.length; i += 4) {
+    const e1 = chars.indexOf(clean[i]);
+    const e2 = chars.indexOf(clean[i + 1]);
+    const e3 = chars.indexOf(clean[i + 2]);
+    const e4 = chars.indexOf(clean[i + 3]);
+
+    bytes[p++] = (e1 << 2) | (e2 >> 4);
+    if (e3 !== 64 && e3 !== -1) {
+      bytes[p++] = ((e2 & 15) << 4) | (e3 >> 2);
+    }
+    if (e4 !== 64 && e4 !== -1) {
+      bytes[p++] = ((e3 & 3) << 6) | e4;
+    }
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+/**
  * Upload an avatar image for a user.
  * Conforms to storage RLS policy: folder name must equal auth.uid().
  */
-export async function uploadAvatar(userId: string, localUri: string): Promise<UploadResult> {
+export async function uploadAvatar(
+  userId: string,
+  localUri: string,
+  base64Data?: string
+): Promise<UploadResult> {
   try {
     const extension = localUri.split('.').pop()?.toLowerCase() || 'jpg';
     const cleanExt = ['jpg', 'jpeg', 'png', 'webp'].includes(extension) ? extension : 'jpg';
@@ -40,9 +84,14 @@ export async function uploadAvatar(userId: string, localUri: string): Promise<Up
     const fileName = `avatar-${Date.now()}.${cleanExt}`;
     const filePath = `${userId}/${fileName}`;
 
-    const arrayBuffer = await uriToArrayBuffer(localUri);
+    let arrayBuffer: ArrayBuffer;
+    if (base64Data) {
+      arrayBuffer = base64ToArrayBuffer(base64Data);
+    } else {
+      arrayBuffer = await uriToArrayBuffer(localUri);
+    }
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('avatars')
       .upload(filePath, arrayBuffer, {
         contentType: mimeType,
@@ -89,7 +138,7 @@ export async function uploadCultivationPhoto(
 
     const arrayBuffer = await uriToArrayBuffer(localUri);
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('cultivation-photos')
       .upload(filePath, arrayBuffer, {
         contentType: mimeType,
@@ -138,7 +187,7 @@ export async function uploadHarvestImage(
 
     const arrayBuffer = await uriToArrayBuffer(localUri);
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('harvest-images')
       .upload(filePath, arrayBuffer, {
         contentType: mimeType,

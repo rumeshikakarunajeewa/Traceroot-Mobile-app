@@ -38,7 +38,7 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
           <View style={styles.topRow}>
             {/* Squircle Avatar with orange checkmark */}
             <View style={styles.avatarContainer}>
-              {profile.avatarUrl ? (
+              {profile.avatarUrl && profile.avatarUrl.trim() !== '' ? (
                 <Image
                   source={{ uri: profile.avatarUrl }}
                   style={styles.avatarImage}
@@ -46,7 +46,9 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
                 />
               ) : (
                 <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarFallbackText}>{profile.initials}</Text>
+                  <Text style={styles.avatarFallbackText}>
+                    {profile.initials && profile.initials.trim() ? profile.initials : 'TR'}
+                  </Text>
                 </View>
               )}
 
