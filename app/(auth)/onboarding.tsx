@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, StatusBar, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Animated, Easing } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -57,7 +58,7 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.onboardingBackground} />
+      <StatusBar style="light" />
       <View style={styles.container}>
         
         {/* Header */}
@@ -84,7 +85,7 @@ export default function OnboardingScreen() {
         <Animated.View style={[styles.contentContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <Text style={styles.title}>Track Your Crop{'\n'}Journey</Text>
           <Text style={styles.subtitle}>
-            Follow every cultivation stage from seedling to harvest with fully verified, immutable records.
+            Follow every cultivation stage from planting to harvesting with fully verified, immutable records.
           </Text>
         </Animated.View>
 

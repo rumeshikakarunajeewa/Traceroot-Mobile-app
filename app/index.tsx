@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, Animated, Easing } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { AppButton } from '../src/components/common/AppButton';
 import { colors, spacing, typography } from '../src/lib/theme';
@@ -101,7 +102,7 @@ export default function WelcomeScreen() {
       source={{ uri: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80' }}
       style={styles.background}
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar style="light" />
       
       <View style={styles.overlay} />
 

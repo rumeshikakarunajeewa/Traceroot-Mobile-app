@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Animated } from 'react-native';
 import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { FieldItem } from '../../types/farmer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface CropSummaryCardProps {
   crop: FieldItem;
@@ -14,6 +15,7 @@ export const CropSummaryCard: React.FC<CropSummaryCardProps> = ({
   onPress,
   onBookmarkPress,
 }) => {
+  const [isDark] = useDarkMode();
   const cardScale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -39,7 +41,7 @@ export const CropSummaryCard: React.FC<CropSummaryCardProps> = ({
   return (
     <Animated.View style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
       <TouchableOpacity
-        style={styles.cardContainer}
+        style={[styles.cardContainer, isDark && styles.cardContainerDark]}
         activeOpacity={0.92}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -100,7 +102,7 @@ export const CropSummaryCard: React.FC<CropSummaryCardProps> = ({
                 key={`segment-${index}`}
                 style={[
                   styles.segmentBar,
-                  isCompleted ? styles.segmentFilled : styles.segmentUnfilled,
+                  isCompleted ? styles.segmentFilled : (isDark ? styles.segmentUnfilledDark : styles.segmentUnfilled),
                 ]}
               />
             );
@@ -112,17 +114,17 @@ export const CropSummaryCard: React.FC<CropSummaryCardProps> = ({
           <View style={styles.metaLeftGroup}>
             {/* Stage Name with soft green underline highlight */}
             <View style={styles.stageNameRow}>
-              <Ionicons name="leaf" size={14} color="#457850" style={styles.stageIcon} />
+              <Ionicons name="leaf" size={14} color={isDark ? '#4ADE80' : '#457850'} style={styles.stageIcon} />
               <View style={styles.stageTextContainer}>
-                <Text style={styles.stageNameText}>{crop.stageName}</Text>
+                <Text style={[styles.stageNameText, isDark && styles.stageNameTextDark]}>{crop.stageName}</Text>
                 <View style={styles.stageUnderline} />
               </View>
             </View>
 
             {/* Record count & stage tracker */}
             <View style={styles.recordsCountRow}>
-              <Feather name="book-open" size={13} color="#6F8574" style={styles.bookIcon} />
-              <Text style={styles.recordsText}>
+              <Feather name="book-open" size={13} color={isDark ? '#4ADE80' : '#6F8574'} style={styles.bookIcon} />
+              <Text style={[styles.recordsText, isDark && styles.recordsTextDark]}>
                 {crop.recordCount || 1} records · stage {currentStage} of {totalSegments}
               </Text>
             </View>
@@ -336,5 +338,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 3,
     elevation: 3,
+  },
+  cardContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  segmentUnfilledDark: {
+    backgroundColor: '#263B2B',
+  },
+  stageNameTextDark: {
+    color: '#F0F5F1',
+  },
+  recordsTextDark: {
+    color: '#9CB3A0',
   },
 });

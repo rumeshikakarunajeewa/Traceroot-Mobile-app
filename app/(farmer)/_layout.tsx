@@ -1,11 +1,14 @@
 import React from 'react';
 import { Tabs, router } from 'expo-router';
 import { FarmerBottomTabBar } from '../../src/components/farmer/FarmerBottomTabBar';
+import { useDarkMode } from '../../src/store/uiStore';
 
 export default function FarmerLayout() {
+  const [isDark] = useDarkMode();
+
   const handleOpenAddRecord = () => {
     // Navigate to harvest or cultivation capture
-    router.push('/(farmer)/harvests/new');
+    router.push('/harvests/new');
   };
 
   return (
@@ -15,6 +18,9 @@ export default function FarmerLayout() {
       )}
       screenOptions={{
         headerShown: false,
+        sceneStyle: {
+          backgroundColor: isDark ? '#0E1710' : '#F5F2EB',
+        },
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',
@@ -47,27 +53,16 @@ export default function FarmerLayout() {
           title: 'Messages',
         }}
       />
-      {/* Hidden subroutes from tab bar */}
+      {/* Subroutes rendered without bottom bar */}
+      <Tabs.Screen name="harvests/index" />
+      <Tabs.Screen name="harvests/new" />
+      <Tabs.Screen name="harvests/[id]" />
+      <Tabs.Screen name="harvests/[id]/stage" />
+      <Tabs.Screen name="contracts" />
+      <Tabs.Screen name="suppliers" />
+      <Tabs.Screen name="profile" />
       <Tabs.Screen
-        name="harvests"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="contracts"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="suppliers"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
+        name="buyers"
         options={{
           href: null,
         }}

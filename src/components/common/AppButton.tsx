@@ -1,14 +1,15 @@
 import React, { useRef } from 'react';
-import { TouchableOpacity, Text, StyleSheet, TouchableOpacityProps, View, Animated } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, TouchableOpacityProps, View, Animated, ActivityIndicator } from 'react-native';
 import { colors, typography, spacing, radius } from '../../lib/theme';
 
 interface AppButtonProps extends TouchableOpacityProps {
   title: string;
   variant?: 'primary' | 'secondary' | 'accent';
   showArrow?: boolean;
+  loading?: boolean;
 }
 
-export function AppButton({ title, variant = 'primary', showArrow = false, style, ...props }: AppButtonProps) {
+export function AppButton({ title, variant = 'primary', showArrow = false, loading = false, style, disabled, ...props }: AppButtonProps) {
   const isPrimary = variant === 'primary';
   const isAccent = variant === 'accent';
   
@@ -38,6 +39,7 @@ export function AppButton({ title, variant = 'primary', showArrow = false, style
       style={style}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      disabled={disabled || loading}
       {...props}
     >
       <Animated.View style={[
@@ -45,22 +47,32 @@ export function AppButton({ title, variant = 'primary', showArrow = false, style
         isPrimary && styles.primaryButton,
         variant === 'secondary' && styles.secondaryButton,
         isAccent && styles.accentButton,
+        (disabled || loading) && styles.disabledButton,
         { transform: [{ scale: scaleAnim }] }
       ]}>
         <View style={styles.contentContainer}>
-          <Text style={[
-            styles.text, 
-            isPrimary || isAccent ? styles.primaryText : styles.secondaryText
-          ]}>
-            {title}
-          </Text>
-          {showArrow && (
-            <Text style={[
-              styles.arrow, 
-              isPrimary || isAccent ? styles.primaryText : styles.secondaryText
-            ]}>
-              {' \u2192'}
-            </Text>
+          {loading ? (
+            <ActivityIndicator
+              size="small"
+              color={isPrimary || isAccent ? colors.text.primary : colors.text.inverse}
+            />
+          ) : (
+            <>
+              <Text style={[
+                styles.text, 
+                isPrimary || isAccent ? styles.primaryText : styles.secondaryText
+              ]}>
+                {title}
+              </Text>
+              {showArrow && (
+                <Text style={[
+                  styles.arrow, 
+                  isPrimary || isAccent ? styles.primaryText : styles.secondaryText
+                ]}>
+                  {' \u2192'}
+                </Text>
+              )}
+            </>
           )}
         </View>
       </Animated.View>
@@ -89,6 +101,9 @@ const styles = StyleSheet.create({
   },
   accentButton: {
     backgroundColor: colors.button.accent,
+  },
+  disabledButton: {
+    opacity: 0.65,
   },
   text: {
     ...typography.button,

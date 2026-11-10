@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton } from '../../src/components/common/AppButton';
 import { AppInput } from '../../src/components/common/AppInput';
 import { colors, spacing, typography, radius } from '../../src/lib/theme';
+import { authService } from '../../src/services/auth.service';
 
 type Role = 'farmer' | 'buyer' | 'supplier' | null;
 
@@ -17,6 +18,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
   const bgScale = useRef(new Animated.Value(1)).current;
@@ -72,25 +75,40 @@ export default function RegisterScreen() {
     return valid;
   };
 
-  const handleSignUp = () => {
-    if (validate()) {
-      console.log('Registering with:', { role, name, email, password });
-      
-      if (role === 'farmer') {
-        router.replace({
-          pathname: '/(auth)/register-farmer',
-          params: { name, email, role },
-        });
-      } else if (role === 'buyer') {
-        router.replace({
-          pathname: '/(auth)/register-buyer',
-          params: { name, email, role },
-        });
-      } else if (role === 'supplier') {
-        router.replace('/(supplier)');
-      } else {
-        router.replace('/(auth)/login');
-      }
+  const handleSignUp = async () => {
+    if (!validate() || !role) return;
+
+    setIsLoading(true);
+    setAuthError(null);
+
+    const result = await authService.signUp({
+      email,
+      password,
+      fullName: name,
+      role,
+    });
+
+    setIsLoading(false);
+
+    if (result.error) {
+      setAuthError(result.error);
+      return;
+    }
+
+    if (role === 'farmer') {
+      router.replace({
+        pathname: '/(auth)/register-farmer',
+        params: { userId: result.user?.id, name, email, role },
+      });
+    } else if (role === 'buyer') {
+      router.replace({
+        pathname: '/(auth)/register-buyer',
+        params: { userId: result.user?.id, name, email, role },
+      });
+    } else if (role === 'supplier') {
+      router.replace('/(supplier)');
+    } else {
+      router.replace('/(auth)/login');
     }
   };
 
@@ -182,9 +200,17 @@ export default function RegisterScreen() {
               error={errors.password}
             />
 
+            {authError && (
+              <View style={styles.errorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#FF6B6B" />
+                <Text style={styles.errorBannerText}>{authError}</Text>
+              </View>
+            )}
+
             <AppButton 
               title="SIGN UP" 
               variant="accent" 
+              loading={isLoading}
               onPress={handleSignUp} 
               style={styles.signUpBtn}
             />
@@ -356,5 +382,23 @@ const styles = StyleSheet.create({
     color: colors.button.accent,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    gap: 8,
+  },
+  errorBannerText: {
+    color: '#FF8080',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
 });

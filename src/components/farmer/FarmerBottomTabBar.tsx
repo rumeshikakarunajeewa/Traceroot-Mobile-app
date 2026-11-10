@@ -2,10 +2,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { useDarkMode } from '../../store/uiStore';
 
 export interface FarmerBottomTabBarProps {
-  state: any;
-  navigation: any;
+  state?: any;
+  navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
   descriptors?: Record<string, any>;
   onAddPress?: () => void;
   [key: string]: any;
@@ -14,35 +18,79 @@ export interface FarmerBottomTabBarProps {
 export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   state,
   navigation,
+  emitter,
+  navigateToTab,
   onAddPress,
 }) => {
+  const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
-  const currentRouteName = state.routes[state.index]?.name;
+  const currentRouteName = state?.routes?.[state?.index]?.name;
 
   const navigateTab = (routeName: string) => {
-    const routeIndex = state.routes.findIndex((r: any) => r.name === routeName);
-    if (routeIndex !== -1) {
-      const event = navigation.emit({
-        type: 'tabPress',
-        target: state.routes[routeIndex].key,
-        canPreventDefault: true,
-      });
-      if (currentRouteName !== routeName && !event.defaultPrevented) {
+    const route = state?.routes?.find((r: any) => r.name === routeName);
+    
+    let defaultPrevented = false;
+    if (route) {
+      try {
+        if (emitter?.emit) {
+          const event = emitter.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          defaultPrevented = !!event?.defaultPrevented;
+        } else if (navigation?.emit) {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          defaultPrevented = !!event?.defaultPrevented;
+        }
+      } catch {
+        defaultPrevented = false;
+      }
+    }
+
+    if (!defaultPrevented) {
+      if (navigateToTab && route?.key) {
+        navigateToTab(route.key);
+      } else if (navigation?.navigate && route) {
         navigation.navigate(routeName);
+      } else {
+        router.push(`/${routeName === 'index' ? '' : routeName}` as any);
       }
     }
   };
 
-  const isHomeFocused = currentRouteName === 'index';
+  const isHomeFocused =
+    currentRouteName === 'index' ||
+    currentRouteName === 'harvests/[id]' ||
+    currentRouteName === 'harvests/[id]/stage';
   const isCropsFocused = currentRouteName === 'crops';
   const isOrdersFocused = currentRouteName === 'orders';
   const isMessagesFocused = currentRouteName === 'messages';
 
+  // Render floating tab bar on main tabs, farming journey, and stage details
+  const isTabScreen = [
+    'index',
+    'crops',
+    'orders',
+    'messages',
+    'harvests/[id]',
+    'harvests/[id]/stage',
+    'profile',
+    'profile/index',
+  ].includes(currentRouteName);
+  if (!isTabScreen) {
+    return null;
+  }
+
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
-      <View style={[styles.barContainer, { marginBottom: bottomMargin }]}>
+      <View style={[styles.barContainer, isDark && styles.barContainerDark, { marginBottom: bottomMargin }]}>
         {/* Tab 1: Home */}
         <TouchableOpacity
           style={styles.tabItem}
@@ -101,11 +149,17 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
         {/* Center Floating Plus (+) Action Button */}
         <View style={styles.centerButtonWrapper}>
           <TouchableOpacity
-            style={styles.plusButton}
-            onPress={onAddPress}
+            style={[styles.plusButton, isDark && styles.plusButtonDark]}
+            onPress={() => {
+              if (onAddPress) {
+                onAddPress();
+              } else {
+                router.push('/harvests/new');
+              }
+            }}
             activeOpacity={0.85}
           >
-            <Feather name="plus" size={26} color="#18361F" />
+            <Feather name="plus" size={26} color={isDark ? '#E5EFE7' : '#18361F'} />
           </TouchableOpacity>
         </View>
 
@@ -201,6 +255,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  barContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+  },
   tabItem: {
     flex: 1,
     alignItems: 'center',
@@ -256,5 +317,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
+  },
+  plusButtonDark: {
+    backgroundColor: '#2D5936',
   },
 });

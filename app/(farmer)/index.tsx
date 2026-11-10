@@ -4,40 +4,67 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
+  useWindowDimensions,
   TouchableOpacity,
   Image,
   RefreshControl,
   Animated,
   Easing,
-  StatusBar,
   Alert,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, usePathname } from 'expo-router';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { FarmerWeatherCard } from '../../src/components/farmer/FarmerWeatherCard';
 import { FieldCard } from '../../src/components/farmer/FieldCard';
+import { ActiveJourneyCard } from '../../src/components/farmer/ActiveJourneyCard';
+import { RecentRecordCard } from '../../src/components/farmer/RecentRecordCard';
+import { UpcomingCard } from '../../src/components/farmer/UpcomingCard';
 import { PhotoOptionsModal } from '../../src/components/farmer/PhotoOptionsModal';
+import { AddNewCropModal } from '../../src/components/farmer/AddNewCropModal';
 import {
   mockFarmerProfile,
   mockWeatherMetrics,
   mockFarmerStats,
   mockQuickFeatures,
-  mockFields,
+  mockUpcomingItems,
 } from '../../src/constants/farmerMockData';
-import { FieldItem } from '../../src/types/farmer.types';
+import { FieldItem, RecentRecordItem, UpcomingItem } from '../../src/types/farmer.types';
+import {
+  useCropsStore,
+  updateFieldPhoto,
+  syncFarmerHarvests,
+  syncFarmerRecords,
+  CreateCropPayload,
+} from '../../src/store/cropStore';
+import { useFarmerProfile, refreshFarmerProfile } from '../../src/store/farmerProfileStore';
+import { useDarkMode } from '../../src/store/uiStore';
 
 export default function FarmerHomeScreen() {
+  const [isDark] = useDarkMode();
+  const { width: windowWidth } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
+  const { profile: farmerProfile } = useFarmerProfile();
   // Ensure the plant growth animation and loop run reliably on dashboard
   const isFocused = true;
 
-  // Fields, Category filter, and Photo picker state
-  const [fields, setFields] = useState<FieldItem[]>(mockFields);
+  // Active Journey card dimensions for single full-width card paging
+  const DASHBOARD_PADDING = 18;
+  const JOURNEY_CARD_GAP = 12;
+  const JOURNEY_CARD_WIDTH = windowWidth - DASHBOARD_PADDING * 2;
+  const JOURNEY_SNAP_INTERVAL = JOURNEY_CARD_WIDTH + JOURNEY_CARD_GAP;
+
+  const [activeJourneyIndex, setActiveJourneyIndex] = useState(0);
+
+  // Reactive shared fields store across Dashboard, My Crops, and Journey page
+  const { fields, records, createNewCrop } = useCropsStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [selectedFieldForPhoto, setSelectedFieldForPhoto] = useState<FieldItem | null>(null);
+  const [addCropModalVisible, setAddCropModalVisible] = useState(false);
 
   const categories = ['All', 'Carrots', 'Vegetable', 'Fruit'];
 
@@ -50,6 +77,12 @@ export default function FarmerHomeScreen() {
   const statsSlide = useRef(new Animated.Value(20)).current;
   const actionsFade = useRef(new Animated.Value(0)).current;
   const actionsSlide = useRef(new Animated.Value(25)).current;
+  const journeyFade = useRef(new Animated.Value(0)).current;
+  const journeySlide = useRef(new Animated.Value(30)).current;
+  const recordsFade = useRef(new Animated.Value(0)).current;
+  const recordsSlide = useRef(new Animated.Value(30)).current;
+  const upcomingFade = useRef(new Animated.Value(0)).current;
+  const upcomingSlide = useRef(new Animated.Value(30)).current;
 
   // Summary numbers count-up animated values
   const countCropsAnim = useRef(new Animated.Value(0)).current;
@@ -82,6 +115,18 @@ export default function FarmerHomeScreen() {
         Animated.timing(actionsFade, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(actionsSlide, { toValue: 0, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
+      Animated.parallel([
+        Animated.timing(journeyFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(journeySlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(recordsFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(recordsSlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(upcomingFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(upcomingSlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
     ]).start();
 
     // 2. Count-up animation listeners
@@ -91,24 +136,34 @@ export default function FarmerHomeScreen() {
 
     Animated.parallel([
       Animated.timing(countCropsAnim, {
-        toValue: mockFarmerStats.activeCrops,
+        toValue: fields.length,
         duration: 900,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(countRecordsAnim, {
-        toValue: mockFarmerStats.recordsMonthCount,
+        toValue: records.length,
         duration: 1100,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(countHarvestAnim, {
-        toValue: mockFarmerStats.readyToHarvestCount,
+        toValue: fields.filter(
+          (f) => f.currentStageIndex === 5 || f.statusBadge === 'Harvest soon' || f.daysToHarvest <= 0
+        ).length,
         duration: 800,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
     ]).start();
+
+    // 3. Sync farmer harvests and records from Supabase on mount
+    syncFarmerHarvests().catch((err) => {
+      console.warn('[Dashboard] Error syncing harvests on mount:', err);
+    });
+    syncFarmerRecords().catch((err) => {
+      console.warn('[Dashboard] Error syncing records on mount:', err);
+    });
 
     return () => {
       countCropsAnim.removeAllListeners();
@@ -117,12 +172,51 @@ export default function FarmerHomeScreen() {
     };
   }, []);
 
-  const onRefresh = () => {
+  // Update counts whenever crops list or records update in reactive store
+  useEffect(() => {
+    const readyCount = fields.filter(
+      (f) => f.currentStageIndex === 5 || f.statusBadge === 'Harvest soon' || f.daysToHarvest <= 0
+    ).length;
+
+    Animated.parallel([
+      Animated.timing(countCropsAnim, {
+        toValue: fields.length,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+      Animated.timing(countRecordsAnim, {
+        toValue: records.length,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+      Animated.timing(countHarvestAnim, {
+        toValue: readyCount,
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [fields, records]);
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    // TODO: Connect to Supabase to refetch farmer stats, weather, and harvests
-    setTimeout(() => {
+    try {
+      await Promise.all([
+        syncFarmerHarvests(),
+        syncFarmerRecords(),
+        refreshFarmerProfile(),
+      ]);
+    } catch (err) {
+      console.warn('[Dashboard] Refresh error:', err);
+    } finally {
       setRefreshing(false);
-    }, 1200);
+    }
+  };
+
+  const handleCreateCrop = async (payload: CreateCropPayload) => {
+    return await createNewCrop(payload);
   };
 
   const handlePressInRecord = () => {
@@ -135,7 +229,7 @@ export default function FarmerHomeScreen() {
 
   const handleAddRecord = () => {
     // Navigate to live photo evidence capture
-    router.push('/(farmer)/harvests/new');
+    router.push('/harvests/new');
   };
 
   const handleNotificationPress = () => {
@@ -172,11 +266,8 @@ export default function FarmerHomeScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newUri = result.assets[0].uri;
-        // Update local state with newly taken photo
-        // TODO: Upload to Supabase Storage and persist URL in database
-        setFields((prev) =>
-          prev.map((f) => (f.id === selectedFieldForPhoto.id ? { ...f, imageUrl: newUri } : f))
-        );
+        // Update shared reactive store immediately (reflects across Dashboard, My Crops, and Journey)
+        updateFieldPhoto(selectedFieldForPhoto.id, newUri);
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -205,11 +296,8 @@ export default function FarmerHomeScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newUri = result.assets[0].uri;
-        // Update local state with selected photo
-        // TODO: Upload to Supabase Storage and persist URL in database
-        setFields((prev) =>
-          prev.map((f) => (f.id === selectedFieldForPhoto.id ? { ...f, imageUrl: newUri } : f))
-        );
+        // Update shared reactive store immediately (reflects across Dashboard, My Crops, and Journey)
+        updateFieldPhoto(selectedFieldForPhoto.id, newUri);
       }
     } catch (error) {
       console.error('Error choosing photo:', error);
@@ -219,16 +307,13 @@ export default function FarmerHomeScreen() {
 
   const handleRemovePhoto = () => {
     if (!selectedFieldForPhoto) return;
-    // Reset photo for selected field
-    // TODO: Upload to Supabase Storage / remove from database
-    setFields((prev) =>
-      prev.map((f) => (f.id === selectedFieldForPhoto.id ? { ...f, imageUrl: undefined } : f))
-    );
+    updateFieldPhoto(selectedFieldForPhoto.id, undefined);
   };
 
   const handleNavigateToJourney = (field: FieldItem) => {
+    if (!field?.id) return;
     router.push({
-      pathname: '/(farmer)/harvests/[id]',
+      pathname: '/harvests/[id]',
       params: { id: field.id },
     });
   };
@@ -242,9 +327,15 @@ export default function FarmerHomeScreen() {
             f.cropName.toLowerCase().includes(selectedCategory.toLowerCase())
         );
 
+  // Active journeys filter: Crops that are actively growing/in progress (not harvested)
+  // TODO: Fetch active cultivation cycles directly from Supabase query where status = 'active'
+  const activeCrops = fields.filter(
+    (f) => f.statusBadge === 'Healthy' || f.statusBadge === 'Growing' || f.statusBadge === 'Attention'
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4EFE6" />
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       <ScrollView
         style={styles.scrollView}
@@ -269,36 +360,36 @@ export default function FarmerHomeScreen() {
             <TouchableOpacity
               style={styles.avatarBorder}
               activeOpacity={0.8}
-              onPress={() => router.push('/(farmer)/profile')}
+              onPress={() => router.push('/(farmer)/profile' as any)}
             >
               <Image
-                source={{ uri: mockFarmerProfile.avatarUrl }}
+                source={{ uri: farmerProfile.avatarUrl || mockFarmerProfile.avatarUrl }}
                 style={styles.avatarImg}
               />
             </TouchableOpacity>
 
             <View style={styles.greetingTextGroup}>
-              <Text style={styles.welcomeSub}>Welcome back! 🍃</Text>
-              <Text style={styles.farmerName}>{mockFarmerProfile.fullName}</Text>
+              <Text style={[styles.welcomeSub, isDark && styles.welcomeSubDark]}>Welcome back! 🍃</Text>
+              <Text style={[styles.farmerName, isDark && styles.farmerNameDark]}>{farmerProfile.fullName || mockFarmerProfile.fullName}</Text>
             </View>
           </View>
 
           {/* Top-Right Circular Action Icons */}
           <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.circleIconBtn}
+              style={[styles.circleIconBtn, isDark && styles.circleIconBtnDark]}
               activeOpacity={0.7}
               onPress={handleSearchPress}
             >
-              <Feather name="search" size={18} color="#203E26" />
+              <Feather name="search" size={18} color={isDark ? '#E5EFE7' : '#203E26'} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.circleIconBtn}
+              style={[styles.circleIconBtn, isDark && styles.circleIconBtnDark]}
               activeOpacity={0.7}
               onPress={handleNotificationPress}
             >
-              <Feather name="bell" size={18} color="#203E26" />
+              <Feather name="bell" size={18} color={isDark ? '#E5EFE7' : '#203E26'} />
               {/* Notification orange indicator dot */}
               <View style={styles.notifDot} />
             </TouchableOpacity>
@@ -329,21 +420,21 @@ export default function FarmerHomeScreen() {
           ]}
         >
           {/* Card 1: Active crops */}
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#165B2D' }]}>{displayCrops}</Text>
-            <Text style={styles.statLabel}>Active crops</Text>
+          <View style={[styles.statCard, isDark && styles.statCardDark]}>
+            <Text style={[styles.statNumber, { color: isDark ? '#4ADE80' : '#165B2D' }]}>{displayCrops}</Text>
+            <Text style={[styles.statLabel, isDark && styles.statLabelDark]}>Active crops</Text>
           </View>
 
           {/* Card 2: Records · Month */}
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#183820' }]}>{displayRecords}</Text>
-            <Text style={styles.statLabel}>Records · {mockFarmerStats.monthName}</Text>
+          <View style={[styles.statCard, isDark && styles.statCardDark]}>
+            <Text style={[styles.statNumber, { color: isDark ? '#F0F5F1' : '#183820' }]}>{displayRecords}</Text>
+            <Text style={[styles.statLabel, isDark && styles.statLabelDark]}>Records · {mockFarmerStats.monthName}</Text>
           </View>
 
           {/* Card 3: Ready to harvest */}
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, isDark && styles.statCardDark]}>
             <Text style={[styles.statNumber, { color: '#E46724' }]}>{displayHarvest}</Text>
-            <Text style={[styles.statLabel, { color: '#3A523E' }]}>Ready to harvest</Text>
+            <Text style={[styles.statLabel, { color: isDark ? '#FBBF24' : '#3A523E' }]}>Ready to harvest</Text>
           </View>
         </Animated.View>
 
@@ -428,7 +519,7 @@ export default function FarmerHomeScreen() {
                 ]}
               >
                 <TouchableOpacity
-                  style={[styles.featureCard, { backgroundColor: item.bgTint }]}
+                  style={[styles.featureCard, isDark && styles.featureCardDark, { backgroundColor: isDark ? '#18271C' : item.bgTint }]}
                   activeOpacity={0.88}
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
@@ -442,20 +533,20 @@ export default function FarmerHomeScreen() {
                         color="#FFFFFF"
                       />
                     </View>
-                    <View style={styles.featureArrow}>
-                      <Feather name="arrow-up-right" size={13} color="#2D4D33" />
+                    <View style={[styles.featureArrow, isDark && styles.featureArrowDark]}>
+                      <Feather name="arrow-up-right" size={13} color={isDark ? '#4ADE80' : '#2D4D33'} />
                     </View>
                   </View>
 
                   <View style={styles.featureBottom}>
-                    <Text style={styles.featureTitle} numberOfLines={2}>
+                    <Text style={[styles.featureTitle, isDark && styles.featureTitleDark]} numberOfLines={2}>
                       {item.title}
                     </Text>
                     <View style={styles.subtextRow}>
                       {item.badgeDotColor ? (
                         <View style={[styles.statusDot, { backgroundColor: item.badgeDotColor }]} />
                       ) : null}
-                      <Text style={styles.featureSubtext}>{item.subtext}</Text>
+                      <Text style={[styles.featureSubtext, isDark && styles.featureSubtextDark]}>{item.subtext}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -475,14 +566,14 @@ export default function FarmerHomeScreen() {
           ]}
         >
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>My Fields</Text>
+            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>My Fields</Text>
             <TouchableOpacity
-              style={styles.seeAllBtn}
+              style={[styles.seeAllBtn, isDark && styles.seeAllBtnDark]}
               activeOpacity={0.7}
               onPress={() => router.push('/(farmer)/crops')}
             >
-              <Text style={styles.seeAllText}>See All</Text>
-              <Feather name="chevron-right" size={14} color="#5D7A65" />
+              <Text style={[styles.seeAllText, isDark && styles.seeAllTextDark]}>See All</Text>
+              <Feather name="chevron-right" size={14} color={isDark ? '#4ADE80' : '#5D7A65'} />
             </TouchableOpacity>
           </View>
 
@@ -498,11 +589,21 @@ export default function FarmerHomeScreen() {
               return (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.filterPill, isActive && styles.filterPillActive]}
+                  style={[
+                    styles.filterPill,
+                    isDark && styles.filterPillDark,
+                    isActive && (isDark ? styles.filterPillActiveDark : styles.filterPillActive),
+                  ]}
                   activeOpacity={0.8}
                   onPress={() => setSelectedCategory(cat)}
                 >
-                  <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      isDark && styles.filterPillTextDark,
+                      isActive && styles.filterPillTextActive,
+                    ]}
+                  >
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -532,17 +633,212 @@ export default function FarmerHomeScreen() {
 
             {/* "Add Field" Card at end of horizontal row */}
             <TouchableOpacity
-              style={styles.addFieldCard}
+              style={[styles.addFieldCard, isDark && styles.addFieldCardDark]}
               activeOpacity={0.8}
-              onPress={() => router.push('/(farmer)/harvests/new')}
+              onPress={() => setAddCropModalVisible(true)}
             >
-              <View style={styles.addFieldIconCircle}>
-                <Feather name="plus" size={24} color="#2D6B3C" />
+              <View style={[styles.addFieldIconCircle, isDark && styles.addFieldIconCircleDark]}>
+                <Feather name="plus" size={24} color={isDark ? '#4ADE80' : '#2D6B3C'} />
               </View>
-              <Text style={styles.addFieldTitle}>Add Field</Text>
-              <Text style={styles.addFieldSubtitle}>Register a new crop plot</Text>
+              <Text style={[styles.addFieldTitle, isDark && styles.addFieldTitleDark]}>Add Field</Text>
+              <Text style={[styles.addFieldSubtitle, isDark && styles.addFieldSubtitleDark]}>Register a new crop plot</Text>
             </TouchableOpacity>
           </ScrollView>
+        </Animated.View>
+
+        {/* 7. Section: "Active journey" */}
+        <Animated.View
+          style={[
+            styles.activeJourneySection,
+            {
+              opacity: journeyFade,
+              transform: [{ translateY: journeySlide }],
+            },
+          ]}
+        >
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.journeySectionTitle, isDark && styles.journeySectionTitleDark]}>Active journey</Text>
+            <TouchableOpacity
+              style={[styles.seeAllPillBtn, isDark && styles.seeAllPillBtnDark]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/crops')}
+            >
+              <Text style={[styles.seeAllPillText, isDark && styles.seeAllPillTextDark]}>See All</Text>
+              <Feather name="chevron-right" size={13} color={isDark ? '#4ADE80' : '#5D7A65'} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Active Journey Horizontal FlatList / Empty state */}
+          {activeCrops.length > 0 ? (
+            <View>
+              <FlatList
+                horizontal
+                data={activeCrops}
+                keyExtractor={(item) => item.id}
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={activeCrops.length > 1 ? JOURNEY_SNAP_INTERVAL : undefined}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                disableIntervalMomentum={true}
+                nestedScrollEnabled={true}
+                contentContainerStyle={styles.horizontalJourneyContainer}
+                ItemSeparatorComponent={() => <View style={{ width: JOURNEY_CARD_GAP }} />}
+                onScroll={(event) => {
+                  const offsetX = event.nativeEvent.contentOffset.x;
+                  const newIndex = Math.round(offsetX / JOURNEY_SNAP_INTERVAL);
+                  if (newIndex >= 0 && newIndex < activeCrops.length && newIndex !== activeJourneyIndex) {
+                    setActiveJourneyIndex(newIndex);
+                  }
+                }}
+                scrollEventThrottle={16}
+                renderItem={({ item, index }) => (
+                  <ActiveJourneyCard
+                    crop={item}
+                    index={index}
+                    cardWidth={JOURNEY_CARD_WIDTH}
+                    isSingle={activeCrops.length === 1}
+                    onPress={() => handleNavigateToJourney(item)}
+                  />
+                )}
+              />
+
+              {/* Page Indicator Dots (Only visible when more than 1 journey) */}
+              {activeCrops.length > 1 && (
+                <View style={styles.paginationDotsContainer}>
+                  {activeCrops.map((_, dotIdx) => {
+                    const isActive = dotIdx === activeJourneyIndex;
+                    return (
+                      <View
+                        key={`journey-dot-${dotIdx}`}
+                        style={[
+                          styles.paginationDot,
+                          isActive ? styles.paginationDotActive : styles.paginationDotInactive,
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={[styles.emptyJourneyCard, isDark && styles.emptyJourneyCardDark]}>
+              <View style={[styles.emptyIconCircle, isDark && styles.emptyIconCircleDark]}>
+                <Ionicons name="leaf-outline" size={24} color={isDark ? '#4ADE80' : '#52785B'} />
+              </View>
+              <Text style={[styles.emptyJourneyTitle, isDark && styles.emptyJourneyTitleDark]}>No active crop journeys</Text>
+              <Text style={[styles.emptyJourneySub, isDark && styles.emptyJourneySubDark]}>
+                Start planting and record evidence to trace your crop growth timeline.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyJourneyBtn}
+                activeOpacity={0.8}
+                onPress={() => setAddCropModalVisible(true)}
+              >
+                <Feather name="plus" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.emptyJourneyBtnText}>Start New Journey</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* 8. Section: "Recent records" */}
+        <Animated.View
+          style={[
+            styles.recentRecordsSection,
+            {
+              opacity: recordsFade,
+              transform: [{ translateY: recordsSlide }],
+            },
+          ]}
+        >
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.recordsSectionTitle, isDark && styles.recordsSectionTitleDark]}>Recent records</Text>
+            <TouchableOpacity
+              style={[styles.seeAllPillBtn, isDark && styles.seeAllPillBtnDark]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/crops')}
+            >
+              <Text style={[styles.seeAllPillText, isDark && styles.seeAllPillTextDark]}>See All</Text>
+              <Feather name="chevron-right" size={13} color={isDark ? '#4ADE80' : '#5D7A65'} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Records mapped vertically */}
+          {records.length > 0 ? (
+            records.slice(0, 5).map((record) => (
+              <RecentRecordCard
+                key={record.id}
+                record={record}
+                onPress={() => {
+                  // Navigate to the crop journey containing this record
+                  // TODO: When a dedicated immutable record inspection screen is built, link to /(farmer)/records/[id]
+                  if (record.cropId) {
+                    router.push({
+                      pathname: '/harvests/[id]',
+                      params: { id: record.cropId },
+                    });
+                  } else {
+                    Alert.alert('Record Details', `${record.recordCode}: ${record.title} (${record.stage})`);
+                  }
+                }}
+                onAddCorrectionPress={() => {
+                  // Navigate to add new evidence / correction record
+                  // TODO: Pass correction query params to /harvests/new
+                  router.push('/harvests/new');
+                }}
+              />
+            ))
+          ) : (
+            <View style={[styles.emptyJourneyCard, isDark && styles.emptyJourneyCardDark]}>
+              <View style={[styles.emptyIconCircle, isDark && styles.emptyIconCircleDark]}>
+                <Ionicons name="document-text-outline" size={24} color={isDark ? '#4ADE80' : '#52785B'} />
+              </View>
+              <Text style={[styles.emptyJourneyTitle, isDark && styles.emptyJourneyTitleDark]}>No recent records</Text>
+              <Text style={[styles.emptyJourneySub, isDark && styles.emptyJourneySubDark]}>
+                Logged farming operations and evidence will appear here.
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* 9. Section: "Upcoming" */}
+        <Animated.View
+          style={[
+            styles.upcomingSection,
+            {
+              opacity: upcomingFade,
+              transform: [{ translateY: upcomingSlide }],
+            },
+          ]}
+        >
+          <Text style={[styles.upcomingSectionTitle, isDark && styles.upcomingSectionTitleDark]}>Upcoming</Text>
+
+          {/* Upcoming stacked card */}
+          {mockUpcomingItems.length > 0 ? (
+            <UpcomingCard
+              items={mockUpcomingItems}
+              onItemPress={(item) => {
+                if (item.route) {
+                  router.push(item.route as any);
+                } else if (item.cropId) {
+                  router.push({
+                    pathname: '/harvests/[id]',
+                    params: { id: item.cropId },
+                  });
+                }
+              }}
+            />
+          ) : (
+            <View style={styles.emptyJourneyCard}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="time-outline" size={24} color="#52785B" />
+              </View>
+              <Text style={styles.emptyJourneyTitle}>No upcoming tasks</Text>
+              <Text style={styles.emptyJourneySub}>
+                Projected crop stage changes and buyer notifications will appear here.
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* Extra Bottom Spacer for floating bottom tab bar */}
@@ -558,6 +854,13 @@ export default function FarmerHomeScreen() {
         onTakePhoto={handleTakePhoto}
         onChooseFromGallery={handleChooseFromGallery}
         onRemovePhoto={handleRemovePhoto}
+      />
+
+      {/* Add New Crop Modal */}
+      <AddNewCropModal
+        visible={addCropModalVisible}
+        onClose={() => setAddCropModalVisible(false)}
+        onCreateCrop={handleCreateCrop}
       />
     </SafeAreaView>
   );
@@ -918,5 +1221,221 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 35,
+  },
+  activeJourneySection: {
+    marginTop: 26,
+    marginBottom: 8,
+  },
+  journeySectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0D3E53', // Deep blue-teal title color matching screenshot
+    letterSpacing: -0.2,
+  },
+  seeAllPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#C8CEBF',
+    gap: 4,
+  },
+  seeAllPillText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#556658',
+  },
+  horizontalJourneyContainer: {
+    paddingBottom: 4,
+    alignItems: 'stretch',
+  },
+  paginationDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+    gap: 6,
+  },
+  paginationDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  paginationDotActive: {
+    width: 22,
+    backgroundColor: '#2D6B3C', // Accent green matching theme
+  },
+  paginationDotInactive: {
+    width: 6,
+    backgroundColor: '#D1D9D3',
+  },
+  emptyJourneyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ECEAE2',
+    marginTop: 8,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EBF4ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyJourneyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A3822',
+    marginBottom: 6,
+  },
+  emptyJourneySub: {
+    fontSize: 13,
+    color: '#6E8174',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  emptyJourneyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#265934',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  emptyJourneyBtnText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  recentRecordsSection: {
+    marginTop: 24,
+    marginBottom: 6,
+  },
+  recordsSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0D3E53', // Deep blue-teal title color matching screenshot
+    letterSpacing: -0.2,
+  },
+  upcomingSection: {
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  upcomingSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0D3E53',
+    letterSpacing: -0.2,
+    marginBottom: 12,
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  welcomeSubDark: {
+    color: '#9CB3A0',
+  },
+  farmerNameDark: {
+    color: '#F0F5F1',
+  },
+  circleIconBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  statCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+  },
+  statLabelDark: {
+    color: '#9CB3A0',
+  },
+  featureCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  featureArrowDark: {
+    backgroundColor: '#233827',
+    borderColor: '#283D2C',
+  },
+  featureTitleDark: {
+    color: '#F0F5F1',
+  },
+  featureSubtextDark: {
+    color: '#9CB3A0',
+  },
+  sectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  seeAllBtnDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  seeAllTextDark: {
+    color: '#4ADE80',
+  },
+  seeAllPillBtnDark: {
+    borderColor: '#283D2C',
+    backgroundColor: '#18271C',
+  },
+  seeAllPillTextDark: {
+    color: '#4ADE80',
+  },
+  filterPillDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+  },
+  filterPillActiveDark: {
+    backgroundColor: '#26542D',
+    borderColor: '#26542D',
+  },
+  filterPillTextDark: {
+    color: '#9CB3A0',
+  },
+  addFieldCardDark: {
+    backgroundColor: 'rgba(24, 39, 28, 0.45)',
+    borderColor: '#283D2C',
+  },
+  addFieldIconCircleDark: {
+    backgroundColor: '#18271C',
+  },
+  addFieldTitleDark: {
+    color: '#F0F5F1',
+  },
+  addFieldSubtitleDark: {
+    color: '#9CB3A0',
+  },
+  journeySectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  recordsSectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  upcomingSectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptyJourneyCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#283D2C',
+    borderWidth: 1,
+  },
+  emptyIconCircleDark: {
+    backgroundColor: '#233827',
+  },
+  emptyJourneyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptyJourneySubDark: {
+    color: '#9CB3A0',
   },
 });

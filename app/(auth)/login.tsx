@@ -9,21 +9,24 @@ import {
   Platform,
   Animated,
   Easing,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton } from '../../src/components/common/AppButton';
 import { AppInput } from '../../src/components/common/AppInput';
 import { colors, spacing, typography, radius } from '../../src/lib/theme';
+import { authService } from '../../src/services/auth.service';
 
 type Role = 'farmer' | 'buyer' | 'supplier';
 
 export default function LoginScreen() {
   const [role, setRole] = useState<Role>('buyer'); // Default to buyer as requested
-  const [email, setEmail] = useState('saman.perera@buyer.traceroot.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
   const bgScale = useRef(new Animated.Value(1)).current;
@@ -59,8 +62,9 @@ export default function LoginScreen() {
     let valid = true;
     let newErrors: Record<string, string> = {};
 
-    if (!email.trim() || !email.includes('@')) {
-      newErrors.email = 'Please enter a valid email address.';
+    const trimmedInput = email.trim();
+    if (!trimmedInput || trimmedInput.length < 3) {
+      newErrors.email = 'Please enter a valid email or username.';
       valid = false;
     }
     if (password.length < 4) {
@@ -72,10 +76,32 @@ export default function LoginScreen() {
     return valid;
   };
 
-  const handleSignIn = () => {
-    if (validate()) {
-      navigateToRoleHome(role);
+  const handleSignIn = async () => {
+    if (!validate()) return;
+
+    setIsLoading(true);
+    setAuthError(null);
+
+    const result = await authService.signIn({
+      email,
+      password,
+      selectedRole: role,
+    });
+    setIsLoading(false);
+
+    if (result.error) {
+      setAuthError(result.error);
+      return;
     }
+
+    // Redirect to the correct role dashboard based on user's profile
+    if (result.actualRole === 'admin' || result.profile?.role === 'admin') {
+      router.replace('/(admin)');
+      return;
+    }
+
+    const targetRole = (result.actualRole || result.profile?.role || role) as Role;
+    navigateToRoleHome(targetRole);
   };
 
   const navigateToRoleHome = (selectedRole: Role) => {
@@ -115,7 +141,10 @@ export default function LoginScreen() {
     return (
       <TouchableOpacity
         style={[styles.roleCard, isSelected && styles.roleCardSelected]}
-        onPress={() => setRole(type)}
+        onPress={() => {
+          setRole(type);
+          setAuthError(null);
+        }}
         activeOpacity={0.75}
       >
         <MaterialCommunityIcons
@@ -130,7 +159,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar style="light" />
       <Animated.Image
         source={require('../../assets/images/auth_sprouts.jpg')}
         style={[styles.bgImage, { transform: [{ scale: bgScale }] }]}
@@ -172,7 +201,7 @@ export default function LoginScreen() {
           >
             <AppInput
               icon="email-outline"
-              placeholder="example@gmail.com"
+              placeholder="Email or Username"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -195,10 +224,18 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
+            {authError && (
+              <View style={styles.errorBanner}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#FF6B6B" />
+                <Text style={styles.errorBannerText}>{authError}</Text>
+              </View>
+            )}
+
             {/* Primary Sign In Button */}
             <AppButton
-              title={role === 'buyer' ? 'SIGN IN AS BUYER' : 'SIGN IN'}
+              title={`SIGN IN AS ${role.toUpperCase()}`}
               variant="accent"
+              loading={isLoading}
               onPress={handleSignIn}
               style={styles.signInBtn}
             />
@@ -379,5 +416,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     textDecorationLine: 'underline',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    gap: 8,
+  },
+  errorBannerText: {
+    color: '#FF8080',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
 });

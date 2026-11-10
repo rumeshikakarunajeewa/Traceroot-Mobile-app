@@ -1,6 +1,9 @@
+import { FarmingStageKeyType } from '../constants/stages';
+
 export interface JourneyStage {
   id: string;
   stageNumber: number;
+  key?: FarmingStageKeyType;
   title: string;
   subtitle: string;
   date: string;
@@ -8,6 +11,11 @@ export interface JourneyStage {
   iconName: string;
   notes?: string;
   inputsUsed?: string[];
+  tags?: string[];
+  recordCount?: number;
+  stageEmoji?: string;
+  isNotApplicable?: boolean;
+  notApplicableReason?: string;
 }
 
 export interface FieldItem {
@@ -29,6 +37,12 @@ export interface FieldItem {
   currentStageIndex?: number;
   totalStages?: number;
   recordCount?: number;
+  evidenceCount?: number;
+  isImmutable?: boolean;
+  nextStageName?: string;
+  nextStageEst?: string;
+  daysCount?: number;
+  batchId?: string;
 }
 
 export interface FarmerProfile {
@@ -67,4 +81,78 @@ export interface QuickFeatureCard {
   badgeDotColor?: string;
   bgTint: string;
   route?: string;
+}
+
+export interface RecentRecordItem {
+  id: string;
+  recordCode: string;
+  title: string;
+  stage: string;
+  date: string;
+  time?: string;
+  location?: string;
+  inputs?: string[];
+  photoEvidenceAttached?: boolean;
+  photoUrl?: string;
+  isLocked?: boolean;
+  isOriginal?: boolean;
+  isCorrection?: boolean;
+  correctsRecordCode?: string;
+  correctionReason?: string;
+  correctedAt?: string;
+  cropId?: string;
+  batchId?: string;
+  activityId?: string;
+  isCompact?: boolean;
+  notes?: string;
+  details?: Record<string, any>;
+  createdAt?: string;
+}
+
+export interface UpcomingItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  iconType: 'stage' | 'message';
+  iconColor: string;
+  iconBg: string;
+  dotColor?: string;
+  route?: string;
+  cropId?: string;
+}
+
+export interface CustomStageActivity {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  name: string;
+  description?: string;
+  date?: string;
+  notes?: string;
+  createdAt: string;
+  isCustom: true;
+}
+
+export interface ActivityApplicabilityRecord {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  activityId: string;
+  isNotApplicable: boolean;
+  reason: string;
+  additionalNotes?: string;
+  updatedAt: string;
+}
+
+export interface StageApplicabilityRecord {
+  id: string;
+  cropId: string;
+  batchId?: string;
+  stageKey: FarmingStageKeyType;
+  stageNumber: number;
+  isNotApplicable: boolean;
+  reason: string;
+  updatedAt: string;
 }

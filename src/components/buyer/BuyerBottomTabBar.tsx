@@ -1,20 +1,19 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useDarkMode } from '../../store/uiStore';
 
 export interface BuyerBottomTabBarProps {
-  state: {
-    index: number;
-    routes: Array<{ key: string; name: string }>;
-  };
-  navigation: {
-    emit: (event: any) => any;
-    navigate: (name: string, params?: any) => void;
-  };
+  state?: any;
+  navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
   descriptors?: Record<string, any>;
   insets?: any;
+  [key: string]: any;
 }
 
 interface TabConfig {
@@ -56,6 +55,7 @@ const BUYER_TABS: TabConfig[] = [
     name: 'messages',
     routePath: '/(buyer)/messages',
     label: 'Messages',
+    badge: 1,
     iconName: 'chat-outline',
     focusedIconName: 'chat',
     size: 22,
@@ -73,18 +73,27 @@ const BUYER_TABS: TabConfig[] = [
 export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
   state,
   navigation,
+  emitter,
+  navigateToTab,
 }) => {
+  const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
 
-  const currentRouteName = state.routes[state.index]?.name || '';
+  const currentRouteName = state?.routes?.[state?.index]?.name || '';
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
-      <View style={[styles.barContainer, { marginBottom: bottomMargin }]}>
+      <View
+        style={[
+          styles.barContainer,
+          isDark && styles.barContainerDark,
+          { marginBottom: bottomMargin },
+        ]}
+      >
         {BUYER_TABS.map((tab) => {
           // Find matching route in navigator routes (e.g. 'explore', 'explore/index')
-          const matchingRouteIndex = state.routes.findIndex((r: { name: string }) => {
+          const matchingRouteIndex = state?.routes?.findIndex((r: { name: string }) => {
             if (tab.name === 'index') {
               return r.name === 'index';
             }
@@ -95,15 +104,18 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
             );
           });
 
-          const matchingRoute = matchingRouteIndex >= 0 ? state.routes[matchingRouteIndex] : null;
+          const matchingRoute =
+            matchingRouteIndex !== undefined && matchingRouteIndex >= 0
+              ? state?.routes?.[matchingRouteIndex]
+              : null;
 
           // Check if this tab is currently the active tab
           const isFocused =
             tab.name === 'index'
               ? currentRouteName === 'index'
               : currentRouteName === tab.name ||
-                currentRouteName === `${tab.name}/index` ||
-                currentRouteName.startsWith(`${tab.name}/`);
+              currentRouteName === `${tab.name}/index` ||
+              currentRouteName.startsWith(`${tab.name}/`);
 
           const activeColor = '#FFFFFF';
           const inactiveColor = '#8A9E8D'; // Soft sage green matching design screenshot
@@ -113,19 +125,57 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
             : tab.iconName;
 
           const handlePress = () => {
-            const event = matchingRoute
-              ? navigation.emit({
-                  type: 'tabPress',
-                  target: matchingRoute.key,
-                  canPreventDefault: true,
-                })
-              : { defaultPrevented: false };
+            let defaultPrevented = false;
 
-            if (!isFocused && !event.defaultPrevented) {
-              if (matchingRoute) {
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  const event = emitter.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                } else if (navigation?.emit) {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                }
+              } catch {
+                defaultPrevented = false;
+              }
+            }
+
+            if (!isFocused && !defaultPrevented) {
+              if (navigateToTab && matchingRoute?.key) {
+                navigateToTab(matchingRoute.key);
+              } else if (navigation?.navigate && matchingRoute?.name) {
                 navigation.navigate(matchingRoute.name);
               } else {
                 router.push(tab.routePath as any);
+              }
+            }
+          };
+
+          const handleLongPress = () => {
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  emitter.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                } else if (navigation?.emit) {
+                  navigation.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                }
+              } catch {
+                // Ignore
               }
             }
           };
@@ -137,6 +187,7 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={tab.label}
               onPress={handlePress}
+              onLongPress={handleLongPress}
               activeOpacity={0.75}
               style={styles.tabItem}
             >
@@ -209,6 +260,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  barContainerDark: {
+    backgroundColor: '#112215',
+    borderWidth: 1,
+    borderColor: '#223826',
+    shadowColor: '#000000',
+    shadowOpacity: 0.4,
+  },
   tabItem: {
     flex: 1,
     alignItems: 'center',
@@ -224,20 +282,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 2,
   },
-  // badgePill: {
-  //   position: 'absolute',
-  //   top: -3,
-  //   right: -7,
-  //   backgroundColor: '#E66722', // Vibrant orange notification badge
-  //   minWidth: 16,
-  //   height: 16,
-  //   borderRadius: 8,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   paddingHorizontal: 3,
-  //   borderWidth: 1.5,
-  //   borderColor: '#1D3724', // Matches capsule background
-  // },
+  badgePill: {
+    position: 'absolute',
+    top: -3,
+    right: -7,
+    backgroundColor: '#E66722', // Vibrant orange notification badge
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#1D3724', // Matches capsule background
+  },
   badgeNumber: {
     color: '#FFFFFF',
     fontSize: 9.5,

@@ -10,12 +10,14 @@ import {
   Platform,
   Animated,
   Easing,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../src/lib/theme';
+import { authService } from '../../src/services/auth.service';
+import { refreshFarmerProfile } from '../../src/store/farmerProfileStore';
 
 interface FormState {
   farmName: string;
@@ -36,7 +38,8 @@ interface FormErrors {
 }
 
 export default function RegisterFarmerScreen() {
-  const params = useLocalSearchParams<{ name?: string; email?: string; role?: string }>();
+  const params = useLocalSearchParams<{ userId?: string; name?: string; email?: string; role?: string }>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form input state
   const [formData, setFormData] = useState<FormState>({
@@ -171,20 +174,44 @@ export default function RegisterFarmerScreen() {
     }).start();
   };
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     if (validate()) {
-      // TODO: Connect with Supabase to save farmer profile details
-      console.log('Farmer Profile Details Submitted:', {
-        user: {
-          name: params.name,
-          email: params.email,
-          role: params.role || 'farmer',
-        },
-        profile: formData,
-      });
+      setIsSubmitting(true);
+      try {
+        const session = await authService.getSession();
+        const currentUserId = params.userId || session?.user?.id;
 
-      // TODO: Navigate to Farmer Dashboard / Home screen once created
-      router.replace('/(farmer)');
+        if (currentUserId) {
+          const cropsList = formData.mainCrops
+            ? formData.mainCrops.split(',').map((c) => c.trim()).filter(Boolean)
+            : [];
+          const acreageNum = parseFloat(formData.farmSize) || 1.0;
+
+          const res = await authService.saveFarmerProfile(currentUserId, {
+            farming_type: 'greenhouse',
+            farm_name: formData.farmName.trim(),
+            farm_location: formData.location.trim(),
+            total_acreage: acreageNum,
+            primary_crops: cropsList,
+            phone: formData.contactNumber.trim(),
+            description: `Size: ${formData.farmSize} acres, Crops: ${formData.mainCrops}, Experience: ${formData.experience} years`,
+          });
+
+          if (!res.success && res.error) {
+            console.warn('[RegisterFarmer] Notice during profile save:', res.error);
+          }
+
+          // Refresh live store
+          await refreshFarmerProfile();
+        }
+
+        router.replace('/(farmer)');
+      } catch (err: any) {
+        console.error('[RegisterFarmer] Exception:', err);
+        router.replace('/(farmer)');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -253,7 +280,7 @@ export default function RegisterFarmerScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D2714" />
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

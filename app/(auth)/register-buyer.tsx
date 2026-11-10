@@ -9,12 +9,13 @@ import {
   Platform,
   Animated,
   Easing,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { ProfileFieldCard } from '../../src/components/common/ProfileFieldCard';
+import { authService } from '../../src/services/auth.service';
 
 interface BuyerFormState {
   companyName: string;
@@ -35,7 +36,8 @@ interface BuyerFormErrors {
 }
 
 export default function RegisterBuyerScreen() {
-  const params = useLocalSearchParams<{ name?: string; email?: string; role?: string }>();
+  const params = useLocalSearchParams<{ userId?: string; name?: string; email?: string; role?: string }>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form input state
   const [formData, setFormData] = useState<BuyerFormState>({
@@ -167,19 +169,21 @@ export default function RegisterBuyerScreen() {
     }).start();
   };
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     if (validate()) {
-      // TODO: Connect with Supabase to save buyer profile details
-      console.log('Buyer Profile Details Submitted:', {
-        user: {
-          name: params.name,
-          email: params.email,
-          role: params.role || 'buyer',
-        },
-        profile: formData,
-      });
+      setIsSubmitting(true);
+      const session = await authService.getSession();
+      const currentUserId = params.userId || session?.user?.id;
 
-      // TODO: Navigate to Buyer Dashboard / Home screen once created
+      if (currentUserId) {
+        await authService.saveBuyerProfile(currentUserId, {
+          buyer_type: (formData.businessType?.toLowerCase() as any) || 'supermarket',
+          company_name: formData.companyName,
+          address: formData.location,
+        });
+      }
+
+      setIsSubmitting(false);
       router.replace('/(buyer)');
     }
   };
@@ -192,7 +196,7 @@ export default function RegisterBuyerScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D2714" />
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
