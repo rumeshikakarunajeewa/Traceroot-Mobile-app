@@ -17,7 +17,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { BuyerProfile } from '../../../src/types/buyer.types';
 import { BuyerProfileHero } from '../../../src/components/buyer/BuyerProfileHero';
-import { BuyerTrustScoreCard } from '../../../src/components/buyer/BuyerTrustScoreCard';
 import { BuyerProfileDetails } from '../../../src/components/buyer/BuyerProfileDetails';
 import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
 import { useDarkMode } from '../../../src/store/uiStore';
@@ -25,6 +24,11 @@ import { StatusBar } from 'expo-status-bar';
 import { authService } from '../../../src/services/auth.service';
 import { useAuth, setAuthState } from '../../../src/store/authStore';
 import { profilesService } from '../../../src/services/profiles.service';
+import {
+  parseCoordinates,
+  formatCoordinates,
+  openInNativeMaps,
+} from '../../../src/services/location.service';
 
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
@@ -327,22 +331,7 @@ export default function BuyerProfileScreen() {
           onPressStatsSourced={() => router.push('/(buyer)/orders' as any)}
         />
 
-        {/* 3. Trust Score Card */}
-        <BuyerTrustScoreCard
-          score={displayProfile.trustScore}
-          label={displayProfile.trustScoreLabel}
-          detail={displayProfile.trustScoreDetail}
-          isDark={darkMode}
-          onPress={() =>
-            Alert.alert(
-              'TraceRoot Trust Score',
-              `${displayProfile.fullName.trim() || 'User'} holds a verified commercial buyer rating based on prompt settlements and completed contracts.`,
-              [{ text: 'OK' }]
-            )
-          }
-        />
-
-        {/* 4. Tab Navigation Pills */}
+        {/* 3. Tab Navigation Pills */}
         <View style={styles.tabsRow}>
           {(['About', 'Orders', 'Saved', 'Documents'] as ProfileTab[]).map((tab) => {
             const isActive = activeTab === tab;
@@ -388,11 +377,35 @@ export default function BuyerProfileScreen() {
                 ? Alert.alert('Email Contact', displayProfile.email)
                 : undefined
             }
-            onPressLocation={() =>
-              displayProfile.district?.trim()
-                ? Alert.alert('Location / Address', displayProfile.district)
-                : undefined
-            }
+            onPressLocation={() => {
+              const coords = parseCoordinates(displayProfile.coordinates, displayProfile.district);
+              const lat = displayProfile.latitude ?? coords.latitude;
+              const lng = displayProfile.longitude ?? coords.longitude;
+              const label =
+                [displayProfile.district, displayProfile.province].filter(Boolean).join(', ') ||
+                'Sri Lanka';
+
+              Alert.alert(
+                'Buyer Real Location',
+                `${displayProfile.company?.trim() || displayProfile.fullName?.trim() || 'Buyer'}\n${displayProfile.address ? displayProfile.address + '\n' : ''}${label}\nCoordinates: ${displayProfile.coordinates || formatCoordinates(lat, lng)}`,
+                [
+                  {
+                    text: 'Open in Maps',
+                    onPress: () =>
+                      openInNativeMaps(
+                        lat,
+                        lng,
+                        displayProfile.company || displayProfile.fullName || 'Buyer Location'
+                      ),
+                  },
+                  {
+                    text: 'Edit Location',
+                    onPress: () => setIsEditModalVisible(true),
+                  },
+                  { text: 'Cancel', style: 'cancel' },
+                ]
+              );
+            }}
           />
         )}
 

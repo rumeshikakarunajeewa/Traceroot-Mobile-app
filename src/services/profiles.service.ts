@@ -73,7 +73,16 @@ class ProfilesService {
       const district = buyerProfile?.district?.trim() || buyerProfile?.address?.trim() || ' ';
       const province = buyerProfile?.province?.trim() || ' ';
       const country = buyerProfile?.country?.trim() || 'Sri Lanka';
+      const address = buyerProfile?.address?.trim() || '';
       const coordinates = buyerProfile?.coordinates?.trim() || ' ';
+      const latitude =
+        buyerProfile?.latitude !== undefined && buyerProfile?.latitude !== null
+          ? Number(buyerProfile.latitude)
+          : undefined;
+      const longitude =
+        buyerProfile?.longitude !== undefined && buyerProfile?.longitude !== null
+          ? Number(buyerProfile.longitude)
+          : undefined;
       const brNumber = buyerProfile?.br_number?.trim() || (buyerProfile as any)?.registration_id?.trim() || ' ';
       const bio = buyerProfile?.bio?.trim() || profile?.bio?.trim() || ' ';
 
@@ -88,7 +97,10 @@ class ProfilesService {
         district,
         province,
         country,
+        address,
         coordinates,
+        latitude,
+        longitude,
         bio,
         ordersCount: ordersRes.count || 0,
         contractsCount: contractsRes.count || 0,
@@ -185,12 +197,28 @@ class ProfilesService {
       }
       if (data.district !== undefined) {
         buyerUpdates.district = data.district.trim();
-        buyerUpdates.address = data.province
-          ? `${data.district.trim()}, ${data.province.trim()}`
-          : data.district.trim();
+        profileUpdates.district = data.district.trim();
+        if (data.address === undefined) {
+          buyerUpdates.address = data.province
+            ? `${data.district.trim()}, ${data.province.trim()}`
+            : data.district.trim();
+        }
       }
       if (data.province !== undefined) {
         buyerUpdates.province = data.province.trim();
+        profileUpdates.province = data.province.trim();
+      }
+      if (data.address !== undefined) {
+        buyerUpdates.address = data.address.trim();
+      }
+      if (data.coordinates !== undefined) {
+        buyerUpdates.coordinates = data.coordinates.trim();
+      }
+      if (data.latitude !== undefined) {
+        buyerUpdates.latitude = data.latitude;
+      }
+      if (data.longitude !== undefined) {
+        buyerUpdates.longitude = data.longitude;
       }
       if (data.registrationId !== undefined) {
         buyerUpdates.br_number = data.registrationId.trim();
@@ -202,9 +230,23 @@ class ProfilesService {
         buyerUpdates.avatar_url = finalAvatarUrl;
       }
 
-      const { error: bErr } = await supabase
+      let { error: bErr } = await supabase
         .from('buyer_profiles')
         .upsert(buyerUpdates);
+
+      // Schema cache safeguard: if migration 016 hasn't been run yet, retry without latitude/longitude
+      if (bErr && (bErr.message.includes('latitude') || bErr.message.includes('longitude'))) {
+        console.warn(
+          'buyer_profiles missing latitude/longitude columns in schema cache; retrying update with coordinates string:',
+          bErr.message
+        );
+        delete buyerUpdates.latitude;
+        delete buyerUpdates.longitude;
+        const retry = await supabase
+          .from('buyer_profiles')
+          .upsert(buyerUpdates);
+        bErr = retry.error;
+      }
 
       if (bErr) {
         console.error('Error updating buyer_profiles table:', bErr.message);

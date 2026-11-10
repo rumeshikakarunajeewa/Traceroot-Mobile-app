@@ -16,6 +16,13 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { BuyerProfile } from '../../types/buyer.types';
+import {
+  getCurrentGpsLocation,
+  formatCoordinates,
+  parseCoordinates,
+  resolveDistrictInfo,
+  getStaticMapUrl,
+} from '../../services/location.service';
 
 interface BuyerEditProfileModalProps {
   visible: boolean;
@@ -60,12 +67,41 @@ const EditProfileForm: React.FC<{
   );
   const [district, setDistrict] = useState(profile.district?.trim() || '');
   const [province, setProvince] = useState(profile.province?.trim() || '');
+  const [address, setAddress] = useState(profile.address?.trim() || '');
+  const [coordinates, setCoordinates] = useState(profile.coordinates?.trim() || '');
+  const [latitude, setLatitude] = useState<number | undefined>(profile.latitude);
+  const [longitude, setLongitude] = useState<number | undefined>(profile.longitude);
+  const [isLocating, setIsLocating] = useState(false);
   const [registrationId, setRegistrationId] = useState(profile.registrationId?.trim() || '');
   const [bio, setBio] = useState(profile.bio?.trim() || '');
 
   // Local avatar selection state
   const [selectedAvatarUri, setSelectedAvatarUri] = useState<string | null>(null);
   const [selectedAvatarBase64, setSelectedAvatarBase64] = useState<string | null>(null);
+
+  const handleDetectLocation = async () => {
+    setIsLocating(true);
+    const result = await getCurrentGpsLocation();
+    setIsLocating(false);
+
+    if (result.success && result.latitude && result.longitude) {
+      setLatitude(result.latitude);
+      setLongitude(result.longitude);
+      if (result.coordinates) setCoordinates(result.coordinates);
+      if (result.district) setDistrict(result.district);
+      if (result.province) setProvince(result.province);
+      if (result.address) setAddress(result.address);
+      Alert.alert(
+        'GPS Location Detected',
+        `Updated to ${result.district || 'Location'}${result.province ? ', ' + result.province : ''}\nCoordinates: ${result.coordinates || ''}`
+      );
+    } else {
+      Alert.alert(
+        'Location Detection Failed',
+        result.error || 'Could not access GPS location. Please check device permissions.'
+      );
+    }
+  };
 
   const handlePickImage = async () => {
     try {
@@ -151,6 +187,12 @@ const EditProfileForm: React.FC<{
     const hasPhotoRemoval = selectedAvatarUri === '';
     const hasNewLocalPhoto = Boolean(selectedAvatarUri && selectedAvatarUri !== '');
 
+    const finalCoords =
+      coordinates.trim() ||
+      (latitude !== undefined && longitude !== undefined
+        ? formatCoordinates(latitude, longitude)
+        : undefined);
+
     onSave(
       {
         fullName: fullName.trim(),
@@ -160,6 +202,10 @@ const EditProfileForm: React.FC<{
         businessType,
         district: district.trim(),
         province: province.trim(),
+        address: address.trim(),
+        coordinates: finalCoords,
+        latitude,
+        longitude,
         registrationId: registrationId.trim(),
         bio: bio.trim(),
         avatarUrl: hasPhotoRemoval ? null : (hasNewLocalPhoto ? selectedAvatarUri! : profile.avatarUrl),
@@ -168,6 +214,14 @@ const EditProfileForm: React.FC<{
       hasNewLocalPhoto && selectedAvatarBase64 ? selectedAvatarBase64 : undefined
     );
   };
+
+  const currentCoords = parseCoordinates(
+    coordinates || (latitude && longitude ? `${latitude}, ${longitude}` : undefined),
+    district
+  );
+  const previewLat = latitude ?? currentCoords.latitude;
+  const previewLng = longitude ?? currentCoords.longitude;
+  const previewMapUrl = getStaticMapUrl(previewLat, previewLng, 13, 200, 150);
 
   const currentDisplayAvatar =
     selectedAvatarUri === ''
@@ -316,13 +370,51 @@ const EditProfileForm: React.FC<{
           />
         </View>
 
+        {/* Location Section Header + GPS Button */}
+        <View style={styles.locationHeaderRow}>
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark, { marginBottom: 0 }]}>
+            Real Location & GPS
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={handleDetectLocation}
+            disabled={isLocating}
+            style={[styles.gpsButton, isDark && styles.gpsButtonDark]}
+          >
+            {isLocating ? (
+              <ActivityIndicator size="small" color="#16301A" />
+            ) : (
+              <>
+                <MaterialCommunityIcons
+                  name="crosshairs-gps"
+                  size={14}
+                  color={isDark ? '#4ADE80' : '#1B3220'}
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={[styles.gpsButtonText, isDark && styles.gpsButtonTextDark]}>
+                  Use Current GPS
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* District & Province Row */}
         <View style={styles.rowTwoCols}>
           <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>District</Text>
+            <Text style={[styles.subInputLabel, isDark && styles.subInputLabelDark]}>District</Text>
             <TextInput
               value={district}
-              onChangeText={setDistrict}
+              onChangeText={(text) => {
+                setDistrict(text);
+                const info = resolveDistrictInfo(text);
+                if (info) {
+                  setLatitude(info.lat);
+                  setLongitude(info.lng);
+                  setCoordinates(formatCoordinates(info.lat, info.lng));
+                  if (!province) setProvince(info.province);
+                }
+              }}
               style={[styles.textInput, isDark && styles.textInputDark]}
               placeholder="e.g. Colombo"
               placeholderTextColor={isDark ? '#6E8573' : '#9AA89B'}
@@ -330,7 +422,7 @@ const EditProfileForm: React.FC<{
           </View>
 
           <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Province</Text>
+            <Text style={[styles.subInputLabel, isDark && styles.subInputLabelDark]}>Province</Text>
             <TextInput
               value={province}
               onChangeText={setProvince}
@@ -338,6 +430,45 @@ const EditProfileForm: React.FC<{
               placeholder="e.g. Western"
               placeholderTextColor={isDark ? '#6E8573' : '#9AA89B'}
             />
+          </View>
+        </View>
+
+        {/* Physical / Delivery Address */}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.subInputLabel, isDark && styles.subInputLabelDark]}>
+            Physical / Delivery Address
+          </Text>
+          <TextInput
+            value={address}
+            onChangeText={setAddress}
+            style={[styles.textInput, isDark && styles.textInputDark]}
+            placeholder="e.g. 45 Main Street, Colombo 03"
+            placeholderTextColor={isDark ? '#6E8573' : '#9AA89B'}
+          />
+        </View>
+
+        {/* Coordinates & Map Preview Banner */}
+        <View style={[styles.modalMapPreviewBox, isDark && styles.modalMapPreviewBoxDark]}>
+          <View style={styles.modalMapThumbnailContainer}>
+            <Image
+              source={{ uri: previewMapUrl }}
+              style={styles.modalMapThumbnail}
+              resizeMode="cover"
+            />
+            <MaterialCommunityIcons
+              name="map-marker"
+              size={20}
+              color="#F97316"
+              style={styles.modalMapMarkerIcon}
+            />
+          </View>
+          <View style={styles.modalMapPreviewTextCol}>
+            <Text style={[styles.modalMapCoordsLabel, isDark && styles.modalMapCoordsLabelDark]}>
+              GPS Coordinates:
+            </Text>
+            <Text style={[styles.modalMapCoordsVal, isDark && styles.modalMapCoordsValDark]}>
+              {coordinates || formatCoordinates(previewLat, previewLng)}
+            </Text>
           </View>
         </View>
 
@@ -659,5 +790,97 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  locationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  subInputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#657E6B',
+    marginBottom: 4,
+  },
+  subInputLabelDark: {
+    color: '#9CB3A0',
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F1EA',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: '#C6DCB8',
+  },
+  gpsButtonDark: {
+    backgroundColor: '#1E3524',
+    borderColor: '#36583E',
+  },
+  gpsButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1B3220',
+  },
+  gpsButtonTextDark: {
+    color: '#4ADE80',
+  },
+  modalMapPreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 8,
+    marginBottom: 16,
+    borderWidth: 0.5,
+    borderColor: '#E2DBD0',
+  },
+  modalMapPreviewBoxDark: {
+    backgroundColor: '#1C2E21',
+    borderColor: '#29432F',
+  },
+  modalMapThumbnailContainer: {
+    width: 64,
+    height: 52,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F2314',
+  },
+  modalMapThumbnail: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  modalMapMarkerIcon: {
+    position: 'absolute',
+  },
+  modalMapPreviewTextCol: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  modalMapCoordsLabel: {
+    fontSize: 11,
+    color: '#6E8070',
+    fontWeight: '500',
+  },
+  modalMapCoordsLabelDark: {
+    color: '#A0B7A4',
+  },
+  modalMapCoordsVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#16301A',
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
+    marginTop: 2,
+  },
+  modalMapCoordsValDark: {
+    color: '#F0F5F1',
   },
 });

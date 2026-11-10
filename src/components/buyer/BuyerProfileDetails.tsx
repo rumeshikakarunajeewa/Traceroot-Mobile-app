@@ -1,7 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerProfile } from '../../types/buyer.types';
+import {
+  parseCoordinates,
+  getStaticMapUrl,
+  openInNativeMaps,
+  formatCoordinates,
+} from '../../services/location.service';
 
 interface BuyerProfileDetailsProps {
   profile: BuyerProfile;
@@ -18,6 +24,25 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
   onPressEmail,
   onPressLocation,
 }) => {
+  const coords = parseCoordinates(profile.coordinates, profile.district);
+  const effectiveLat = profile.latitude ?? coords.latitude;
+  const effectiveLng = profile.longitude ?? coords.longitude;
+  const staticMapUrl = getStaticMapUrl(effectiveLat, effectiveLng, 13, 260, 220);
+  const locationLabel =
+    [profile.district, profile.province].filter((s) => s && s.trim()).join(', ') || 'Sri Lanka';
+  const displayCoords =
+    profile.coordinates && profile.coordinates.trim()
+      ? profile.coordinates.trim()
+      : formatCoordinates(effectiveLat, effectiveLng);
+
+  const handleOpenMap = () => {
+    openInNativeMaps(
+      effectiveLat,
+      effectiveLng,
+      profile.company || profile.fullName || 'Buyer Location'
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* 1. Contact & Business Details Card */}
@@ -99,45 +124,60 @@ export const BuyerProfileDetails: React.FC<BuyerProfileDetailsProps> = ({
         </View>
       </View>
 
-      {/* 2. Deep Forest Green Location Feature Card */}
+      {/* 2. Deep Forest Green Location Feature Card with Real Small Map */}
       <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPressLocation}
+        activeOpacity={0.88}
+        onPress={onPressLocation || handleOpenMap}
         style={[styles.locationCard, isDark && styles.locationCardDark]}
       >
         {/* Left Column info */}
         <View style={styles.locationContent}>
           <View style={styles.locationTagRow}>
             <MaterialCommunityIcons
-              name="map-marker-outline"
-              size={14}
+              name="map-marker-radius-outline"
+              size={15}
               color="#A6C5A8"
               style={styles.locPin}
             />
-            <Text style={styles.locationTag}>Location</Text>
+            <Text style={styles.locationTag}>Real Location</Text>
           </View>
 
-          <Text style={styles.locationTitle}>
-            {[profile.district, profile.province].filter((s) => s && s.trim()).join(', ') || ' '}
-          </Text>
+          <Text style={styles.locationTitle}>{locationLabel}</Text>
           <Text style={styles.locationSubtitle}>
-            {profile.country || ' '}
+            {profile.address && profile.address.trim() ? profile.address : profile.country || 'Sri Lanka'}
           </Text>
-          <Text style={styles.coordinates}>
-            {profile.coordinates || ' '}
-          </Text>
+          <Text style={styles.coordinates}>{displayCoords}</Text>
+
+          <View style={styles.openMapActionRow}>
+            <Text style={styles.openMapActionText}>Open in Maps</Text>
+            <MaterialCommunityIcons name="chevron-right" size={14} color="#A6C5A8" />
+          </View>
         </View>
 
-        {/* Right Graphic: Concentric Radar rings with orange marker dot */}
-        <View style={styles.radarGraphicContainer}>
-          <View style={styles.radarRingOuter}>
-            <View style={styles.radarRingMiddle}>
-              <View style={styles.radarRingInner} />
-            </View>
+        {/* Right Column: Small Map Preview of Real Location */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleOpenMap}
+          style={styles.miniMapContainer}
+          accessibilityLabel="Open small map in native maps"
+        >
+          <Image
+            source={{ uri: staticMapUrl }}
+            style={styles.miniMapImage}
+            resizeMode="cover"
+          />
+          <View style={styles.miniMapOverlay} />
+          {/* Centered Location Pin Marker */}
+          <View style={styles.miniMapPinWrapper}>
+            <View style={styles.miniMapPinPulse} />
+            <MaterialCommunityIcons name="map-marker" size={24} color="#F97316" />
           </View>
-          {/* Orange location point */}
-          <View style={styles.orangePinDot} />
-        </View>
+          {/* Small Map Tag Badge */}
+          <View style={styles.miniMapBadge}>
+            <MaterialCommunityIcons name="open-in-new" size={10} color="#FFFFFF" style={{ marginRight: 2 }} />
+            <Text style={styles.miniMapBadgeText}>MAP</Text>
+          </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     </View>
   );
@@ -271,54 +311,76 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
     letterSpacing: 0.3,
   },
-  radarGraphicContainer: {
+  openMapActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  openMapActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A6C5A8',
+    marginRight: 2,
+  },
+  miniMapContainer: {
+    width: 110,
+    height: 96,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#0F2314',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  miniMapImage: {
+    width: '100%',
+    height: '100%',
     position: 'absolute',
-    right: -20,
-    top: -20,
-    bottom: -20,
-    width: 150,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
   },
-  radarRingOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radarRingMiddle: {
-    width: 95,
-    height: 95,
-    borderRadius: 47.5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radarRingInner: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  orangePinDot: {
+  miniMapOverlay: {
     position: 'absolute',
-    right: 48,
-    top: 50,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#D97706',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 4,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 35, 20, 0.08)',
+  },
+  miniMapPinWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniMapPinPulse: {
+    position: 'absolute',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(249, 115, 22, 0.35)',
+  },
+  miniMapBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(15, 35, 20, 0.85)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  miniMapBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

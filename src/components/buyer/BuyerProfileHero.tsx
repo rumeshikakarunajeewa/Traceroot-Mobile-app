@@ -53,9 +53,11 @@ export const BuyerProfileHero: React.FC<BuyerProfileHeroProps> = ({
               )}
 
               {/* Orange verified checkmark badge */}
-              <View style={styles.verifiedCheckBadge}>
-                <MaterialCommunityIcons name="check" size={13} color="#FFFFFF" />
-              </View>
+              {profile.isVerified && (
+                <View style={styles.verifiedCheckBadge}>
+                  <MaterialCommunityIcons name="check" size={13} color="#FFFFFF" />
+                </View>
+              )}
             </View>
 
             {/* User credentials */}

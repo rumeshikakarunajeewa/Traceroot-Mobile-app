@@ -11,7 +11,10 @@ export interface BuyerProfile {
   district?: string;
   province?: string;
   country?: string;
+  address?: string;
   coordinates?: string;
+  latitude?: number;
+  longitude?: number;
   bio?: string;
   ordersCount?: number;
   contractsCount?: number;
