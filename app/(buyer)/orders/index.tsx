@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,18 +19,58 @@ import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
 import { BuyerOrder } from '../../../src/types/buyer.types';
 import { BuyerOrderCard } from '../../../src/components/orders/BuyerOrderCard';
 import { OrderDetailModal } from '../../../src/components/orders/OrderDetailModal';
+import { ordersService } from '../../../src/services/orders.service';
+import { useAuth } from '../../../src/store/authStore';
 import { useDarkMode } from '../../../src/store/uiStore';
 
 type FilterType = 'All' | 'Growing' | 'Pending' | 'Delivered';
 
 export default function BuyerOrdersScreen() {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
+  const buyerId = user?.id || 'buyer-1';
+
+  const [orders, setOrders] = useState<BuyerOrder[]>(mockBuyerOrders);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
-    'ord-001': true, // Tomato card expanded by default as in Figma design
+    'ord-001': true, // Default expanded card
   });
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<BuyerOrder | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const loadBuyerOrders = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setIsLoading(true);
+
+      const data = await ordersService.fetchBuyerOrders(buyerId);
+      if (data && data.length > 0) {
+        setOrders(data);
+      } else {
+        // Fall back to existing list or empty if no orders
+        setOrders(data);
+      }
+    } catch (e) {
+      console.warn('Error loading buyer orders:', e);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [buyerId]);
+
+  useEffect(() => {
+    loadBuyerOrders();
+
+    // Subscribe to Realtime updates for order status transitions
+    const unsubscribe = ordersService.subscribeToOrders({ buyerId }, () => {
+      loadBuyerOrders(true);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [buyerId, loadBuyerOrders]);
 
   // Toggle expand / collapse for a card
   const handleToggleExpand = (order: BuyerOrder) => {
@@ -39,44 +80,41 @@ export default function BuyerOrdersScreen() {
     }));
   };
 
-  // Pull to refresh simulation
+  // Pull to refresh
   const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 500);
+    loadBuyerOrders(true);
   };
 
   // Filter orders according to active pill
   const filteredOrders = useMemo(() => {
-    if (activeFilter === 'All') return mockBuyerOrders;
-    return mockBuyerOrders.filter((o) => {
+    if (activeFilter === 'All') return orders;
+    return orders.filter((o) => {
       if (activeFilter === 'Growing') return o.status === 'Growing' || o.status === 'in_transit';
       if (activeFilter === 'Pending') return o.status === 'Pending' || o.status === 'processing';
       if (activeFilter === 'Delivered') return o.status === 'Delivered' || o.status === 'delivered';
       return true;
     });
-  }, [activeFilter]);
+  }, [orders, activeFilter]);
 
   // Counts for pills
   const counts = useMemo(() => {
-    const growing = mockBuyerOrders.filter(
+    const growing = orders.filter(
       (o) => o.status === 'Growing' || o.status === 'in_transit'
     ).length;
-    const pending = mockBuyerOrders.filter(
+    const pending = orders.filter(
       (o) => o.status === 'Pending' || o.status === 'processing'
     ).length;
-    const delivered = mockBuyerOrders.filter(
+    const delivered = orders.filter(
       (o) => o.status === 'Delivered' || o.status === 'delivered'
     ).length;
 
     return {
-      all: mockBuyerOrders.length,
+      all: orders.length,
       growing,
       pending,
       delivered,
     };
-  }, []);
+  }, [orders]);
 
   const handleCameraScan = (order?: BuyerOrder) => {
     Alert.alert(
@@ -259,27 +297,59 @@ export default function BuyerOrdersScreen() {
         </ScrollView>
 
         {/* Awaiting Confirmation Notice Banner */}
-        <View style={styles.noticeCard}>
-          <View style={styles.noticeIconCircle}>
-            <MaterialCommunityIcons name="bell-ring-outline" size={20} color="#FFFFFF" />
+        {counts.pending > 0 && (
+          <View style={styles.noticeCard}>
+            <View style={styles.noticeIconCircle}>
+              <MaterialCommunityIcons name="bell-ring-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.noticeTextContainer}>
+              <Text style={styles.noticeTitle}>
+                {counts.pending} {counts.pending === 1 ? 'order' : 'orders'} awaiting confirmation
+              </Text>
+              <Text style={styles.noticeSubtitle}>Farmers usually confirm within 24 hours</Text>
+            </View>
           </View>
-          <View style={styles.noticeTextContainer}>
-            <Text style={styles.noticeTitle}>1 order awaiting confirmation</Text>
-            <Text style={styles.noticeSubtitle}>Farmers usually confirm within 24 hours</Text>
-          </View>
-        </View>
+        )}
 
         {/* Order Cards List */}
-        {filteredOrders.map((order) => (
-          <BuyerOrderCard
-            key={order.id}
-            order={order}
-            isExpanded={!!expandedIds[order.id]}
-            onToggleExpand={handleToggleExpand}
-            onCropJourneyPress={handleOpenCropJourney}
-            onCameraPress={handleCameraScan}
-          />
-        ))}
+        {filteredOrders.length > 0 ? (
+          filteredOrders.map((order) => (
+            <BuyerOrderCard
+              key={order.id}
+              order={order}
+              isExpanded={!!expandedIds[order.id]}
+              onToggleExpand={handleToggleExpand}
+              onCropJourneyPress={handleOpenCropJourney}
+              onCameraPress={handleCameraScan}
+            />
+          ))
+        ) : (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 24 }}>
+            <MaterialCommunityIcons name="basket-outline" size={48} color={isDark ? '#4ADE80' : '#8A9E8D'} />
+            <Text style={{ fontSize: 17, fontWeight: '700', color: isDark ? '#F0F5F1' : '#16301A', marginTop: 12 }}>
+              No orders found
+            </Text>
+            <Text style={{ fontSize: 13, color: isDark ? '#98B39B' : '#6A7B6B', textAlign: 'center', marginTop: 4 }}>
+              {activeFilter === 'All'
+                ? 'You have not placed any orders yet. Visit the Marketplace to explore verified harvests!'
+                : `No orders currently matching "${activeFilter}".`}
+            </Text>
+            {activeFilter === 'All' && (
+              <TouchableOpacity
+                onPress={() => router.push('/(buyer)/explore' as any)}
+                style={{
+                  marginTop: 18,
+                  backgroundColor: isDark ? '#2D5A34' : '#1D3524',
+                  paddingHorizontal: 18,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 13 }}>Explore Marketplace</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Interactive Detail Modal for Crop Journey */}

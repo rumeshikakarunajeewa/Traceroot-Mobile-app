@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SupplierOrderRequest, SupplierOrderStatus } from '../types/supplier.types';
+import { supplierOrdersService } from '../services/supplierOrders.service';
+import { authService } from '../services/auth.service';
 
 export const INITIAL_ORDERS: SupplierOrderRequest[] = [
   {
@@ -79,6 +81,7 @@ export const INITIAL_ORDERS: SupplierOrderRequest[] = [
 
 let orders: SupplierOrderRequest[] = [...INITIAL_ORDERS];
 const listeners = new Set<(ordersList: SupplierOrderRequest[]) => void>();
+let isInitialized = false;
 
 function notify() {
   listeners.forEach((listener) => listener([...orders]));
@@ -86,6 +89,33 @@ function notify() {
 
 export function getSupplierOrders(): SupplierOrderRequest[] {
   return [...orders];
+}
+
+export async function loadSupplierOrders(supplierId?: string, force = false): Promise<SupplierOrderRequest[]> {
+  if (isInitialized && !force && orders.length > 0) {
+    return orders;
+  }
+  isInitialized = true;
+
+  try {
+    let targetSupplierId = supplierId;
+    if (!targetSupplierId) {
+      const session = await authService.getSession();
+      targetSupplierId = session?.user?.id;
+    }
+
+    if (targetSupplierId) {
+      const liveOrders = await supplierOrdersService.getSupplierOrders(targetSupplierId);
+      if (liveOrders && liveOrders.length > 0) {
+        orders = liveOrders;
+      }
+    }
+  } catch (err) {
+    console.warn('[supplierOrdersStore] Error loading orders from Supabase:', err);
+  }
+
+  notify();
+  return orders;
 }
 
 export function updateOrderStatus(id: string, newStatus: SupplierOrderStatus) {
@@ -107,6 +137,12 @@ export function updateOrderStatus(id: string, newStatus: SupplierOrderStatus) {
     return order;
   });
   notify();
+
+  // Async persist to Supabase
+  const actualOrderId = id.startsWith('REQ-') ? id.replace('REQ-', '') : id;
+  supplierOrdersService.updateOrderStatus(actualOrderId, newStatus).catch((err) => {
+    console.warn('Error updating supplier order status in Supabase:', err);
+  });
 }
 
 export function declineOrder(id: string) {
@@ -127,8 +163,25 @@ export function useSupplierOrders(): [
   useEffect(() => {
     const listener = (newOrders: SupplierOrderRequest[]) => setCurrentOrders(newOrders);
     listeners.add(listener);
+
+    if (!isInitialized) {
+      loadSupplierOrders();
+    }
+
+    // Subscribe to Realtime order updates
+    let unsubscribe: (() => void) | undefined;
+    authService.getSession().then((session) => {
+      const supplierId = session?.user?.id;
+      if (supplierId) {
+        unsubscribe = supplierOrdersService.subscribeToSupplierOrders({ supplierId }, () => {
+          loadSupplierOrders(supplierId, true);
+        });
+      }
+    });
+
     return () => {
       listeners.delete(listener);
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 

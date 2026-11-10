@@ -23,6 +23,7 @@ import {
   Order,
   OrderStatus,
 } from '../../src/lib/api/orders';
+import { ordersService } from '../../src/services/orders.service';
 import OrderSummaryCard from '../../src/components/farmer/OrderSummaryCard';
 import NewOrderBanner from '../../src/components/farmer/NewOrderBanner';
 import OrderFilterTabs, { FilterKey } from '../../src/components/farmer/OrderFilterTabs';
@@ -60,7 +61,15 @@ export default function FarmerOrdersScreen() {
 
   useEffect(() => {
     loadOrders();
-  }, [loadOrders]);
+
+    const unsubscribe = ordersService.subscribeToOrders({ farmerId }, () => {
+      loadOrders();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [farmerId, loadOrders]);
 
   const onRefresh = () => {
     setIsRefreshing(true);

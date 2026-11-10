@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
+import { BuyerOrder } from '../../../src/types/buyer.types';
+import { ordersService } from '../../../src/services/orders.service';
 import { getOrderStatusConfig } from '../../../src/components/orders/BuyerOrderCard';
 import { useDarkMode } from '../../../src/store/uiStore';
 
@@ -21,8 +23,37 @@ export default function OrderDetailScreen() {
   const [isDark] = useDarkMode();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // Find order by ID or orderNumber
-  const order = mockBuyerOrders.find((o) => o.id === id || o.orderNumber === id) || mockBuyerOrders[0];
+  // Find order by ID or orderNumber with live fallback
+  const [order, setOrder] = useState<BuyerOrder>(() => {
+    return mockBuyerOrders.find((o) => o.id === id || o.orderNumber === id) || mockBuyerOrders[0];
+  });
+
+  useEffect(() => {
+    async function load() {
+      if (!id) return;
+      try {
+        const liveOrder = await ordersService.fetchOrderById(id);
+        if (liveOrder) {
+          setOrder(liveOrder);
+        }
+      } catch (err) {
+        console.warn('Error loading live order detail:', err);
+      }
+    }
+    load();
+
+    // Subscribe to realtime status changes for this order
+    const unsubscribe = ordersService.subscribeToOrders({}, (payload) => {
+      const row = (payload.new as any) || (payload.old as any);
+      if (row?.id === id) {
+        load();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [id]);
 
   const statusConfig = getOrderStatusConfig(order.status);
   const isGreenhouse = order.farmingType === 'greenhouse';
