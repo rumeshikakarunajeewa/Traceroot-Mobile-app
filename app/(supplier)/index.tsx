@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Alert,
   Platform,
@@ -19,39 +19,110 @@ import { SupplierFarmerRequests } from '../../src/components/supplier/SupplierFa
 import { SupplierTopProducts } from '../../src/components/supplier/SupplierTopProducts';
 
 import {
-  mockSupplierProfile,
-  mockSupplierStats,
   mockSupplierQuickActions,
   mockWaitingAlert,
-  mockFarmerRequests,
-  mockTopProducts,
 } from '../../src/constants/supplierMockData';
 import {
   FarmerRequestItem,
   SupplierQuickActionItem,
   TopProductItem,
+  SupplierStats,
+  SupplierProfile,
 } from '../../src/types/supplier.types';
+import { useSupplierCatalogue, loadCatalogueProducts } from '../../src/store/supplierCatalogueStore';
+import { useSupplierOrders, loadSupplierOrders } from '../../src/store/supplierOrdersStore';
+import { useSupplierProfile, loadSupplierProfile } from '../../src/store/supplierProfileStore';
 
 export default function SupplierDashboardScreen() {
   const [isDark] = useDarkMode();
   const [refreshing, setRefreshing] = useState(false);
-  const [requests, setRequests] = useState<FarmerRequestItem[]>(mockFarmerRequests);
-  const [stats, setStats] = useState(mockSupplierStats);
 
-  const pendingCount = requests.filter((r) => r.status === 'Pending').length;
+  const [products] = useSupplierCatalogue();
+  const [orders, updateOrderStatus] = useSupplierOrders();
+  const [profile] = useSupplierProfile();
 
-  const waitingAlertData = {
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadCatalogueProducts(undefined, true),
+        loadSupplierOrders(undefined, true),
+        loadSupplierProfile(true),
+      ]);
+    } catch (e) {
+      console.warn('Error refreshing supplier dashboard:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    handleRefresh();
+  }, [handleRefresh]);
+
+  // Map orders to FarmerRequestItem format for the dashboard
+  const requests: FarmerRequestItem[] = useMemo(() => {
+    if (!orders || orders.length === 0) return [];
+    return orders.map((o) => {
+      let requestStatus: 'Pending' | 'Fulfilled' | 'Cancelled' = 'Pending';
+      if (o.status === 'Completed') requestStatus = 'Fulfilled';
+      else if (o.status === 'Declined') requestStatus = 'Cancelled';
+
+      return {
+        id: o.id,
+        title: o.items?.[0]?.title || 'Agricultural Supplies',
+        farmerName: o.farmerName,
+        date: o.timeAgo,
+        status: requestStatus,
+        imageUrl: o.items?.[0]?.imageUrl || require('../../assets/images/supplier_fertilizer.jpg'),
+        quantity: o.items?.[0]?.quantity,
+      };
+    });
+  }, [orders]);
+
+  // Map catalogue products to TopProductItem format
+  const topProducts: TopProductItem[] = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return products.slice(0, 6).map((p) => ({
+      id: p.id,
+      title: p.title,
+      category: p.category,
+      price: p.price,
+      currency: p.currency,
+      stock: p.stock,
+      maxStock: p.maxStock,
+      imageUrl: p.imageUrl,
+    }));
+  }, [products]);
+
+  // Dynamic statistics
+  const pendingCount = useMemo(() => {
+    return orders.filter((o) => o.status === 'New').length;
+  }, [orders]);
+
+  const stats: SupplierStats = useMemo(() => {
+    const uniqueFarmers = new Set(orders.map((o) => o.farmerName)).size;
+    return {
+      productsCount: products.length,
+      pendingOrdersCount: pendingCount,
+      activeFarmersCount: Math.max(uniqueFarmers, profile.farmersCount || 0),
+    };
+  }, [products.length, pendingCount, orders, profile.farmersCount]);
+
+  const waitingAlertData = useMemo(() => ({
     ...mockWaitingAlert,
     waitingCount: pendingCount,
     title: `${pendingCount} farmer${pendingCount === 1 ? ' is' : 's are'} waiting`,
-  };
+  }), [pendingCount]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
-  };
+  const supplierHeaderProfile: SupplierProfile = useMemo(() => ({
+    id: profile.id || 'supplier-1',
+    name: profile.name?.trim() || profile.contactName?.trim() || 'AgriSupply Co.',
+    category: profile.store?.trim() || profile.district?.trim() || 'Agricultural Supplier',
+    role: 'Verified Wholesale Supplier',
+    avatarUrl: profile.avatarUrl?.uri || undefined,
+    unreadNotificationsCount: pendingCount,
+  }), [profile, pendingCount]);
 
   const handleQuickAction = (action: SupplierQuickActionItem) => {
     if (action.route) {
@@ -69,15 +140,7 @@ export default function SupplierDashboardScreen() {
           text: 'Confirm Fulfil',
           style: 'default',
           onPress: () => {
-            setRequests((prev) =>
-              prev.map((r) =>
-                r.id === request.id ? { ...r, status: 'Fulfilled' } : r
-              )
-            );
-            setStats((prev) => ({
-              ...prev,
-              pendingOrdersCount: Math.max(0, prev.pendingOrdersCount - 1),
-            }));
+            updateOrderStatus(request.id, 'Completed');
           },
         },
       ]
@@ -98,8 +161,9 @@ export default function SupplierDashboardScreen() {
 
   const handleStorePress = () => {
     Alert.alert(
-      'AgriSupply Co.',
-      'Verified wholesale supplier of high-grade agrochemicals, certified hybrid seeds, and biological crop protection.',
+      profile.name?.trim() || 'AgriSupply Co.',
+      profile.bio?.trim() ||
+        'Verified wholesale supplier of high-grade agrochemicals, certified hybrid seeds, and biological crop protection.',
       [{ text: 'OK' }]
     );
   };
@@ -134,7 +198,7 @@ export default function SupplierDashboardScreen() {
       >
         {/* 1. Header with Storefront Icon, Title, and Bell */}
         <SupplierHeader
-          profile={mockSupplierProfile}
+          profile={supplierHeaderProfile}
           onStorePress={handleStorePress}
           onNotificationPress={handleNotificationPress}
         />
@@ -148,7 +212,7 @@ export default function SupplierDashboardScreen() {
           onActionPress={handleQuickAction}
         />
 
-        {/* 4. Alert Callout: "2 farmers are waiting" with Orange Basket */}
+        {/* 4. Alert Callout: "X farmers are waiting" with Orange Basket */}
         <SupplierWaitingAlert
           alert={waitingAlertData}
           onPress={handleViewAllRequests}
@@ -163,7 +227,7 @@ export default function SupplierDashboardScreen() {
 
         {/* 6. Top Products Horizontal Carousel */}
         <SupplierTopProducts
-          products={mockTopProducts}
+          products={topProducts}
           onProductPress={handleProductPress}
           onManagePress={handleManageProducts}
         />

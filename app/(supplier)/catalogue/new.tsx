@@ -20,6 +20,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { addCatalogueProduct } from '../../../src/store/supplierCatalogueStore';
+import { catalogueService } from '../../../src/services/catalogue.service';
+import { authService } from '../../../src/services/auth.service';
 import { useDarkMode } from '../../../src/store/uiStore';
 import { useLanguage } from '../../../src/i18n/languageStore';
 import { CatalogueProduct } from '../../../src/types/supplier.types';
@@ -92,6 +94,8 @@ export default function SupplierNewProductScreen() {
   const [suitableFor, setSuitableFor] = useState<string[]>(['Tomato']);
   const [isOrganicCertified, setIsOrganicCertified] = useState(true);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Success State View
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -129,9 +133,11 @@ export default function SupplierNewProductScreen() {
                 allowsEditing: true,
                 aspect: [16, 9],
                 quality: 0.85,
+                base64: true,
               });
               if (!res.canceled && res.assets && res.assets[0]?.uri) {
                 setPhotoUri(res.assets[0].uri);
+                setPhotoBase64(res.assets[0].base64 || null);
               }
             } catch (err) {
               console.error('Error opening camera:', err);
@@ -155,9 +161,11 @@ export default function SupplierNewProductScreen() {
                 allowsEditing: true,
                 aspect: [16, 9],
                 quality: 0.85,
+                base64: true,
               });
               if (!res.canceled && res.assets && res.assets[0]?.uri) {
                 setPhotoUri(res.assets[0].uri);
+                setPhotoBase64(res.assets[0].base64 || null);
               }
             } catch (err) {
               console.error('Error selecting photo:', err);
@@ -191,30 +199,60 @@ export default function SupplierNewProductScreen() {
   };
 
   // Publish Product to Catalogue
-  const handlePublish = () => {
-    const trimmedTitle = productName.trim() || 'Hybrid Tomato Seeds';
+  const handlePublish = async () => {
+    const trimmedTitle = productName.trim() || 'Certified Agri Input';
     const parsedPrice = price.trim() ? Math.max(0, parseFloat(price)) : 850;
     const parsedStock = stock.trim() ? Math.max(0, parseInt(stock, 10)) : 50;
 
-    const newProduct: CatalogueProduct = {
-      id: `cat-${Date.now()}`,
-      title: trimmedTitle,
-      category,
-      packageSize: `1 ${unit} pack`,
-      price: parsedPrice,
-      currency: 'LKR',
-      stock: parsedStock,
-      maxStock: Math.max(parsedStock * 2, 100),
-      isLowStock: parsedStock < 10,
-      imageUrl: photoUri ? { uri: photoUri } : DEFAULT_SEED_IMAGE,
-      soldPer: unit,
-      description: description.trim(),
-      suitableFor,
-      isOrganicCertified,
-    };
+    setIsPublishing(true);
+    try {
+      const session = await authService.getSession();
+      const supplierId = session?.user?.id || 'supplier-1';
 
-    addCatalogueProduct(newProduct);
-    setIsSubmitted(true);
+      const res = await catalogueService.createCatalogueProduct(
+        {
+          supplierId,
+          title: trimmedTitle,
+          category,
+          packageSize: `1 ${unit} pack`,
+          price: parsedPrice,
+          unit,
+          stock: parsedStock,
+          description: description.trim(),
+          suitableFor,
+          isOrganicCertified,
+        },
+        photoUri || undefined,
+        photoBase64 || undefined
+      );
+
+      if (res.success && res.product) {
+        addCatalogueProduct(res.product);
+      } else {
+        const fallbackProduct: CatalogueProduct = {
+          id: `cat-${Date.now()}`,
+          title: trimmedTitle,
+          category,
+          packageSize: `1 ${unit} pack`,
+          price: parsedPrice,
+          currency: 'LKR',
+          stock: parsedStock,
+          maxStock: Math.max(parsedStock * 2, 100),
+          isLowStock: parsedStock < 10,
+          imageUrl: photoUri ? { uri: photoUri } : DEFAULT_SEED_IMAGE,
+          soldPer: unit,
+          description: description.trim(),
+          suitableFor,
+          isOrganicCertified,
+        };
+        addCatalogueProduct(fallbackProduct);
+      }
+      setIsSubmitted(true);
+    } catch (e: any) {
+      Alert.alert('Publish Error', e.message || 'Failed to publish product');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // Reset form for "Add another"
