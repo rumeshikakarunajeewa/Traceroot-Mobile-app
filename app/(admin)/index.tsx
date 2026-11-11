@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   ImageBackground,
+  Image,
   TouchableOpacity,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -29,7 +30,7 @@ export default function AdminOverviewScreen() {
           styles.scrollContent,
           {
             paddingTop: insets.top + spacing.sm,
-            paddingBottom: insets.bottom + 90,
+            paddingBottom: insets.bottom + 110,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -297,6 +298,225 @@ export default function AdminOverviewScreen() {
             <Text style={[styles.emptyStateSubtitle, { color: isDark ? '#A2BBA6' : '#6B7E6C' }]}>
               User verification requests will appear here once administrative privileges and backend queries are enabled.
             </Text>
+          </View>
+        </View>
+
+        {/* Design Preview Section Banner */}
+        <View style={styles.previewNoticeBadge}>
+          <MaterialCommunityIcons name="information-outline" size={14} color="#E68A28" />
+          <Text style={styles.previewNoticeText}>Design preview — sample data</Text>
+        </View>
+
+        {/* 1. Recent Records Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.pendingHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+              Recent Records
+            </Text>
+            <TouchableOpacity
+              disabled={true}
+              style={styles.controlDisabled}
+              accessibilityLabel="See all recent records (disabled)"
+            >
+              <View style={styles.seeAllPill}>
+                <Text style={styles.seeAllText}>See All</Text>
+                <Feather name="chevron-right" size={14} color="#6B7E6C" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Timeline and Record List */}
+          <View style={styles.timelineContainer}>
+            {/* Connecting Vertical Line */}
+            <View
+              style={[
+                styles.timelineLine,
+                { backgroundColor: isDark ? '#283D2C' : '#DDE3DA' },
+              ]}
+            />
+
+            {/* Record 1: Correction Record */}
+            <View style={styles.timelineRow}>
+              <View style={[styles.timelineNode, { backgroundColor: '#E66926' }]} />
+              <View
+                style={[
+                  styles.recordCard,
+                  { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                ]}
+              >
+                <Image
+                  source={require('@/assets/images/supplier_tomato_seeds.jpg')}
+                  style={styles.recordThumbnail}
+                />
+                <View style={styles.recordInfo}>
+                  <Text
+                    style={[styles.recordTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}
+                    numberOfLines={1}
+                  >
+                    Correction Record
+                  </Text>
+                  <Text
+                    style={[styles.recordSubtext, { color: isDark ? '#A2BBA6' : '#738275' }]}
+                    numberOfLines={1}
+                  >
+                    Priya Kumari • Tomato • 10:15 AM
+                  </Text>
+                </View>
+                <View style={[styles.traceBadge, styles.traceBadgeOrange]}>
+                  <MaterialCommunityIcons name="gas-station-outline" size={11} color="#C45A1A" />
+                  <Text style={[styles.traceBadgeText, styles.traceBadgeTextOrange]}>TR-0053</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Record 2: Fertilizer Applied */}
+            <View style={styles.timelineRow}>
+              <View style={[styles.timelineNode, { backgroundColor: '#2E7D32' }]} />
+              <View
+                style={[
+                  styles.recordCard,
+                  { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                ]}
+              >
+                <Image
+                  source={require('@/assets/images/supplier_tomato_seeds.jpg')}
+                  style={styles.recordThumbnail}
+                />
+                <View style={styles.recordInfo}>
+                  <Text
+                    style={[styles.recordTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}
+                    numberOfLines={1}
+                  >
+                    Fertilizer Applied
+                  </Text>
+                  <Text
+                    style={[styles.recordSubtext, { color: isDark ? '#A2BBA6' : '#738275' }]}
+                    numberOfLines={1}
+                  >
+                    Priya Kumari • Tomato • 09:20 AM
+                  </Text>
+                </View>
+                <View style={[styles.traceBadge, styles.traceBadgeGreen]}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={11} color="#3E6B47" />
+                  <Text style={[styles.traceBadgeText, styles.traceBadgeTextGreen]}>TR-0051</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Record 3: Growth Observation */}
+            <View style={styles.timelineRow}>
+              <View style={[styles.timelineNode, { backgroundColor: '#2E7D32' }]} />
+              <View
+                style={[
+                  styles.recordCard,
+                  { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                ]}
+              >
+                <Image
+                  source={require('@/assets/images/auth_sprouts.jpg')}
+                  style={styles.recordThumbnail}
+                />
+                <View style={styles.recordInfo}>
+                  <Text
+                    style={[styles.recordTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}
+                    numberOfLines={1}
+                  >
+                    Growth Observation
+                  </Text>
+                  <Text
+                    style={[styles.recordSubtext, { color: isDark ? '#A2BBA6' : '#738275' }]}
+                    numberOfLines={1}
+                  >
+                    Roshan Silva • Cabbage • 08:45 AM
+                  </Text>
+                </View>
+                <View style={[styles.traceBadge, styles.traceBadgeGreen]}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={11} color="#3E6B47" />
+                  <Text style={[styles.traceBadgeText, styles.traceBadgeTextGreen]}>TR-0049</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* 2. Platform Activity Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+            Platform Activity
+          </Text>
+
+          <View style={styles.activityGrid}>
+            {/* Card 1: Records Today */}
+            <View
+              style={[
+                styles.activityCard,
+                { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+              ]}
+            >
+              <View style={[styles.activityIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
+                <MaterialCommunityIcons name="file-document-outline" size={18} color="#2E7D32" />
+              </View>
+              <Text style={[styles.activityNumber, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                14
+              </Text>
+              <Text style={[styles.activityLabel, { color: isDark ? '#A2BBA6' : '#6B7E6C' }]}>
+                Records Today
+              </Text>
+            </View>
+
+            {/* Card 2: Active Journeys */}
+            <View
+              style={[
+                styles.activityCard,
+                { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+              ]}
+            >
+              <View style={[styles.activityIconCircle, { backgroundColor: isDark ? '#233827' : '#EAF2EB' }]}>
+                <MaterialCommunityIcons name="sprout-outline" size={18} color="#3A6E46" />
+              </View>
+              <Text style={[styles.activityNumber, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                23
+              </Text>
+              <Text style={[styles.activityLabel, { color: isDark ? '#A2BBA6' : '#6B7E6C' }]}>
+                Active Journeys
+              </Text>
+            </View>
+
+            {/* Card 3: Contracts Active */}
+            <View
+              style={[
+                styles.activityCard,
+                { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+              ]}
+            >
+              <View style={[styles.activityIconCircle, { backgroundColor: isDark ? '#3A2710' : '#F6EFE6' }]}>
+                <MaterialCommunityIcons name="shield-check-outline" size={18} color="#9C7752" />
+              </View>
+              <Text style={[styles.activityNumber, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                8
+              </Text>
+              <Text style={[styles.activityLabel, { color: isDark ? '#A2BBA6' : '#6B7E6C' }]}>
+                Contracts Active
+              </Text>
+            </View>
+
+            {/* Card 4: Harvests Listed */}
+            <View
+              style={[
+                styles.activityCard,
+                { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+              ]}
+            >
+              <View style={[styles.activityIconCircle, { backgroundColor: isDark ? '#3A251B' : '#FCEFE9' }]}>
+                <MaterialCommunityIcons name="basket-outline" size={18} color="#D96F43" />
+              </View>
+              <Text style={[styles.activityNumber, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                5
+              </Text>
+              <Text style={[styles.activityLabel, { color: isDark ? '#A2BBA6' : '#6B7E6C' }]}>
+                Harvests Listed
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -626,5 +846,146 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 17,
+  },
+
+  // Design Preview Notice Badge
+  previewNoticeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(230, 138, 40, 0.12)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.full,
+    marginBottom: spacing.md,
+    alignSelf: 'flex-start',
+  },
+  previewNoticeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D97706',
+  },
+
+  // Timeline & Recent Records
+  timelineContainer: {
+    position: 'relative',
+    paddingLeft: 4,
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 10,
+    top: 24,
+    bottom: 24,
+    width: 2,
+    borderRadius: 1,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  timelineNode: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    zIndex: 2,
+  },
+  recordCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  recordThumbnail: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 10,
+  },
+  recordInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  recordTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+    marginBottom: 2,
+  },
+  recordSubtext: {
+    fontSize: 11,
+    fontWeight: '400',
+  },
+  traceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    marginLeft: 6,
+  },
+  traceBadgeOrange: {
+    backgroundColor: '#FDF1EB',
+  },
+  traceBadgeGreen: {
+    backgroundColor: '#EEF4EF',
+  },
+  traceBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  traceBadgeTextOrange: {
+    color: '#C45A1A',
+  },
+  traceBadgeTextGreen: {
+    color: '#3E6B47',
+  },
+
+  // Platform Activity Grid
+  activityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  activityCard: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+    marginBottom: 4,
+  },
+  activityIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  activityNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  activityLabel: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
