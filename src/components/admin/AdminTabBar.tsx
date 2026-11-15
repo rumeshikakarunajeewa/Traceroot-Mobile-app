@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useDarkMode } from '@/store/uiStore';
 
 export interface AdminTabBarProps {
@@ -9,25 +10,35 @@ export interface AdminTabBarProps {
 }
 
 /**
- * Decorative bottom tab bar for the Admin panel.
+ * Bottom tab bar for the Admin panel.
  * Represents the 5-tab shell matching the design reference:
  * [Overview] [Users] [Records] [Reports] [Profile]
  *
- * In Step 2 (single-page build), only Overview is active.
- * The other four destinations are disabled to avoid broken navigation.
+ * Enables two-way navigation between Overview (/(admin)) and Users (/(admin)/users).
+ * The other three destinations remain disabled until their screens are implemented.
  */
 export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview' }) => {
   const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
+  const navigateTo = (tab: 'overview' | 'users') => {
+    if (tab === activeTab) return;
+    if (tab === 'overview') {
+      router.replace('/(admin)' as any);
+    } else if (tab === 'users') {
+      router.replace('/(admin)/users' as any);
+    }
+  };
+
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
       <View style={[styles.barContainer, isDark && styles.barContainerDark, { marginBottom: bottomMargin }]}>
-        {/* Tab 1: Overview (Active) */}
+        {/* Tab 1: Overview */}
         <TouchableOpacity
           style={styles.tabItem}
           activeOpacity={0.8}
+          onPress={() => navigateTo('overview')}
           accessibilityRole="tab"
           accessibilityState={{ selected: activeTab === 'overview' }}
           accessibilityLabel="Overview tab"
@@ -35,31 +46,32 @@ export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview'
           <MaterialCommunityIcons
             name="view-dashboard"
             size={22}
-            color="#FFFFFF"
+            color={activeTab === 'overview' ? '#FFFFFF' : '#88A38E'}
           />
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>
+          <Text style={[styles.tabLabel, activeTab === 'overview' && styles.tabLabelActive]}>
             Overview
           </Text>
-          <View style={styles.activeIndicator} />
+          <View style={activeTab === 'overview' ? styles.activeIndicator : styles.inactiveIndicator} />
         </TouchableOpacity>
 
-        {/* Tab 2: Users (Disabled) */}
+        {/* Tab 2: Users */}
         <TouchableOpacity
-          style={[styles.tabItem, styles.tabItemDisabled]}
-          disabled={true}
+          style={styles.tabItem}
+          activeOpacity={0.8}
+          onPress={() => navigateTo('users')}
           accessibilityRole="tab"
-          accessibilityState={{ disabled: true }}
-          accessibilityLabel="Users tab (unavailable)"
+          accessibilityState={{ selected: activeTab === 'users' }}
+          accessibilityLabel="Users tab"
         >
           <Feather
             name="users"
             size={20}
-            color="#88A38E"
+            color={activeTab === 'users' ? '#FFFFFF' : '#88A38E'}
           />
-          <Text style={styles.tabLabel}>
+          <Text style={[styles.tabLabel, activeTab === 'users' && styles.tabLabelActive]}>
             Users
           </Text>
-          <View style={styles.inactiveIndicator} />
+          <View style={activeTab === 'users' ? styles.activeIndicator : styles.inactiveIndicator} />
         </TouchableOpacity>
 
         {/* Tab 3: Records (Disabled) */}
@@ -188,4 +200,3 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 });
-
