@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   ImageBackground,
   TouchableOpacity,
+  TextInput,
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -26,6 +27,18 @@ interface PendingPreviewUser {
   date: string;
 }
 
+interface ActiveMemberPreview {
+  id: string;
+  name: string;
+  role: UserRole;
+  initials: string;
+  subtext: string;
+  location: string;
+  status: 'Active';
+}
+
+type RoleFilterOption = 'all' | 'farmer' | 'buyer' | 'supplier';
+
 const INITIAL_PREVIEW_USERS: PendingPreviewUser[] = [
   {
     id: 'user-preview-1',
@@ -45,12 +58,63 @@ const INITIAL_PREVIEW_USERS: PendingPreviewUser[] = [
   },
 ];
 
+const INITIAL_ACTIVE_MEMBERS: ActiveMemberPreview[] = [
+  {
+    id: 'member-preview-1',
+    name: 'Priya Kumari',
+    role: 'farmer',
+    initials: 'PK',
+    subtext: 'Tomato • Greenhouse',
+    location: 'Dambulla',
+    status: 'Active',
+  },
+  {
+    id: 'member-preview-2',
+    name: 'Roshan Silva',
+    role: 'farmer',
+    initials: 'RS',
+    subtext: 'Cabbage • Open-field',
+    location: 'Nuwara Eliya',
+    status: 'Active',
+  },
+  {
+    id: 'member-preview-3',
+    name: 'Saman Perera',
+    role: 'buyer',
+    initials: 'SP',
+    subtext: 'Wholesale buyer',
+    location: 'Colombo',
+    status: 'Active',
+  },
+  {
+    id: 'member-preview-4',
+    name: 'Kandy Agro Centre',
+    role: 'supplier',
+    initials: 'KA',
+    subtext: 'Seed & Fertilizer distributor',
+    location: 'Kandy',
+    status: 'Active',
+  },
+];
+
+const ROLE_FILTERS: { label: string; value: RoleFilterOption }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Farmers', value: 'farmer' },
+  { label: 'Buyers', value: 'buyer' },
+  { label: 'Suppliers', value: 'supplier' },
+];
+
 export default function AdminUsersScreen() {
   const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const theme = isDark ? darkColors : colors;
 
+  // Upper section: Pending approval queue state
   const [pendingList, setPendingList] = useState<PendingPreviewUser[]>(INITIAL_PREVIEW_USERS);
+
+  // Lower section: Search and Role Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<RoleFilterOption>('all');
 
   const handleApprove = (user: PendingPreviewUser) => {
     Alert.alert(
@@ -85,6 +149,11 @@ export default function AdminUsersScreen() {
     );
   };
 
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedFilter('all');
+  };
+
   const getRoleIcon = (role: UserRole) => {
     switch (role) {
       case 'farmer':
@@ -98,6 +167,25 @@ export default function AdminUsersScreen() {
     }
   };
 
+  // Filtered members matching both search text (name / location) and role filter
+  const filteredMembers = useMemo(() => {
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+
+    return INITIAL_ACTIVE_MEMBERS.filter((member) => {
+      // Role filter check
+      const matchesRole = selectedFilter === 'all' || member.role === selectedFilter;
+      if (!matchesRole) return false;
+
+      // Text search check: name, location, or subtext
+      if (!trimmedQuery) return true;
+      const matchesName = member.name.toLowerCase().includes(trimmedQuery);
+      const matchesLocation = member.location.toLowerCase().includes(trimmedQuery);
+      const matchesSubtext = member.subtext.toLowerCase().includes(trimmedQuery);
+
+      return matchesName || matchesLocation || matchesSubtext;
+    });
+  }, [searchQuery, selectedFilter]);
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0E1710' : '#F8F5F0' }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -107,10 +195,11 @@ export default function AdminUsersScreen() {
           styles.scrollContent,
           {
             paddingTop: insets.top + spacing.sm,
-            paddingBottom: insets.bottom + 110,
+            paddingBottom: insets.bottom + 120,
           },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header Row */}
         <View style={styles.headerRow}>
@@ -322,6 +411,229 @@ export default function AdminUsersScreen() {
             </View>
           )}
         </View>
+
+        {/* Lower Half: "All members" Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+            All members
+          </Text>
+
+          {/* Search Bar Input */}
+          <View
+            style={[
+              styles.searchBarWrapper,
+              { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+            ]}
+          >
+            <Feather
+              name="search"
+              size={18}
+              color={isDark ? '#A2BBA6' : '#88A38E'}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={[
+                styles.searchInput,
+                { color: isDark ? '#F0F5F1' : '#16301A' },
+              ]}
+              placeholder="Search by name or location..."
+              placeholderTextColor={isDark ? '#738C77' : '#94A396'}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Clear search input"
+              >
+                <Feather
+                  name="x"
+                  size={16}
+                  color={isDark ? '#A2BBA6' : '#88A38E'}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Role Filter Chips Row */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRowContainer}
+          >
+            {ROLE_FILTERS.map((filter) => {
+              const isSelected = selectedFilter === filter.value;
+              return (
+                <TouchableOpacity
+                  key={filter.value}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedFilter(filter.value)}
+                  style={[
+                    styles.filterChip,
+                    isSelected
+                      ? styles.filterChipSelected
+                      : [styles.filterChipUnselected, { backgroundColor: isDark ? '#18271C' : '#FFFFFF' }],
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  accessibilityLabel={`Filter by ${filter.label}`}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      isSelected
+                        ? styles.filterChipTextSelected
+                        : [styles.filterChipTextUnselected, { color: isDark ? '#A2BBA6' : '#5C6E60' }],
+                    ]}
+                  >
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Active Members List or Filter Empty State */}
+          {filteredMembers.length > 0 ? (
+            <View style={styles.cardsList}>
+              {filteredMembers.map((member) => (
+                <TouchableOpacity
+                  key={member.id}
+                  activeOpacity={0.85}
+                  disabled={true}
+                  style={[
+                    styles.memberCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                    styles.memberCardDisabled,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${member.name}, ${member.subtext}. Member details under development`}
+                >
+                  {/* Left Avatar with Role Badge */}
+                  <View style={styles.avatarWrapper}>
+                    <View
+                      style={[
+                        styles.avatarCircle,
+                        {
+                          backgroundColor:
+                            member.role === 'buyer'
+                              ? isDark
+                                ? '#3A2710'
+                                : '#FCEFE9'
+                              : isDark
+                              ? '#283D2C'
+                              : '#E6EAE5',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.avatarText,
+                          {
+                            color:
+                              member.role === 'buyer'
+                                ? '#D97706'
+                                : isDark
+                                ? '#F0F5F1'
+                                : '#2D4432',
+                          },
+                        ]}
+                      >
+                        {member.initials}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.roleBadgePill,
+                        { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                      ]}
+                    >
+                      {getRoleIcon(member.role)}
+                    </View>
+                  </View>
+
+                  {/* Name and Subtext Info */}
+                  <View style={styles.memberInfoCol}>
+                    <Text
+                      style={[
+                        styles.memberNameText,
+                        { color: isDark ? '#F0F5F1' : '#16301A' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {member.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.memberSubtext,
+                        { color: isDark ? '#A2BBA6' : '#738275' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {member.subtext}
+                    </Text>
+                  </View>
+
+                  {/* Active Status Badge */}
+                  <View style={styles.activeStatusPill}>
+                    <View style={styles.activeDot} />
+                    <Text style={styles.activeStatusText}>Active</Text>
+                  </View>
+
+                  {/* Right Chevron Indicator */}
+                  <Feather
+                    name="chevron-right"
+                    size={16}
+                    color={isDark ? '#738C77' : '#94A396'}
+                    style={styles.chevronIcon}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.emptyStateCard,
+                { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="account-search-outline"
+                size={38}
+                color={isDark ? '#A2BBA6' : '#88A38E'}
+              />
+              <Text
+                style={[
+                  styles.emptyStateTitle,
+                  { color: isDark ? '#F0F5F1' : '#16301A' },
+                ]}
+              >
+                No Members Found
+              </Text>
+              <Text
+                style={[
+                  styles.emptyStateSubtitle,
+                  { color: isDark ? '#A2BBA6' : '#6B7E6C' },
+                ]}
+              >
+                No preview members matched &quot;{searchQuery}&quot;
+                {selectedFilter !== 'all' ? ` in ${selectedFilter}s` : ''}.
+              </Text>
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleClearFilters}
+                accessibilityLabel="Clear search and role filters"
+              >
+                <Text style={styles.resetButtonText}>Clear Filters</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {/* 5-Tab Floating Shell with Users Active */}
@@ -490,7 +802,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cardsList: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   userCard: {
     borderRadius: 20,
@@ -656,5 +968,118 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#2C5E3D',
+  },
+
+  // Lower Section: Search Bar
+  searchBarWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    marginTop: 6,
+    marginBottom: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    paddingVertical: 0,
+  },
+
+  // Lower Section: Role Filter Chips
+  filterRowContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+    marginBottom: spacing.md,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterChipSelected: {
+    backgroundColor: '#2E5E3A',
+  },
+  filterChipUnselected: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  filterChipText: {
+    fontSize: 12,
+  },
+  filterChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  filterChipTextUnselected: {
+    fontWeight: '600',
+  },
+
+  // Lower Section: Active Member Cards
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  memberCardDisabled: {
+    opacity: 0.95,
+  },
+  memberInfoCol: {
+    flex: 1,
+  },
+  memberNameText: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginBottom: 3,
+  },
+  memberSubtext: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  activeStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EEF5EF',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    marginRight: 6,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2E7D32',
+  },
+  activeStatusText: {
+    color: '#2E7D32',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  chevronIcon: {
+    marginLeft: 2,
   },
 });
