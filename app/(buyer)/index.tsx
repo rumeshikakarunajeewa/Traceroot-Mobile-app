@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useDarkMode } from '../../src/store/uiStore';
+import { useAuth } from '../../src/store/authStore';
+import { authService } from '../../src/services/auth.service';
+import { profilesService } from '../../src/services/profiles.service';
 import { BuyerHeader } from '../../src/components/buyer/BuyerHeader';
 import { BuyerHeroBanner } from '../../src/components/buyer/BuyerHeroBanner';
 import { BuyerQuickActions } from '../../src/components/buyer/BuyerQuickActions';
@@ -21,19 +25,95 @@ import { BuyerListingCard } from '../../src/components/buyer/BuyerListingCard';
 import { BuyerContractCard } from '../../src/components/buyer/BuyerContractCard';
 
 import {
-  mockBuyerProfile,
   mockBuyerStats,
   mockQuickActions,
   mockProduceListings,
   mockActiveContract,
   BUYER_HERO_IMAGE,
 } from '../../src/constants/buyerMockData';
-import { ProduceListing, ActiveContractItem, QuickActionItem } from '../../src/types/buyer.types';
+import {
+  BuyerProfile,
+  ProduceListing,
+  ActiveContractItem,
+  QuickActionItem,
+} from '../../src/types/buyer.types';
 
 export default function BuyerHomeScreen() {
   const [isDark] = useDarkMode();
+  const { user, profile: authProfile } = useAuth();
+  const [profile, setProfile] = useState<BuyerProfile | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [actions, setActions] = useState(mockQuickActions);
+
+  // Refresh profile whenever buyer navigates to or focuses Home screen tab
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      (async () => {
+        try {
+          const currentUser = user || (await authService.getSession())?.user;
+          if (currentUser?.id && isMounted) {
+            const realProfile = await profilesService.getBuyerProfile(currentUser.id);
+            if (realProfile && isMounted) {
+              setProfile(realProfile);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to load buyer profile on home screen:', err);
+        }
+      })();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [user])
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const currentUser = user || (await authService.getSession())?.user;
+      if (currentUser?.id) {
+        const realProfile = await profilesService.getBuyerProfile(currentUser.id);
+        if (realProfile) {
+          setProfile(realProfile);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to refresh buyer profile on home screen:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  // Construct safe display profile for account owner
+  const fallbackName = authProfile?.full_name || 'Buyer';
+  const displayProfile: BuyerProfile = profile || {
+    id: user?.id || '',
+    fullName: fallbackName,
+    initials: fallbackName
+      ? fallbackName
+          .split(' ')
+          .filter(Boolean)
+          .map((part: string) => part[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase()
+      : 'TR',
+    isVerified: false,
+    avatarUrl: authProfile?.avatar_url || null,
+    roleTitle: 'Wholesale Buyer',
+    ordersCount: 0,
+    contractsCount: 0,
+    kgSourced: '0 kg',
+  };
+
+  const dynamicStats = {
+    activeOrders: profile?.ordersCount ?? mockBuyerStats.activeOrders,
+    contractsCount: profile?.contractsCount ?? mockBuyerStats.contractsCount,
+    verifiedFarmsCount: mockBuyerStats.verifiedFarmsCount,
+  };
 
   // Filter listings based on search query
   const filteredListings = mockProduceListings.filter((listing) => {
@@ -109,14 +189,25 @@ export default function BuyerHomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={isDark ? '#4ADE80' : '#2E6930'}
+            colors={['#2E6930', '#4ADE80']}
+          />
+        }
       >
-        {/* Top App Bar / Profile Header */}
-        <BuyerHeader profile={mockBuyerProfile} />
+        {/* Top App Bar / Profile Header with real owner data */}
+        <BuyerHeader
+          profile={displayProfile}
+          onPressProfile={() => router.push('/(buyer)/profile')}
+        />
 
         {/* Hero Banner with Handshake photo, Search & Stats */}
         <BuyerHeroBanner
           heroImageUrl={BUYER_HERO_IMAGE}
-          stats={mockBuyerStats}
+          stats={dynamicStats}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onSearchSubmit={handleSearchSubmit}

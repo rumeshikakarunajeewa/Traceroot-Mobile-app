@@ -1,23 +1,36 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Platform, Image, TouchableOpacity } from 'react-native';
 import { colors } from '../../lib/theme';
 import { BuyerProfile } from '../../types/buyer.types';
 import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerHeaderProps {
   profile: BuyerProfile;
+  onPressProfile?: () => void;
 }
 
-export const BuyerHeader: React.FC<BuyerHeaderProps> = ({ profile }) => {
+export const BuyerHeader: React.FC<BuyerHeaderProps> = ({ profile, onPressProfile }) => {
   const [isDark] = useDarkMode();
 
   return (
     <View style={styles.container}>
-      <View style={styles.leftContainer}>
-        {/* Avatar with initials */}
+      <TouchableOpacity
+        activeOpacity={onPressProfile ? 0.75 : 1}
+        onPress={onPressProfile}
+        style={styles.leftContainer}
+        disabled={!onPressProfile}
+      >
+        {/* Avatar with photo or initials fallback */}
         <View style={[styles.avatar, isDark && styles.avatarDark]}>
-          <Text style={styles.avatarText}>{profile.initials}</Text>
+          {profile.avatarUrl && profile.avatarUrl.trim() !== '' ? (
+            <Image
+              source={{ uri: profile.avatarUrl }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatarText}>{profile.initials || 'TR'}</Text>
+          )}
         </View>
 
         {/* Welcome Stack */}
@@ -29,22 +42,7 @@ export const BuyerHeader: React.FC<BuyerHeaderProps> = ({ profile }) => {
             {profile.fullName}
           </Text>
         </View>
-      </View>
-
-      {/* Verified Buyer Badge */}
-      {profile.isVerified && (
-        <View style={[styles.verifiedBadge, isDark && styles.verifiedBadgeDark]}>
-          <MaterialCommunityIcons
-            name="shield-check"
-            size={14}
-            color={isDark ? '#4ADE80' : '#2E6930'}
-            style={styles.shieldIcon}
-          />
-          <Text style={[styles.verifiedText, isDark && styles.verifiedTextDark]}>
-            Verified Buyer
-          </Text>
-        </View>
-      )}
+      </TouchableOpacity>
     </View>
   );
 };
@@ -62,6 +60,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   avatar: {
     width: 46,
@@ -70,6 +69,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2E4730',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -81,6 +81,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#35543A',
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 23,
+  },
   avatarText: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -89,6 +94,7 @@ const styles = StyleSheet.create({
   },
   greetingContainer: {
     justifyContent: 'center',
+    flex: 1,
   },
   welcomeSubtitle: {
     fontSize: 13,
@@ -111,31 +117,5 @@ const styles = StyleSheet.create({
   },
   userNameDark: {
     color: '#F0F5F1',
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E6E1D6',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: '#DAD4C7',
-    gap: 5,
-  },
-  verifiedBadgeDark: {
-    backgroundColor: '#1E3224',
-    borderColor: '#2F4E36',
-  },
-  shieldIcon: {
-    marginRight: 1,
-  },
-  verifiedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#2B4A30',
-  },
-  verifiedTextDark: {
-    color: '#4ADE80',
   },
 });
