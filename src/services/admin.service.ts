@@ -106,6 +106,23 @@ export interface AdminAuditLogItem {
   createdAt: string;
 }
 
+export interface AdminContractItem {
+  id: string;
+  agreementCode: string;
+  cropName: string;
+  targetQuantity: number;
+  unit: string;
+  agreedPrice: number;
+  totalCommitment: number;
+  status: string;
+  deadline?: string;
+  createdAt: string;
+  supplierName: string;
+  supplierFarmName?: string;
+  farmerName: string;
+  farmerFarmName?: string;
+}
+
 class AdminService {
   /**
    * Fetch aggregate platform statistics for Admin Dashboard.
@@ -633,6 +650,69 @@ class AdminService {
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Failed to update dispute' };
+    }
+  }
+
+  /**
+   * Fetch buyback and sales agreements for administrative oversight.
+   */
+  async getContracts(search?: string): Promise<AdminContractItem[]> {
+    try {
+      const { data, error } = await supabase
+        .from('buyback_agreements')
+        .select(`
+          id,
+          agreement_code,
+          crop_name,
+          target_quantity,
+          unit,
+          agreed_price,
+          total_commitment,
+          status,
+          deadline,
+          created_at,
+          supplier:profiles!buyback_agreements_supplier_id_fkey(full_name, farm_name),
+          farmer:profiles!buyback_agreements_farmer_id_fkey(full_name, farm_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        console.warn('[AdminService] getContracts error:', error);
+        return [];
+      }
+
+      let items: AdminContractItem[] = data.map((d: any) => ({
+        id: d.id,
+        agreementCode: d.agreement_code || 'AGR-' + d.id.substring(0, 6).toUpperCase(),
+        cropName: d.crop_name || 'Agri Produce',
+        targetQuantity: Number(d.target_quantity) || 0,
+        unit: d.unit || 'kg',
+        agreedPrice: Number(d.agreed_price) || 0,
+        totalCommitment: Number(d.total_commitment || ((Number(d.target_quantity) || 0) * (Number(d.agreed_price) || 0))) || 0,
+        status: d.status || 'pending',
+        deadline: d.deadline,
+        createdAt: d.created_at,
+        supplierName: d.supplier?.full_name || 'Supplier',
+        supplierFarmName: d.supplier?.farm_name,
+        farmerName: d.farmer?.full_name || 'Farmer',
+        farmerFarmName: d.farmer?.farm_name,
+      }));
+
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        items = items.filter(
+          (c) =>
+            c.agreementCode.toLowerCase().includes(q) ||
+            c.cropName.toLowerCase().includes(q) ||
+            c.supplierName.toLowerCase().includes(q) ||
+            c.farmerName.toLowerCase().includes(q)
+        );
+      }
+
+      return items;
+    } catch (err) {
+      console.warn('[AdminService] getContracts caught error:', err);
+      return [];
     }
   }
 

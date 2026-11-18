@@ -1,13 +1,9 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -19,6 +15,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  AdminHeader,
+  AdminStatCard,
+  AdminVerificationCard,
+  AdminUserCard,
+  AdminContractCard,
+  AdminTraceabilityCard,
+  AdminDisputeCard,
+  AdminRejectModal,
+} from '../../src/components/admin';
+import {
   adminService,
   AdminDashboardStats,
   AdminUserItem,
@@ -26,17 +32,17 @@ import {
   TraceabilityAuditItem,
   DisputeItem,
   AdminAuditLogItem,
+  AdminContractItem,
 } from '../../src/services/admin.service';
-import { authService } from '../../src/services/auth.service';
 import { useAuth } from '../../src/store/authStore';
 import { useDarkMode } from '../../src/store/uiStore';
 import { UserRole } from '../../src/types/auth.types';
 
-type AdminTab = 'overview' | 'verifications' | 'users' | 'traceability' | 'disputes';
+type AdminTab = 'overview' | 'verifications' | 'users' | 'contracts' | 'traceability' | 'disputes';
 
 export default function AdminDashboardScreen() {
   const [isDark] = useDarkMode();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
@@ -55,6 +61,10 @@ export default function AdminDashboardScreen() {
   const [selectedReq, setSelectedReq] = useState<VerificationRequestItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  // Contracts tab state
+  const [contracts, setContracts] = useState<AdminContractItem[]>([]);
+  const [contractSearch, setContractSearch] = useState('');
+
   // Traceability tab state
   const [auditRecords, setAuditRecords] = useState<TraceabilityAuditItem[]>([]);
   const [auditSearch, setAuditSearch] = useState('');
@@ -68,13 +78,14 @@ export default function AdminDashboardScreen() {
 
   const adminId = user?.id || 'admin-fixed-id';
 
-  // Load all platform data
-  const loadDashboardData = useCallback(async () => {
+  // Load all platform governance data
+  const fetchData = useCallback(async () => {
     try {
       const [
         statsData,
         usersData,
         verifData,
+        contractsData,
         traceData,
         disputesData,
         logsData,
@@ -82,6 +93,7 @@ export default function AdminDashboardScreen() {
         adminService.getDashboardOverviewStats(),
         adminService.getUsers(userRoleFilter, userSearch),
         adminService.getVerificationRequests(verifFilter),
+        adminService.getContracts(contractSearch),
         adminService.getTraceabilityAuditRecords(auditSearch),
         adminService.getDisputes(disputeFilter),
         adminService.getAdminAuditLogs(15),
@@ -90,6 +102,7 @@ export default function AdminDashboardScreen() {
       setStats(statsData);
       setUsers(usersData);
       setVerifications(verifData);
+      setContracts(contractsData);
       setAuditRecords(traceData);
       setDisputes(disputesData);
       setAuditLogs(logsData);
@@ -99,29 +112,57 @@ export default function AdminDashboardScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userRoleFilter, userSearch, verifFilter, auditSearch, disputeFilter]);
+  }, [userRoleFilter, userSearch, verifFilter, contractSearch, auditSearch, disputeFilter]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    let isMounted = true;
+    (async () => {
+      try {
+        const [
+          statsData,
+          usersData,
+          verifData,
+          contractsData,
+          traceData,
+          disputesData,
+          logsData,
+        ] = await Promise.all([
+          adminService.getDashboardOverviewStats(),
+          adminService.getUsers(userRoleFilter, userSearch),
+          adminService.getVerificationRequests(verifFilter),
+          adminService.getContracts(contractSearch),
+          adminService.getTraceabilityAuditRecords(auditSearch),
+          adminService.getDisputes(disputeFilter),
+          adminService.getAdminAuditLogs(15),
+        ]);
+
+        if (isMounted) {
+          setStats(statsData);
+          setUsers(usersData);
+          setVerifications(verifData);
+          setContracts(contractsData);
+          setAuditRecords(traceData);
+          setDisputes(disputesData);
+          setAuditLogs(logsData);
+        }
+      } catch (err) {
+        console.warn('[AdminDashboard] load error:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userRoleFilter, userSearch, verifFilter, contractSearch, auditSearch, disputeFilter]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadDashboardData();
-  };
-
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to log out of the Admin Console?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await authService.signOut();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
+    fetchData();
   };
 
   // ── Verification Actions ──────────────────────────────────────────
@@ -143,7 +184,7 @@ export default function AdminDashboardScreen() {
             );
             if (res.success) {
               Alert.alert('Approved', `${req.userName} has been verified successfully.`);
-              loadDashboardData();
+              fetchData();
             } else {
               Alert.alert('Error', res.error || 'Failed to approve request.');
             }
@@ -170,7 +211,7 @@ export default function AdminDashboardScreen() {
     setRejectModalVisible(false);
     if (res.success) {
       Alert.alert('Rejected', 'Verification request has been rejected.');
-      loadDashboardData();
+      fetchData();
     } else {
       Alert.alert('Error', res.error || 'Failed to reject request.');
     }
@@ -214,51 +255,33 @@ export default function AdminDashboardScreen() {
   // ── Dispute Actions ───────────────────────────────────────────────
 
   const handleResolveDispute = (disp: DisputeItem, resolution: 'resolved' | 'dismissed') => {
-    Alert.prompt
-      ? Alert.prompt(
-          'Dispute Resolution',
-          `Enter resolution notes to mark dispute ${disp.disputeCode} as ${resolution}:`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Confirm',
-              onPress: async (notes) => {
-                const res = await adminService.resolveDispute(
-                  disp.id,
-                  adminId,
-                  resolution,
-                  notes || 'Resolved by administrator'
-                );
-                if (res.success) {
-                  Alert.alert('Updated', `Dispute marked as ${resolution}.`);
-                  loadDashboardData();
-                }
-              },
-            },
-          ]
-        )
-      : Alert.alert(
-          'Confirm Resolution',
-          `Mark dispute ${disp.disputeCode} as ${resolution}?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Confirm',
-              onPress: async () => {
-                const res = await adminService.resolveDispute(
-                  disp.id,
-                  adminId,
-                  resolution,
-                  'Resolved by administrator'
-                );
-                if (res.success) loadDashboardData();
-              },
-            },
-          ]
-        );
+    Alert.alert(
+      'Confirm Arbitration',
+      `Mark dispute #${disp.disputeCode} as ${resolution}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            const res = await adminService.resolveDispute(
+              disp.id,
+              adminId,
+              resolution,
+              `Arbitrated as ${resolution} by administrator.`
+            );
+            if (res.success) {
+              Alert.alert('Updated', `Dispute #${disp.disputeCode} marked as ${resolution}.`);
+              fetchData();
+            } else {
+              Alert.alert('Error', res.error || 'Failed to update dispute status.');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  // ── RENDER TABS ───────────────────────────────────────────────────
+  // ── RENDER TAB VIEWS ──────────────────────────────────────────────
 
   const renderOverviewTab = () => {
     if (!stats) return null;
@@ -268,43 +291,48 @@ export default function AdminDashboardScreen() {
         {/* KPI Grid */}
         <Text style={[styles.sectionHeading, isDark && styles.sectionHeadingDark]}>Platform Metrics</Text>
         <View style={styles.kpiGrid}>
-          <View style={[styles.kpiCard, isDark && styles.kpiCardDark]}>
-            <MaterialCommunityIcons name="account-group" size={24} color="#255D35" />
-            <Text style={[styles.kpiNumber, isDark && styles.kpiNumberDark]}>{stats.totalUsers}</Text>
-            <Text style={[styles.kpiLabel, isDark && styles.kpiLabelDark]}>Total Users</Text>
-          </View>
-
-          <View style={[styles.kpiCard, isDark && styles.kpiCardDark]}>
-            <MaterialCommunityIcons name="sprout" size={24} color="#16A34A" />
-            <Text style={[styles.kpiNumber, isDark && styles.kpiNumberDark]}>{stats.totalFarmers}</Text>
-            <Text style={[styles.kpiLabel, isDark && styles.kpiLabelDark]}>Farmers</Text>
-          </View>
-
-          <View style={[styles.kpiCard, isDark && styles.kpiCardDark]}>
-            <MaterialCommunityIcons name="cart" size={24} color="#0284C7" />
-            <Text style={[styles.kpiNumber, isDark && styles.kpiNumberDark]}>{stats.totalBuyers}</Text>
-            <Text style={[styles.kpiLabel, isDark && styles.kpiLabelDark]}>Buyers</Text>
-          </View>
-
-          <View style={[styles.kpiCard, isDark && styles.kpiCardDark]}>
-            <MaterialCommunityIcons name="storefront" size={24} color="#D97706" />
-            <Text style={[styles.kpiNumber, isDark && styles.kpiNumberDark]}>{stats.totalSuppliers}</Text>
-            <Text style={[styles.kpiLabel, isDark && styles.kpiLabelDark]}>Suppliers</Text>
-          </View>
-
-          <View style={[styles.kpiCard, isDark && styles.kpiCardDark]}>
-            <MaterialCommunityIcons name="shield-check" size={24} color="#059669" />
-            <Text style={[styles.kpiNumber, isDark && styles.kpiNumberDark]}>{stats.totalRecords}</Text>
-            <Text style={[styles.kpiLabel, isDark && styles.kpiLabelDark]}>Ledger Records</Text>
-          </View>
-
-          <View style={[styles.kpiCard, isDark && styles.kpiCardDark]}>
-            <MaterialCommunityIcons name="cash-multiple" size={24} color="#255D35" />
-            <Text style={[styles.kpiNumber, isDark && styles.kpiNumberDark]}>
-              Rs. {(stats.totalOrderVolumeLkr / 1000).toFixed(0)}k
-            </Text>
-            <Text style={[styles.kpiLabel, isDark && styles.kpiLabelDark]}>Trade Volume</Text>
-          </View>
+          <AdminStatCard
+            icon="account-group"
+            iconColor="#255D35"
+            value={stats.totalUsers}
+            label="Total Users"
+            isDark={isDark}
+          />
+          <AdminStatCard
+            icon="sprout"
+            iconColor="#16A34A"
+            value={stats.totalFarmers}
+            label="Farmers"
+            isDark={isDark}
+          />
+          <AdminStatCard
+            icon="cart"
+            iconColor="#0284C7"
+            value={stats.totalBuyers}
+            label="Buyers"
+            isDark={isDark}
+          />
+          <AdminStatCard
+            icon="storefront"
+            iconColor="#D97706"
+            value={stats.totalSuppliers}
+            label="Suppliers"
+            isDark={isDark}
+          />
+          <AdminStatCard
+            icon="shield-check"
+            iconColor="#059669"
+            value={stats.totalRecords}
+            label="Ledger Records"
+            isDark={isDark}
+          />
+          <AdminStatCard
+            icon="cash-multiple"
+            iconColor="#255D35"
+            value={`Rs. ${(stats.totalOrderVolumeLkr / 1000).toFixed(0)}k`}
+            label="Trade Volume"
+            isDark={isDark}
+          />
         </View>
 
         {/* Action Callouts */}
@@ -312,23 +340,24 @@ export default function AdminDashboardScreen() {
           <TouchableOpacity
             style={styles.alertBanner}
             onPress={() => setActiveTab('verifications')}
+            activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="alert-decagram" size={22} color="#D97706" />
+            <MaterialCommunityIcons name="alert-decagram" size={24} color="#D97706" />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.alertBannerTitle}>
                 {stats.pendingVerifications} Pending Verification Request
                 {stats.pendingVerifications > 1 ? 's' : ''}
               </Text>
               <Text style={styles.alertBannerSubtitle}>
-                Review identity documents to grant verified status.
+                Review identity documents and business registrations.
               </Text>
             </View>
             <Feather name="chevron-right" size={18} color="#D97706" />
           </TouchableOpacity>
         )}
 
-        {/* Recent Audit Trail */}
-        <Text style={[styles.sectionHeading, isDark && styles.sectionHeadingDark, { marginTop: 18 }]}>
+        {/* Recent Governance Trail */}
+        <Text style={[styles.sectionHeading, isDark && styles.sectionHeadingDark, { marginTop: 14 }]}>
           Recent Governance Activity
         </Text>
         <View style={[styles.auditBox, isDark && styles.auditBoxDark]}>
@@ -337,16 +366,15 @@ export default function AdminDashboardScreen() {
               No administrative actions logged yet.
             </Text>
           ) : (
-            auditLogs.slice(0, 5).map((log) => (
-              <View key={log.id} style={styles.auditLogRow}>
+            auditLogs.slice(0, 6).map((log) => (
+              <View key={log.id} style={[styles.auditLogRow, isDark && styles.auditLogRowDark]}>
                 <View style={styles.auditDot} />
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={[styles.auditAction, isDark && styles.auditActionDark]}>
                     {log.action.replace(/_/g, ' ')}
                   </Text>
                   <Text style={[styles.auditMeta, isDark && styles.auditMetaDark]}>
-                    By {log.adminName} on {log.targetEntity} •{' '}
-                    {new Date(log.createdAt).toLocaleDateString()}
+                    Entity: {log.targetEntity} • {new Date(log.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
               </View>
@@ -371,6 +399,7 @@ export default function AdminDashboardScreen() {
                 verifFilter === f && styles.filterChipActive,
               ]}
               onPress={() => setVerifFilter(f)}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
@@ -394,62 +423,13 @@ export default function AdminDashboardScreen() {
           </View>
         ) : (
           verifications.map((item) => (
-            <View key={item.id} style={[styles.card, isDark && styles.cardDark]}>
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{item.userName}</Text>
-                  <Text style={[styles.cardSubtitle, isDark && styles.cardSubtitleDark]}>
-                    Role: {item.userRole.toUpperCase()} • {item.userDistrict || 'Sri Lanka'}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusPill,
-                    item.status === 'approved'
-                      ? styles.statusApproved
-                      : item.status === 'rejected'
-                      ? styles.statusRejected
-                      : styles.statusPending,
-                  ]}
-                >
-                  <Text style={styles.statusPillText}>{item.status.toUpperCase()}</Text>
-                </View>
-              </View>
-
-              <View style={styles.verifDetailsBox}>
-                <Text style={[styles.verifDetailText, isDark && styles.verifDetailTextDark]}>
-                  Document Type: <Text style={{ fontWeight: '700' }}>{item.documentType.replace('_', ' ')}</Text>
-                </Text>
-                {item.documentNumber && (
-                  <Text style={[styles.verifDetailText, isDark && styles.verifDetailTextDark]}>
-                    Doc ID / Reg No: <Text style={{ fontWeight: '700' }}>{item.documentNumber}</Text>
-                  </Text>
-                )}
-                <Text style={[styles.verifDetailText, isDark && styles.verifDetailTextDark]}>
-                  Submitted: {new Date(item.submittedAt).toLocaleDateString()}
-                </Text>
-              </View>
-
-              {item.status === 'pending' && (
-                <View style={styles.cardActionsRow}>
-                  <TouchableOpacity
-                    style={styles.approveBtn}
-                    onPress={() => handleApproveVerification(item)}
-                  >
-                    <Feather name="check" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-                    <Text style={styles.approveBtnText}>Approve & Verify</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.rejectBtn}
-                    onPress={() => handleOpenRejectModal(item)}
-                  >
-                    <Feather name="x" size={16} color="#DC2626" style={{ marginRight: 4 }} />
-                    <Text style={styles.rejectBtnText}>Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+            <AdminVerificationCard
+              key={item.id}
+              item={item}
+              isDark={isDark}
+              onApprove={handleApproveVerification}
+              onReject={handleOpenRejectModal}
+            />
           ))
         )}
       </View>
@@ -472,7 +452,7 @@ export default function AdminDashboardScreen() {
         </View>
 
         {/* Role Filters */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roleFilterScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalPillScroll}>
           {(['all', 'farmer', 'buyer', 'supplier'] as const).map((r) => (
             <TouchableOpacity
               key={r}
@@ -482,6 +462,7 @@ export default function AdminDashboardScreen() {
                 userRoleFilter === r && styles.roleChipActive,
               ]}
               onPress={() => setUserRoleFilter(r)}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
@@ -502,59 +483,46 @@ export default function AdminDashboardScreen() {
           </View>
         ) : (
           users.map((u) => (
-            <View key={u.id} style={[styles.card, isDark && styles.cardDark]}>
-              <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{u.fullName}</Text>
-                  <Text style={[styles.cardSubtitle, isDark && styles.cardSubtitleDark]}>
-                    Role: {u.role.toUpperCase()} • {u.district || 'Sri Lanka'}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusPill,
-                    u.isVerified ? styles.statusApproved : styles.statusUnverified,
-                  ]}
-                >
-                  <Text style={styles.statusPillText}>
-                    {u.isVerified ? 'VERIFIED' : 'UNVERIFIED'}
-                  </Text>
-                </View>
-              </View>
+            <AdminUserCard
+              key={u.id}
+              user={u}
+              isDark={isDark}
+              onToggleVerification={handleToggleUserVerification}
+              onAdjustTrustScore={handleAdjustTrustScore}
+            />
+          ))
+        )}
+      </View>
+    );
+  };
 
-              <View style={styles.userMetricsRow}>
-                <View style={styles.trustBadge}>
-                  <MaterialCommunityIcons name="shield-check" size={14} color="#255D35" />
-                  <Text style={styles.trustBadgeText}>{u.trustScore}% Trust</Text>
-                </View>
+  const renderContractsTab = () => {
+    return (
+      <View style={styles.tabContent}>
+        <View style={[styles.searchBar, isDark && styles.searchBarDark]}>
+          <Feather name="search" size={18} color={isDark ? '#7E9F85' : '#666'} />
+          <TextInput
+            style={[styles.searchInput, isDark && styles.searchInputDark]}
+            placeholder="Filter contracts by code, crop, or party..."
+            placeholderTextColor={isDark ? '#5E7D65' : '#999'}
+            value={contractSearch}
+            onChangeText={setContractSearch}
+          />
+        </View>
 
-                {/* Trust Score Stepper */}
-                <View style={styles.stepperWrap}>
-                  <TouchableOpacity
-                    style={styles.stepperBtn}
-                    onPress={() => handleAdjustTrustScore(u, -5)}
-                  >
-                    <Text style={styles.stepperBtnText}>-5</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.stepperBtn}
-                    onPress={() => handleAdjustTrustScore(u, 5)}
-                  >
-                    <Text style={styles.stepperBtnText}>+5</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Verification Toggle */}
-                <TouchableOpacity
-                  style={[styles.verifyToggleBtn, u.isVerified && styles.verifyToggleBtnRevoke]}
-                  onPress={() => handleToggleUserVerification(u)}
-                >
-                  <Text style={styles.verifyToggleBtnText}>
-                    {u.isVerified ? 'Revoke' : 'Verify'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+        {contracts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="file-document-outline" size={48} color={isDark ? '#4ADE80' : '#255D35'} />
+            <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
+              No contracts found
+            </Text>
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+              No buyback agreements recorded on the platform yet.
+            </Text>
+          </View>
+        ) : (
+          contracts.map((contract) => (
+            <AdminContractCard key={contract.id} contract={contract} isDark={isDark} />
           ))
         )}
       </View>
@@ -577,61 +545,14 @@ export default function AdminDashboardScreen() {
 
         {auditRecords.length === 0 ? (
           <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="shield-check-outline" size={48} color={isDark ? '#4ADE80' : '#255D35'} />
             <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
               No cultivation records found
             </Text>
           </View>
         ) : (
           auditRecords.map((rec) => (
-            <View key={rec.id} style={[styles.card, isDark && styles.cardDark]}>
-              <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{rec.title}</Text>
-                  <Text style={[styles.cardSubtitle, isDark && styles.cardSubtitleDark]}>
-                    Crop: {rec.cropName} • Farmer: {rec.farmerName}
-                  </Text>
-                </View>
-                <View style={styles.hashStatusPill}>
-                  <MaterialCommunityIcons name="shield-lock" size={13} color="#255D35" />
-                  <Text style={styles.hashStatusText}>Immutable</Text>
-                </View>
-              </View>
-
-              <View style={styles.traceMetadataBox}>
-                <Text style={[styles.metaRow, isDark && styles.metaRowDark]}>
-                  Stage: <Text style={{ fontWeight: '700' }}>{rec.stage.replace('_', ' ')}</Text>
-                </Text>
-                <Text style={[styles.metaRow, isDark && styles.metaRowDark]}>
-                  Activity: {rec.activityType}
-                </Text>
-                <Text style={[styles.metaRow, isDark && styles.metaRowDark]}>
-                  Location: {rec.locationName}
-                  {rec.latitude && rec.longitude
-                    ? ` (${rec.latitude.toFixed(4)}, ${rec.longitude.toFixed(4)})`
-                    : ''}
-                </Text>
-                <Text style={[styles.metaRow, isDark && styles.metaRowDark]}>
-                  Recorded: {new Date(rec.recordedAt).toLocaleString()}
-                </Text>
-
-                {/* SHA-256 Hash Preview */}
-                <View style={styles.hashBox}>
-                  <Text style={styles.hashLabel}>SHA-256 INTEGRITY HASH:</Text>
-                  <Text style={styles.hashValue} numberOfLines={1}>
-                    {rec.integrityHash}
-                  </Text>
-                </View>
-
-                {rec.isCorrection && (
-                  <View style={styles.correctionNotice}>
-                    <Feather name="info" size={13} color="#D97706" />
-                    <Text style={styles.correctionNoticeText}>
-                      Correction Record (Linked to original #{rec.correctsId?.substring(0, 8)})
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
+            <AdminTraceabilityCard key={rec.id} record={rec} isDark={isDark} />
           ))
         )}
       </View>
@@ -641,6 +562,32 @@ export default function AdminDashboardScreen() {
   const renderDisputesTab = () => {
     return (
       <View style={styles.tabContent}>
+        {/* Filter Pills */}
+        <View style={styles.filterRow}>
+          {(['all', 'open', 'resolved'] as const).map((df) => (
+            <TouchableOpacity
+              key={df}
+              style={[
+                styles.filterChip,
+                isDark && styles.filterChipDark,
+                disputeFilter === df && styles.filterChipActive,
+              ]}
+              onPress={() => setDisputeFilter(df)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  isDark && styles.filterChipTextDark,
+                  disputeFilter === df && styles.filterChipTextActive,
+                ]}
+              >
+                {df.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {disputes.length === 0 ? (
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons name="shield-check-outline" size={48} color="#255D35" />
@@ -653,58 +600,12 @@ export default function AdminDashboardScreen() {
           </View>
         ) : (
           disputes.map((disp) => (
-            <View key={disp.id} style={[styles.card, isDark && styles.cardDark]}>
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>
-                    Case #{disp.disputeCode}
-                  </Text>
-                  <Text style={[styles.cardSubtitle, isDark && styles.cardSubtitleDark]}>
-                    Category: {disp.category.replace('_', ' ').toUpperCase()}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusPill,
-                    disp.status === 'resolved' ? styles.statusApproved : styles.statusPending,
-                  ]}
-                >
-                  <Text style={styles.statusPillText}>{disp.status.toUpperCase()}</Text>
-                </View>
-              </View>
-
-              <Text style={[styles.disputeDesc, isDark && styles.disputeDescDark]}>
-                {disp.description}
-              </Text>
-
-              <View style={styles.partiesRow}>
-                <Text style={[styles.partyText, isDark && styles.partyTextDark]}>
-                  Reporter: <Text style={{ fontWeight: '700' }}>{disp.reporterName}</Text>
-                </Text>
-                <Text style={[styles.partyText, isDark && styles.partyTextDark]}>
-                  Respondent: <Text style={{ fontWeight: '700' }}>{disp.respondentName}</Text>
-                </Text>
-              </View>
-
-              {disp.status !== 'resolved' && (
-                <View style={styles.cardActionsRow}>
-                  <TouchableOpacity
-                    style={styles.approveBtn}
-                    onPress={() => handleResolveDispute(disp, 'resolved')}
-                  >
-                    <Feather name="check-circle" size={15} color="#FFFFFF" style={{ marginRight: 4 }} />
-                    <Text style={styles.approveBtnText}>Mark Resolved</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.rejectBtn}
-                    onPress={() => handleResolveDispute(disp, 'dismissed')}
-                  >
-                    <Text style={styles.rejectBtnText}>Dismiss</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+            <AdminDisputeCard
+              key={disp.id}
+              dispute={disp}
+              isDark={isDark}
+              onResolve={handleResolveDispute}
+            />
           ))
         )}
       </View>
@@ -716,31 +617,26 @@ export default function AdminDashboardScreen() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Top Admin Header */}
-      <View style={[styles.header, isDark && styles.headerDark]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.adminBadge}>
-            <MaterialCommunityIcons name="shield-crown" size={14} color="#FFFFFF" />
-            <Text style={styles.adminBadgeText}>ADMIN CONSOLE</Text>
-          </View>
-          <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
-            TraceRoot Governance
-          </Text>
-        </View>
-
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-          <Feather name="log-out" size={18} color={isDark ? '#E8F5E9' : '#1C3723'} />
-        </TouchableOpacity>
-      </View>
+      <AdminHeader isDark={isDark} onRefresh={onRefresh} />
 
       {/* Navigation Tab Bar */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, isDark && styles.navBarDark]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navScroll}>
           {[
             { key: 'overview', label: 'Overview', icon: 'grid' },
-            { key: 'verifications', label: `Verifications (${stats?.pendingVerifications || 0})`, icon: 'check-circle' },
+            {
+              key: 'verifications',
+              label: `Verifications${stats?.pendingVerifications ? ` (${stats.pendingVerifications})` : ''}`,
+              icon: 'check-circle',
+            },
             { key: 'users', label: 'Users', icon: 'users' },
+            { key: 'contracts', label: 'Contracts', icon: 'file-text' },
             { key: 'traceability', label: 'Traceability', icon: 'shield' },
-            { key: 'disputes', label: 'Disputes', icon: 'alert-triangle' },
+            {
+              key: 'disputes',
+              label: `Disputes${stats?.openDisputes ? ` (${stats.openDisputes})` : ''}`,
+              icon: 'alert-triangle',
+            },
           ].map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -753,6 +649,7 @@ export default function AdminDashboardScreen() {
                   isActive && isDark && styles.navTabActiveDark,
                 ]}
                 onPress={() => setActiveTab(tab.key as AdminTab)}
+                activeOpacity={0.7}
               >
                 <Feather
                   name={tab.icon as any}
@@ -799,50 +696,22 @@ export default function AdminDashboardScreen() {
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'verifications' && renderVerificationsTab()}
           {activeTab === 'users' && renderUsersTab()}
+          {activeTab === 'contracts' && renderContractsTab()}
           {activeTab === 'traceability' && renderTraceabilityTab()}
           {activeTab === 'disputes' && renderDisputesTab()}
         </ScrollView>
       )}
 
       {/* Reject Verification Modal */}
-      <Modal
+      <AdminRejectModal
         visible={rejectModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRejectModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalBox, isDark && styles.modalBoxDark]}>
-            <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>Reject Request</Text>
-            <Text style={[styles.modalDesc, isDark && styles.modalDescDark]}>
-              Please provide a reason for rejecting {selectedReq?.userName}&apos;s verification:
-            </Text>
-            <TextInput
-              style={[styles.modalInput, isDark && styles.modalInputDark]}
-              placeholder="e.g. Document image is unreadable, invalid registration..."
-              placeholderTextColor={isDark ? '#5E7D65' : '#999'}
-              value={rejectReason}
-              onChangeText={setRejectReason}
-              multiline
-              numberOfLines={3}
-            />
-            <View style={styles.modalBtnsRow}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setRejectModalVisible(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmRejectBtn}
-                onPress={handleConfirmReject}
-              >
-                <Text style={styles.modalConfirmRejectText}>Confirm Reject</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        request={selectedReq}
+        rejectReason={rejectReason}
+        isDark={isDark}
+        onReasonChange={setRejectReason}
+        onClose={() => setRejectModalVisible(false)}
+        onConfirm={handleConfirmReject}
+      />
     </SafeAreaView>
   );
 }
@@ -855,61 +724,15 @@ const styles = StyleSheet.create({
   safeAreaDark: {
     backgroundColor: '#0E1710',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
-  },
-  headerDark: {
-    backgroundColor: '#162219',
-    borderBottomColor: '#1E2F23',
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  adminBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#255D35',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  adminBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1C3723',
-  },
-  headerTitleDark: {
-    color: '#E8F5E9',
-  },
-  signOutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F0EFEA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   navBar: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E8E8',
+  },
+  navBarDark: {
+    backgroundColor: '#162219',
+    borderBottomColor: '#1E2F23',
   },
   navScroll: {
     paddingHorizontal: 14,
@@ -968,35 +791,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
   },
-  kpiCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E5DF',
-  },
-  kpiCardDark: {
-    backgroundColor: '#162219',
-    borderColor: '#24382A',
-  },
-  kpiNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1C3723',
-    marginTop: 6,
-  },
-  kpiNumberDark: {
-    color: '#E8F5E9',
-  },
-  kpiLabel: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2,
-  },
-  kpiLabelDark: {
-    color: '#9CB3A0',
-  },
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1034,6 +828,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#EEE',
+  },
+  auditLogRowDark: {
+    borderBottomColor: '#24382A',
   },
   auditDot: {
     width: 8,
@@ -1085,109 +882,6 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: '#FFFFFF',
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E5DF',
-  },
-  cardDark: {
-    backgroundColor: '#162219',
-    borderColor: '#24382A',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1C3723',
-  },
-  cardTitleDark: {
-    color: '#E8F5E9',
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2,
-  },
-  cardSubtitleDark: {
-    color: '#9CB3A0',
-  },
-  statusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusApproved: {
-    backgroundColor: '#E8F5EA',
-  },
-  statusPending: {
-    backgroundColor: '#FEF3C7',
-  },
-  statusRejected: {
-    backgroundColor: '#FEE2E2',
-  },
-  statusUnverified: {
-    backgroundColor: '#F3F4F6',
-  },
-  statusPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#333',
-  },
-  verifDetailsBox: {
-    backgroundColor: '#F7F9F6',
-    borderRadius: 8,
-    padding: 10,
-    marginVertical: 6,
-  },
-  verifDetailText: {
-    fontSize: 12,
-    color: '#444',
-    marginBottom: 3,
-  },
-  verifDetailTextDark: {
-    color: '#C0D5C5',
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  approveBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#255D35',
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  approveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  rejectBtn: {
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#DC2626',
-    borderRadius: 8,
-  },
-  rejectBtnText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1212,7 +906,7 @@ const styles = StyleSheet.create({
   searchInputDark: {
     color: '#E8F5E9',
   },
-  roleFilterScroll: {
+  horizontalPillScroll: {
     marginBottom: 12,
   },
   roleChip: {
@@ -1238,137 +932,6 @@ const styles = StyleSheet.create({
   },
   roleChipTextActive: {
     color: '#FFFFFF',
-  },
-  userMetricsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EFEA',
-  },
-  trustBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#E8F5EA',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  trustBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#255D35',
-  },
-  stepperWrap: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  stepperBtn: {
-    backgroundColor: '#EAE7E0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  stepperBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#333',
-  },
-  verifyToggleBtn: {
-    backgroundColor: '#255D35',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  verifyToggleBtnRevoke: {
-    backgroundColor: '#DC2626',
-  },
-  verifyToggleBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  hashStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#E8F5EA',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  hashStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#255D35',
-  },
-  traceMetadataBox: {
-    backgroundColor: '#F7F9F6',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 6,
-  },
-  metaRow: {
-    fontSize: 12,
-    color: '#444',
-    marginBottom: 3,
-  },
-  metaRowDark: {
-    color: '#C0D5C5',
-  },
-  hashBox: {
-    backgroundColor: '#EEEFEA',
-    borderRadius: 6,
-    padding: 6,
-    marginTop: 6,
-  },
-  hashLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#666',
-  },
-  hashValue: {
-    fontSize: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    color: '#255D35',
-    marginTop: 2,
-  },
-  correctionNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-  },
-  correctionNoticeText: {
-    fontSize: 11,
-    color: '#D97706',
-    fontWeight: '600',
-  },
-  disputeDesc: {
-    fontSize: 12,
-    color: '#444',
-    lineHeight: 17,
-    marginVertical: 6,
-  },
-  disputeDescDark: {
-    color: '#C0D5C5',
-  },
-  partiesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EFEA',
-  },
-  partyText: {
-    fontSize: 11,
-    color: '#666',
-  },
-  partyTextDark: {
-    color: '#9CB3A0',
   },
   centerLoading: {
     flex: 1,
@@ -1416,80 +979,5 @@ const styles = StyleSheet.create({
   },
   emptyTextDark: {
     color: '#9CB3A0',
-  },
-  // Modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalBox: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-  },
-  modalBoxDark: {
-    backgroundColor: '#162219',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1C3723',
-  },
-  modalTitleDark: {
-    color: '#E8F5E9',
-  },
-  modalDesc: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 6,
-    marginBottom: 10,
-  },
-  modalDescDark: {
-    color: '#9CB3A0',
-  },
-  modalInput: {
-    backgroundColor: '#F7F9F6',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 13,
-    borderWidth: 1,
-    borderColor: '#E2E5DF',
-    minHeight: 70,
-    textAlignVertical: 'top',
-  },
-  modalInputDark: {
-    backgroundColor: '#1F3124',
-    borderColor: '#2A4331',
-    color: '#E8F5E9',
-  },
-  modalBtnsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 14,
-  },
-  modalCancelBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  modalCancelText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  modalConfirmRejectBtn: {
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  modalConfirmRejectText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });
