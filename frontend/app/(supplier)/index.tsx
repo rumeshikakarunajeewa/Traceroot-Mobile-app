@@ -57,8 +57,14 @@ export default function SupplierDashboardScreen() {
   }, []);
 
   useEffect(() => {
-    handleRefresh();
-  }, [handleRefresh]);
+    Promise.all([
+      loadCatalogueProducts(undefined, true),
+      loadSupplierOrders(undefined, true),
+      loadSupplierProfile(true),
+    ]).catch((e) => {
+      console.warn('Error loading supplier dashboard:', e);
+    });
+  }, []);
 
   // Map orders to FarmerRequestItem format for the dashboard
   const requests: FarmerRequestItem[] = useMemo(() => {
@@ -125,8 +131,12 @@ export default function SupplierDashboardScreen() {
   }), [profile, pendingCount]);
 
   const handleQuickAction = (action: SupplierQuickActionItem) => {
+    if (action.id === 'add_product') {
+      router.push('/(supplier)/catalogue/new' as any);
+      return;
+    }
     if (action.route) {
-      router.navigate(action.route as any);
+      router.push(action.route as any);
     }
   };
 
@@ -148,15 +158,15 @@ export default function SupplierDashboardScreen() {
   };
 
   const handleViewAllRequests = () => {
-    router.navigate('/orders' as any);
+    router.push('/(supplier)/orders' as any);
   };
 
   const handleManageProducts = () => {
-    router.navigate('/catalogue' as any);
+    router.push('/(supplier)/catalogue' as any);
   };
 
   const handleProductPress = (product: TopProductItem) => {
-    router.navigate('/catalogue' as any);
+    router.push('/(supplier)/catalogue' as any);
   };
 
   const handleStorePress = () => {

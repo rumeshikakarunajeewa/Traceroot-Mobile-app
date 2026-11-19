@@ -16,6 +16,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -274,7 +275,7 @@ export default function SupplierNewProductScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.navigate('/catalogue' as any);
+      router.replace('/(supplier)/catalogue' as any);
     }
   };
 
@@ -369,7 +370,7 @@ export default function SupplierNewProductScreen() {
                   if (router.canGoBack()) {
                     router.back();
                   } else {
-                    router.navigate('/catalogue' as any);
+                    router.replace('/(supplier)/catalogue' as any);
                   }
                 }}
                 style={[styles.backCircle, isDark && styles.backCircleDark]}
@@ -865,21 +866,31 @@ export default function SupplierNewProductScreen() {
             <TouchableOpacity
               activeOpacity={0.88}
               onPress={handlePublish}
+              disabled={isPublishing}
               style={[
                 styles.publishButton,
                 isDark && styles.publishButtonDark,
+                isPublishing && { opacity: 0.75 },
               ]}
               accessibilityRole="button"
               accessibilityLabel={t('publishToCatalogueBtn')}
             >
-              <MaterialCommunityIcons
-                name="sprout"
-                size={22}
-                color="#FFFFFF"
-                style={{ marginRight: 8 }}
-              />
+              {isPublishing ? (
+                <ActivityIndicator
+                  color="#FFFFFF"
+                  size="small"
+                  style={{ marginRight: 8 }}
+                />
+              ) : (
+                <MaterialCommunityIcons
+                  name="sprout"
+                  size={22}
+                  color="#FFFFFF"
+                  style={{ marginRight: 8 }}
+                />
+              )}
               <Text style={styles.publishButtonText}>
-                {t('publishToCatalogueBtn')}
+                {isPublishing ? 'Publishing...' : t('publishToCatalogueBtn')}
               </Text>
             </TouchableOpacity>
           </ScrollView>

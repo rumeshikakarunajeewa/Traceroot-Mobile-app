@@ -60,20 +60,16 @@ export default function SupplierCatalogueScreen() {
   };
 
   const handleBackToDashboard = () => {
-    router.navigate('/(supplier)' as any);
+    router.replace('/(supplier)' as any);
   };
 
   const handleAddNewProduct = () => {
-    try {
-      router.navigate('/catalogue/new' as any);
-    } catch {
-      router.push('/catalogue/new' as any);
-    }
+    router.push('/(supplier)/catalogue/new' as any);
   };
 
   const handleEditProduct = (product: CatalogueProduct) => {
-    router.navigate({
-      pathname: '/catalogue/[id]' as any,
+    router.push({
+      pathname: '/(supplier)/catalogue/[id]' as any,
       params: { id: product.id },
     });
   };
