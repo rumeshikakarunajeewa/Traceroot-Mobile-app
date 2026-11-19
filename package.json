@@ -11,6 +11,6 @@
     "typecheck": "npm run typecheck --prefix frontend",
     "lint": "npm run lint --prefix frontend",
     "db:push": "supabase db push --workdir database",
-    "backend:deploy": "supabase functions deploy --workdir backend"
+    "backend:deploy": "npx supabase functions deploy verify-live-capture --project-ref twwuqaxmoiaqmvvcwqqw && npx supabase functions deploy send-notification --project-ref twwuqaxmoiaqmvvcwqqw && npx supabase functions deploy sync-offline-records --project-ref twwuqaxmoiaqmvvcwqqw"
   }
 }
