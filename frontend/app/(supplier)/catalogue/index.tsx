@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
@@ -25,6 +25,7 @@ import { CatalogueCategory, CatalogueProduct } from '../../../src/types/supplier
 export default function SupplierCatalogueScreen() {
   const [isDark] = useDarkMode();
   const { t } = useLanguage();
+  const navigation = useNavigation<any>();
   const [selectedCategory, setSelectedCategory] = useState<CatalogueCategory>('All');
   const [products] = useSupplierCatalogue();
   const [refreshing, setRefreshing] = useState(false);
@@ -60,18 +61,34 @@ export default function SupplierCatalogueScreen() {
   };
 
   const handleBackToDashboard = () => {
-    router.replace('/(supplier)' as any);
+    try {
+      navigation.navigate('index');
+    } catch {
+      router.replace('/(supplier)' as any);
+    }
   };
 
   const handleAddNewProduct = () => {
-    router.push('/(supplier)/catalogue/new' as any);
+    try {
+      navigation.navigate('catalogue/new');
+    } catch {
+      try {
+        router.navigate('/catalogue/new' as any);
+      } catch {
+        router.push('/catalogue/new' as any);
+      }
+    }
   };
 
   const handleEditProduct = (product: CatalogueProduct) => {
-    router.push({
-      pathname: '/(supplier)/catalogue/[id]' as any,
-      params: { id: product.id },
-    });
+    try {
+      navigation.navigate('catalogue/[id]', { id: product.id });
+    } catch {
+      router.navigate({
+        pathname: '/catalogue/[id]' as any,
+        params: { id: product.id },
+      });
+    }
   };
 
   const handleProductPress = (product: CatalogueProduct) => {
