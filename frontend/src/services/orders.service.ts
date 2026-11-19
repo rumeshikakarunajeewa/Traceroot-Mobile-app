@@ -11,7 +11,6 @@ import {
   OrderStatus as BuyerOrderStatus,
   OrderTrackingMilestone,
 } from '../types/buyer.types';
-import { mockProduceListings, mockBuyerOrders } from '../constants/buyerMockData';
 
 export interface PlaceOrderParams {
   buyerId: string;
@@ -175,15 +174,10 @@ class OrdersService {
       }
 
       const combined = [...mappedFromListings, ...mappedFromHarvests];
-      if (combined.length > 0) {
-        return combined;
-      }
-
-      // Fallback to initial mock listings if database is brand new and has no listed produce yet
-      return mockProduceListings;
+      return combined;
     } catch (err) {
       console.warn('[OrdersService] Error fetching marketplace listings:', err);
-      return mockProduceListings;
+      return [];
     }
   }
 

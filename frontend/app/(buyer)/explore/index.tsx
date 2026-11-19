@@ -20,7 +20,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { colors } from '../../../src/lib/theme';
 import { useDarkMode } from '../../../src/store/uiStore';
-import { mockProduceListings } from '../../../src/constants/buyerMockData';
 import { ProduceListing } from '../../../src/types/buyer.types';
 import { ordersService } from '../../../src/services/orders.service';
 import { useAuth } from '../../../src/store/authStore';
@@ -48,7 +47,7 @@ export default function BuyerExploreScreen() {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [listings, setListings] = useState<ProduceListing[]>(mockProduceListings);
+  const [listings, setListings] = useState<ProduceListing[]>([]);
   const [selectedListing, setSelectedListing] = useState<ProduceListing | null>(null);
 
   // Direct Order Placement state
@@ -61,15 +60,12 @@ export default function BuyerExploreScreen() {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setIsLoading(true);
       }
       const data = await ordersService.fetchMarketplaceListings();
-      if (data && data.length > 0) {
-        setListings(data);
-      }
+      setListings(data || []);
     } catch (e) {
       console.warn('Error loading marketplace listings:', e);
+      setListings([]);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -77,8 +73,26 @@ export default function BuyerExploreScreen() {
   }, []);
 
   useEffect(() => {
-    loadListings();
-  }, [loadListings]);
+    let isMounted = true;
+    ordersService.fetchMarketplaceListings()
+      .then((data) => {
+        if (isMounted) {
+          setListings(data || []);
+          setIsLoading(false);
+        }
+      })
+      .catch((e) => {
+        console.warn('Error loading marketplace listings:', e);
+        if (isMounted) {
+          setListings([]);
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (paramSearch !== prevParam) {
     setPrevParam(paramSearch);
@@ -133,7 +147,7 @@ export default function BuyerExploreScreen() {
         }
         return 0; // recommended order
       });
-  }, [searchQuery, farmingType, category, sortOption]);
+  }, [listings, searchQuery, farmingType, category, sortOption]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -352,7 +366,14 @@ export default function BuyerExploreScreen() {
           />
         }
       >
-        {filteredListings.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : colors.buyer.forestDark} />
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 12 }]}>
+              Loading verified produce...
+            </Text>
+          </View>
+        ) : filteredListings.length > 0 ? (
           filteredListings.map((listing) => (
             <HarvestListingCard
               key={listing.id}

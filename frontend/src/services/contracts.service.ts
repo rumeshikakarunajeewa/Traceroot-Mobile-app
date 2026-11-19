@@ -2,6 +2,7 @@
 // Supabase Service for Supplier Buyback Agreements and Farmer Contracts
 
 import { supabase } from '../lib/supabase';
+import { ActiveContractItem } from '../types/buyer.types';
 
 export interface BuybackAgreement {
   id: string;
@@ -235,6 +236,57 @@ class ContractsService {
     return () => {
       supabase.removeChannel(channel);
     };
+  }
+
+  /**
+   * Fetch active cultivation / buyback agreements for a Buyer.
+   */
+  async getBuyerContracts(buyerId: string): Promise<ActiveContractItem[]> {
+    try {
+      if (!buyerId) return [];
+
+      const { data, error } = await supabase
+        .from('buyback_agreements')
+        .select(`
+          id,
+          agreement_code,
+          supplier_id,
+          farmer_id,
+          crop_name,
+          target_quantity,
+          unit,
+          agreed_price,
+          total_commitment,
+          deadline,
+          status,
+          created_at,
+          profiles!buyback_agreements_farmer_id_fkey (
+            id,
+            full_name,
+            farm_name
+          )
+        `)
+        .or(`supplier_id.eq.${buyerId},farmer_id.eq.${buyerId}`)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        return [];
+      }
+
+      return data.map((d: any) => ({
+        id: d.id,
+        code: d.agreement_code || 'CF-' + d.id.substring(0, 4).toUpperCase(),
+        cropName: d.crop_name || 'Produce',
+        quantityKg: Number(d.target_quantity) || 0,
+        farmerName: d.profiles?.full_name || d.profiles?.farm_name || 'Verified Farmer',
+        dueDate: d.deadline ? `Due ${new Date(d.deadline).toLocaleDateString()}` : 'In Progress',
+        progressPercentage: d.status === 'fulfilled' ? 100 : d.status === 'active' ? 60 : 20,
+        status: d.status === 'fulfilled' ? 'Completed' : d.status === 'active' ? 'In Progress' : 'Pending',
+        coverImageUrl: 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=600&q=80',
+      }));
+    } catch {
+      return [];
+    }
   }
 
   // ── Helper mapping ──────────────────────────────────────────────

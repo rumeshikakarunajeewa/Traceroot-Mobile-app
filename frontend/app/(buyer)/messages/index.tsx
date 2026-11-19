@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,15 @@ import {
   TouchableOpacity,
   TextInput,
   RefreshControl,
-
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { mockBuyerMessages } from '../../../src/constants/buyerMockData';
+import { messagesService } from '../../../src/services/messages.service';
+import { useAuth } from '../../../src/store/authStore';
 import { BuyerMessageThread } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
 import { useDarkMode } from '../../../src/store/uiStore';
@@ -24,27 +25,76 @@ type FilterTab = 'All' | 'Requests' | 'Notes' | 'Unread';
 
 export default function BuyerMessagesScreen() {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [threads, setThreads] = useState<BuyerMessageThread[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const userId = user?.id;
+
+  // Load conversations from Supabase
+  const loadThreads = useCallback(async () => {
+    if (!userId) {
+      setThreads([]);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const data = await messagesService.fetchConversations(userId);
+      setThreads(data);
+    } catch (err) {
+      console.warn('[BuyerMessages] Error loading conversations:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!userId) {
+      return;
+    }
+
+    messagesService.fetchConversations(userId)
+      .then((data) => {
+        if (isMounted) {
+          setThreads(data);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('[BuyerMessages] Error loading conversations:', err);
+        if (isMounted) setIsLoading(false);
+      });
+
+    const unsubscribe = messagesService.subscribeToMessages(userId, () => {
+      loadThreads();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [userId, loadThreads]);
 
   // Pull-to-refresh handler
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 600);
+    await loadThreads();
+    setRefreshing(false);
   };
 
   // Unread count calculated dynamically
   const unreadCount = useMemo(() => {
-    return mockBuyerMessages.filter((m) => m.isUnread).length;
-  }, []);
+    return threads.filter((m) => m.isUnread).length;
+  }, [threads]);
 
   // Filter messages based on active chip and search query
   const filteredMessages = useMemo(() => {
-    return mockBuyerMessages.filter((msg) => {
+    return threads.filter((msg) => {
       // Filter tab check
       if (activeTab === 'Requests' && msg.category !== 'Request') return false;
       if (activeTab === 'Notes' && msg.category !== 'Note') return false;
@@ -60,7 +110,7 @@ export default function BuyerMessagesScreen() {
 
       return true;
     });
-  }, [activeTab, searchQuery]);
+  }, [threads, activeTab, searchQuery]);
 
   const handleThreadPress = (thread: BuyerMessageThread) => {
     router.push({
@@ -288,7 +338,14 @@ export default function BuyerMessagesScreen() {
           />
         }
       >
-        {filteredMessages.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1D3724'} />
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 16 }]}>
+              Loading conversations...
+            </Text>
+          </View>
+        ) : filteredMessages.length > 0 ? (
           filteredMessages.map((thread) => (
             <BuyerMessageCard
               key={thread.id}
@@ -306,10 +363,12 @@ export default function BuyerMessagesScreen() {
               />
             </View>
             <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
-              No messages found
+              {threads.length === 0 ? 'No messages yet' : 'No messages found'}
             </Text>
             <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
-              {searchQuery.trim().length > 0
+              {threads.length === 0
+                ? 'Connect with farmers and suppliers through the marketplace to start a conversation.'
+                : searchQuery.trim().length > 0
                 ? `No results matching "${searchQuery}".`
                 : `There are currently no ${activeTab.toLowerCase()} messages in your inbox.`}
             </Text>

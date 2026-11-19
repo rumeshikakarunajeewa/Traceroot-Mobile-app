@@ -13,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
 import { BuyerOrder } from '../../../src/types/buyer.types';
 import { ordersService } from '../../../src/services/orders.service';
 import { getOrderStatusConfig } from '../../../src/components/orders/BuyerOrderCard';
@@ -23,14 +22,15 @@ export default function OrderDetailScreen() {
   const [isDark] = useDarkMode();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // Find order by ID or orderNumber with live fallback
-  const [order, setOrder] = useState<BuyerOrder>(() => {
-    return mockBuyerOrders.find((o) => o.id === id || o.orderNumber === id) || mockBuyerOrders[0];
-  });
+  const [order, setOrder] = useState<BuyerOrder | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     async function load() {
-      if (!id) return;
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const liveOrder = await ordersService.fetchOrderById(id);
         if (liveOrder) {
@@ -38,6 +38,8 @@ export default function OrderDetailScreen() {
         }
       } catch (err) {
         console.warn('Error loading live order detail:', err);
+      } finally {
+        setIsLoading(false);
       }
     }
     load();
@@ -54,6 +56,44 @@ export default function OrderDetailScreen() {
       unsubscribe();
     };
   }, [id]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
+        <View style={[styles.navBar, isDark && styles.navBarDark]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, isDark && styles.backButtonDark]}>
+            <MaterialCommunityIcons name="arrow-left" size={20} color={isDark ? '#F0F5F1' : '#16301A'} />
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, isDark && styles.navTitleDark, { marginLeft: 12 }]}>Order Details</Text>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: isDark ? '#98B39B' : '#6A7B6B' }}>Loading order details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!order) {
+    return (
+      <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
+        <View style={[styles.navBar, isDark && styles.navBarDark]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, isDark && styles.backButtonDark]}>
+            <MaterialCommunityIcons name="arrow-left" size={20} color={isDark ? '#F0F5F1' : '#16301A'} />
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, isDark && styles.navTitleDark, { marginLeft: 12 }]}>Order Not Found</Text>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={isDark ? '#EF4444' : '#DC2626'} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#F0F5F1' : '#16301A', marginTop: 12 }}>
+            Order Does Not Exist
+          </Text>
+          <Text style={{ fontSize: 13, color: isDark ? '#98B39B' : '#6A7B6B', textAlign: 'center', marginTop: 6 }}>
+            The requested order could not be located in your account.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const statusConfig = getOrderStatusConfig(order.status);
   const isGreenhouse = order.farmingType === 'greenhouse';

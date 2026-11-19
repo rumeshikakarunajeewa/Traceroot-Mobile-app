@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
 import { BuyerOrder } from '../../../src/types/buyer.types';
 import { BuyerOrderCard } from '../../../src/components/orders/BuyerOrderCard';
 import { OrderDetailModal } from '../../../src/components/orders/OrderDetailModal';
@@ -30,29 +29,22 @@ export default function BuyerOrdersScreen() {
   const { user } = useAuth();
   const buyerId = user?.id || 'buyer-1';
 
-  const [orders, setOrders] = useState<BuyerOrder[]>(mockBuyerOrders);
+  const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
-  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
-    'ord-001': true, // Default expanded card
-  });
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<BuyerOrder | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadBuyerOrders = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
-      else setIsLoading(true);
 
       const data = await ordersService.fetchBuyerOrders(buyerId);
-      if (data && data.length > 0) {
-        setOrders(data);
-      } else {
-        // Fall back to existing list or empty if no orders
-        setOrders(data);
-      }
+      setOrders(data || []);
     } catch (e) {
       console.warn('Error loading buyer orders:', e);
+      setOrders([]);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -60,7 +52,21 @@ export default function BuyerOrdersScreen() {
   }, [buyerId]);
 
   useEffect(() => {
-    loadBuyerOrders();
+    let isMounted = true;
+    ordersService.fetchBuyerOrders(buyerId)
+      .then((data) => {
+        if (isMounted) {
+          setOrders(data || []);
+          setIsLoading(false);
+        }
+      })
+      .catch((e) => {
+        console.warn('Error loading buyer orders:', e);
+        if (isMounted) {
+          setOrders([]);
+          setIsLoading(false);
+        }
+      });
 
     // Subscribe to Realtime updates for order status transitions
     const unsubscribe = ordersService.subscribeToOrders({ buyerId }, () => {
@@ -68,6 +74,7 @@ export default function BuyerOrdersScreen() {
     });
 
     return () => {
+      isMounted = false;
       unsubscribe();
     };
   }, [buyerId, loadBuyerOrders]);
@@ -312,7 +319,14 @@ export default function BuyerOrdersScreen() {
         )}
 
         {/* Order Cards List */}
-        {filteredOrders.length > 0 ? (
+        {isLoading ? (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1D3724'} />
+            <Text style={{ fontSize: 13, color: isDark ? '#98B39B' : '#6A7B6B', marginTop: 12 }}>
+              Loading orders...
+            </Text>
+          </View>
+        ) : filteredOrders.length > 0 ? (
           filteredOrders.map((order) => (
             <BuyerOrderCard
               key={order.id}

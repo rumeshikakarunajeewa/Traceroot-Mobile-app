@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useAuth } from '../../../src/store/authStore';
+import { messagesService } from '../../../src/services/messages.service';
 import { StatusBar } from 'expo-status-bar';
 
 interface ChatMessage {
@@ -26,6 +28,7 @@ interface ChatMessage {
 
 export default function BuyerMessageDetailScreen() {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{
     userId?: string;
     name?: string;
@@ -33,47 +36,124 @@ export default function BuyerMessageDetailScreen() {
     avatar?: string;
   }>();
 
-  const recipientName = params.name || 'Saman Perera';
+  const recipientName = params.name || 'TraceRoot Contact';
   const recipientAvatar =
     params.avatar ||
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80';
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
   const isRequest = params.category === 'Request';
 
   const [inputMessage, setInputMessage] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'm1',
-      sender: 'other',
-      text:
-        params.name === 'Dr. Silva (Agronomist)'
-          ? 'Soil moisture levels look great based on your recent records. Keep up the current irrigation schedule for optimal yields.'
-          : params.name === 'FreshMart Ltd'
-          ? 'We would like to increase our order quantity for next week to 500kg. Please let me know if your current batch capacity supports this.'
-          : params.name === 'Green Valley Co-op'
-          ? 'Reminder: The organic farming certification renewal deadline is approaching next month.'
-          : 'Can you confirm the exact harvest date for the upcoming tomato batch? Need to arrange cold storage transport.',
-      time: '10:15 AM',
-    },
-    {
-      id: 'm2',
-      sender: 'me',
-      text: 'Thanks for reaching out! We are finalizing the quality metrics and schedule today.',
-      time: '10:20 AM',
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const scrollViewRef = useRef<any>(null);
 
-  const handleSend = () => {
-    if (!inputMessage.trim()) return;
+  const userId = user?.id;
+  const otherUserId = params.userId;
 
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
+  // Load chat history from Supabase
+  const loadHistory = useCallback(async () => {
+    if (!userId || !otherUserId) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const items = await messagesService.fetchMessagesBetween(userId, otherUserId);
+      const mapped: ChatMessage[] = items.map((m) => {
+        const isMe = m.senderId === userId;
+        const d = new Date(m.createdAt);
+        const time = !isNaN(d.getTime())
+          ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'Just now';
+        return {
+          id: m.id,
+          sender: isMe ? 'me' : 'other',
+          text: m.content,
+          time,
+        };
+      });
+      setMessages(mapped);
+    } catch (err) {
+      console.warn('[BuyerMessageDetail] Error loading chat:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, otherUserId]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!userId || !otherUserId) return;
+
+    messagesService.fetchMessagesBetween(userId, otherUserId)
+      .then((items) => {
+        if (!isMounted) return;
+        const mapped: ChatMessage[] = items.map((m) => {
+          const isMe = m.senderId === userId;
+          const d = new Date(m.createdAt);
+          const time = !isNaN(d.getTime())
+            ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now';
+          return {
+            id: m.id,
+            sender: isMe ? 'me' : 'other',
+            text: m.content,
+            time,
+          };
+        });
+        setMessages(mapped);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.warn('[BuyerMessageDetail] Error loading chat:', err);
+        if (isMounted) setIsLoading(false);
+      });
+
+    const unsubscribe = messagesService.subscribeToMessages(userId, (newMsg: any) => {
+      if (newMsg.sender_id === otherUserId || newMsg.receiver_id === otherUserId) {
+        loadHistory();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [userId, otherUserId, loadHistory]);
+
+  useEffect(() => {
+    // Scroll to end when messages load
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages.length]);
+
+  const handleSend = async () => {
+    const trimmed = inputMessage.trim();
+    if (!trimmed || !user?.id || !params.userId || isSending) return;
+
+    setInputMessage('');
+    setIsSending(true);
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: tempId,
       sender: 'me',
-      text: inputMessage.trim(),
+      text: trimmed,
       time: 'Just now',
     };
+    setMessages((prev) => [...prev, optimisticMsg]);
 
-    setMessages((prev) => [...prev, newMessage]);
-    setInputMessage('');
+    const res = await messagesService.sendMessage(user.id, params.userId, trimmed);
+    setIsSending(false);
+
+    if (!res.success) {
+      console.warn('[BuyerMessageDetail] Failed to send message:', res.error);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+    } else {
+      loadHistory();
+    }
   };
 
   return (
@@ -148,66 +228,90 @@ export default function BuyerMessageDetailScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={[styles.messagesList, isDark && styles.messagesListDark]}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={[
+            styles.messagesContent,
+            (isLoading || messages.length === 0) && { flex: 1, justifyContent: 'center', alignItems: 'center' },
+          ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.dateStamp, isDark && styles.dateStampDark]}>
-            <Text
-              style={[styles.dateStampText, isDark && styles.dateStampTextDark]}
-            >
-              Today
-            </Text>
-          </View>
-
-          {messages.map((item) => {
-            const isMe = item.sender === 'me';
-            return (
-              <View
-                key={item.id}
-                style={[
-                  styles.messageBubbleContainer,
-                  isMe ? styles.messageBubbleMe : styles.messageBubbleOther,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.messageBubble,
-                    isMe
-                      ? [styles.bubbleMeBg, isDark && styles.bubbleMeBgDark]
-                      : [styles.bubbleOtherBg, isDark && styles.bubbleOtherBgDark],
-                  ]}
+          {isLoading ? (
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1D3724'} />
+          ) : messages.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
+              <MaterialCommunityIcons
+                name="chat-processing-outline"
+                size={40}
+                color={isDark ? '#7E9B82' : '#8C9E8D'}
+              />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: isDark ? '#F0F5F1' : '#162C1A', marginTop: 12 }}>
+                Start a conversation
+              </Text>
+              <Text style={{ fontSize: 13, color: isDark ? '#7E9B82' : '#758876', textAlign: 'center', marginTop: 4 }}>
+                Send your message to {recipientName}.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View style={[styles.dateStamp, isDark && styles.dateStampDark]}>
+                <Text
+                  style={[styles.dateStampText, isDark && styles.dateStampTextDark]}
                 >
-                  <Text
-                    style={[
-                      styles.messageText,
-                      isMe
-                        ? styles.messageTextMe
-                        : [
-                            styles.messageTextOther,
-                            isDark && styles.messageTextOtherDark,
-                          ],
-                    ]}
-                  >
-                    {item.text}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.timestampText,
-                      isMe
-                        ? styles.timestampMe
-                        : [
-                            styles.timestampOther,
-                            isDark && styles.timestampOtherDark,
-                          ],
-                    ]}
-                  >
-                    {item.time}
-                  </Text>
-                </View>
+                  Messages
+                </Text>
               </View>
-            );
-          })}
+
+              {messages.map((item) => {
+                const isMe = item.sender === 'me';
+                return (
+                  <View
+                    key={item.id}
+                    style={[
+                      styles.messageBubbleContainer,
+                      isMe ? styles.messageBubbleMe : styles.messageBubbleOther,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        isMe
+                          ? [styles.bubbleMeBg, isDark && styles.bubbleMeBgDark]
+                          : [styles.bubbleOtherBg, isDark && styles.bubbleOtherBgDark],
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.messageText,
+                          isMe
+                            ? styles.messageTextMe
+                            : [
+                                styles.messageTextOther,
+                                isDark && styles.messageTextOtherDark,
+                              ],
+                        ]}
+                      >
+                        {item.text}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.timestampText,
+                          isMe
+                            ? styles.timestampMe
+                            : [
+                                styles.timestampOther,
+                                isDark && styles.timestampOtherDark,
+                              ],
+                        ]}
+                      >
+                        {item.time}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </ScrollView>
 
         {/* Input Bar */}

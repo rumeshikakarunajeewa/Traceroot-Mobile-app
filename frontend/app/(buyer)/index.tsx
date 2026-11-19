@@ -23,12 +23,11 @@ import { BuyerQuickActions } from '../../src/components/buyer/BuyerQuickActions'
 import { BuyerTraceabilityCard } from '../../src/components/buyer/BuyerTraceabilityCard';
 import { BuyerListingCard } from '../../src/components/buyer/BuyerListingCard';
 import { BuyerContractCard } from '../../src/components/buyer/BuyerContractCard';
+import { ordersService } from '../../src/services/orders.service';
+import { contractsService } from '../../src/services/contracts.service';
 
 import {
-  mockBuyerStats,
   mockQuickActions,
-  mockProduceListings,
-  mockActiveContract,
   BUYER_HERO_IMAGE,
 } from '../../src/constants/buyerMockData';
 import {
@@ -42,50 +41,49 @@ export default function BuyerHomeScreen() {
   const [isDark] = useDarkMode();
   const { user, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<BuyerProfile | null>(null);
+  const [listings, setListings] = useState<ProduceListing[]>([]);
+  const [activeContracts, setActiveContracts] = useState<ActiveContractItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [actions, setActions] = useState(mockQuickActions);
 
-  // Refresh profile whenever buyer navigates to or focuses Home screen tab
+  // Load all buyer dashboard data
+  const loadHomeData = useCallback(async () => {
+    try {
+      const currentUser = user || (await authService.getSession())?.user;
+      const [fetchedListings, realProfile] = await Promise.all([
+        ordersService.fetchMarketplaceListings(),
+        currentUser?.id ? profilesService.getBuyerProfile(currentUser.id) : null,
+      ]);
+
+      if (fetchedListings) {
+        setListings(fetchedListings);
+      }
+      if (realProfile) {
+        setProfile(realProfile);
+      }
+
+      if (currentUser?.id) {
+        const contracts = await contractsService.getBuyerContracts(currentUser.id);
+        setActiveContracts(contracts);
+      }
+    } catch (err) {
+      console.warn('Failed to load buyer home data:', err);
+    }
+  }, [user]);
+
+  // Refresh data whenever buyer navigates to or focuses Home screen tab
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-      (async () => {
-        try {
-          const currentUser = user || (await authService.getSession())?.user;
-          if (currentUser?.id && isMounted) {
-            const realProfile = await profilesService.getBuyerProfile(currentUser.id);
-            if (realProfile && isMounted) {
-              setProfile(realProfile);
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to load buyer profile on home screen:', err);
-        }
-      })();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [user])
+      loadHomeData();
+    }, [loadHomeData])
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try {
-      const currentUser = user || (await authService.getSession())?.user;
-      if (currentUser?.id) {
-        const realProfile = await profilesService.getBuyerProfile(currentUser.id);
-        if (realProfile) {
-          setProfile(realProfile);
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to refresh buyer profile on home screen:', err);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [user]);
+    await loadHomeData();
+    setRefreshing(false);
+  }, [loadHomeData]);
 
   // Construct safe display profile for account owner
   const fallbackName = authProfile?.full_name || 'Buyer';
@@ -97,8 +95,8 @@ export default function BuyerHomeScreen() {
           .split(' ')
           .filter(Boolean)
           .map((part: string) => part[0])
-          .join('')
           .slice(0, 2)
+          .join('')
           .toUpperCase()
       : 'TR',
     isVerified: false,
@@ -110,13 +108,13 @@ export default function BuyerHomeScreen() {
   };
 
   const dynamicStats = {
-    activeOrders: profile?.ordersCount ?? mockBuyerStats.activeOrders,
-    contractsCount: profile?.contractsCount ?? mockBuyerStats.contractsCount,
-    verifiedFarmsCount: mockBuyerStats.verifiedFarmsCount,
+    activeOrders: profile?.ordersCount ?? 0,
+    contractsCount: activeContracts.length || (profile?.contractsCount ?? 0),
+    verifiedFarmsCount: listings.length > 0 ? new Set(listings.map((l) => l.farmerId)).size : 0,
   };
 
   // Filter listings based on search query
-  const filteredListings = mockProduceListings.filter((listing) => {
+  const filteredListings = listings.filter((listing) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -277,10 +275,27 @@ export default function BuyerHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <BuyerContractCard
-          contract={mockActiveContract}
-          onPress={handleContractPress}
-        />
+        {activeContracts.length > 0 ? (
+          <BuyerContractCard
+            contract={activeContracts[0]}
+            onPress={handleContractPress}
+          />
+        ) : (
+          <View style={[styles.emptyContractCard, isDark && styles.emptyContractCardDark]}>
+            <MaterialCommunityIcons
+              name="file-document-outline"
+              size={32}
+              color={isDark ? '#4ADE80' : '#2E6930'}
+              style={{ marginBottom: 6 }}
+            />
+            <Text style={[styles.emptyContractTitle, isDark && styles.emptyContractTitleDark]}>
+              No Active Contracts
+            </Text>
+            <Text style={[styles.emptyContractSubtitle, isDark && styles.emptyContractSubtitleDark]}>
+              Contract farming agreements formed with growers will appear here.
+            </Text>
+          </View>
+        )}
 
         {/* Extra Bottom Spacing for Tab Bar clearance */}
         <View style={styles.bottomSpacer} />
@@ -352,6 +367,37 @@ const styles = StyleSheet.create({
     color: '#6E826F',
   },
   emptySearchTextDark: {
+    color: '#98B39B',
+  },
+  emptyContractCard: {
+    marginHorizontal: 20,
+    padding: 24,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E1D7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContractCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  emptyContractTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#16301A',
+  },
+  emptyContractTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptyContractSubtitle: {
+    fontSize: 12,
+    color: '#6E826F',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  emptyContractSubtitleDark: {
     color: '#98B39B',
   },
   bottomSpacer: {
