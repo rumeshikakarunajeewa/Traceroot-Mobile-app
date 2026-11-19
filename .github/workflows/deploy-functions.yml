@@ -29,6 +29,6 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          supabase functions deploy verify-live-capture --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }}
-          supabase functions deploy send-notification --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }}
-          supabase functions deploy sync-offline-records --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }}
+          supabase functions deploy verify-live-capture --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }} --yes
+          supabase functions deploy send-notification --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }} --yes
+          supabase functions deploy sync-offline-records --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }} --yes
