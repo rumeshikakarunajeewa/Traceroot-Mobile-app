@@ -1,0 +1,314 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDarkMode } from '../../store/uiStore';
+import { useLanguage } from '../../i18n/languageStore';
+import { TranslationKey } from '../../i18n/translations';
+
+export interface SupplierBottomTabBarProps {
+  state?: any;
+  navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
+  descriptors?: Record<string, any>;
+  [key: string]: any;
+}
+
+interface TabConfig {
+  name: string;
+  routePath: string;
+  labelKey: TranslationKey;
+  badge?: number;
+  iconName: keyof typeof MaterialCommunityIcons.glyphMap;
+  focusedIconName?: keyof typeof MaterialCommunityIcons.glyphMap;
+  size?: number;
+}
+
+const SUPPLIER_TABS: TabConfig[] = [
+  {
+    name: 'index',
+    routePath: '/(supplier)',
+    labelKey: 'tabHome',
+    iconName: 'home',
+    focusedIconName: 'home',
+    size: 24,
+  },
+  {
+    name: 'catalogue',
+    routePath: '/(supplier)/catalogue',
+    labelKey: 'tabCatalogue',
+    iconName: 'book-open-outline',
+    focusedIconName: 'book-open',
+    size: 22,
+  },
+  {
+    name: 'orders',
+    routePath: '/(supplier)/orders',
+    labelKey: 'tabOrders',
+    badge: 3, // Shows the '3' badge from the Figma design!
+    iconName: 'basket-outline',
+    focusedIconName: 'basket',
+    size: 22,
+  },
+  {
+    name: 'messages',
+    routePath: '/(supplier)/messages',
+    labelKey: 'tabMessages',
+    iconName: 'chat-outline',
+    focusedIconName: 'chat',
+    size: 22,
+  },
+  {
+    name: 'profile',
+    routePath: '/(supplier)/profile',
+    labelKey: 'tabProfile',
+    iconName: 'account-cowboy-hat-outline',
+    focusedIconName: 'account-cowboy-hat',
+    size: 24,
+  },
+];
+
+export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
+  state,
+  navigation,
+  emitter,
+  navigateToTab,
+}) => {
+  const [isDark] = useDarkMode();
+  const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
+
+  const currentRouteName = state?.routes?.[state?.index]?.name || 'index';
+
+  return (
+    <View style={styles.outerWrapper} pointerEvents="box-none">
+      <View
+        style={[
+          styles.barContainer,
+          isDark && styles.barContainerDark,
+          { marginBottom: bottomMargin },
+        ]}
+      >
+        {SUPPLIER_TABS.map((tab) => {
+          const matchingRouteIndex = state?.routes?.findIndex((r: { name: string }) => {
+            if (tab.name === 'index') {
+              return r.name === 'index';
+            }
+            return (
+              r.name === tab.name ||
+              r.name === `${tab.name}/index` ||
+              r.name.startsWith(`${tab.name}/`)
+            );
+          });
+
+          const matchingRoute =
+            matchingRouteIndex !== undefined && matchingRouteIndex >= 0
+              ? state?.routes?.[matchingRouteIndex]
+              : null;
+
+          const isFocused =
+            tab.name === 'index'
+              ? currentRouteName === 'index'
+              : currentRouteName === tab.name ||
+                currentRouteName === `${tab.name}/index` ||
+                currentRouteName.startsWith(`${tab.name}/`);
+
+          const activeColor = '#FFFFFF';
+          const inactiveColor = '#8A9E8D';
+          const color = isFocused ? activeColor : inactiveColor;
+          const iconToRender = isFocused
+            ? tab.focusedIconName || tab.iconName
+            : tab.iconName;
+
+          const handlePress = () => {
+            let defaultPrevented = false;
+
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  const event = emitter.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                } else if (navigation?.emit) {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: matchingRoute.key,
+                    canPreventDefault: true,
+                  });
+                  defaultPrevented = !!event?.defaultPrevented;
+                }
+              } catch {
+                defaultPrevented = false;
+              }
+            }
+
+            if (!isFocused && !defaultPrevented) {
+              if (navigateToTab && matchingRoute?.key) {
+                navigateToTab(matchingRoute.key);
+              } else if (matchingRoute && navigation?.navigate) {
+                navigation.navigate(matchingRoute.name);
+              } else {
+                router.push(tab.routePath as any);
+              }
+            }
+          };
+
+          const handleLongPress = () => {
+            if (matchingRoute) {
+              try {
+                if (emitter?.emit) {
+                  emitter.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                } else if (navigation?.emit) {
+                  navigation.emit({
+                    type: 'tabLongPress',
+                    target: matchingRoute.key,
+                  });
+                }
+              } catch {
+                // Ignore
+              }
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={tab.name}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={t(tab.labelKey)}
+              onPress={handlePress}
+              onLongPress={handleLongPress}
+              activeOpacity={0.75}
+              style={styles.tabItem}
+            >
+              {/* Icon Container with Optional Badge */}
+              <View style={styles.iconWrapper}>
+                <MaterialCommunityIcons
+                  name={iconToRender}
+                  size={tab.size || 22}
+                  color={color}
+                />
+
+                {tab.badge !== undefined && (
+                  <View style={styles.badgePill}>
+                    <Text style={styles.badgeNumber}>{tab.badge}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Tab Title Label */}
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color,
+                    fontWeight: isFocused ? '600' : '500',
+                  },
+                ]}
+              >
+                {t(tab.labelKey)}
+              </Text>
+
+              {/* Orange Active Indicator Dash Under Label */}
+              <View
+                style={[
+                  styles.indicatorDash,
+                  { backgroundColor: isFocused ? '#E66826' : 'transparent' },
+                ]}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  outerWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  barContainer: {
+    flexDirection: 'row',
+    width: '92%',
+    maxWidth: 420,
+    height: 72,
+    backgroundColor: '#1C3723', // Deep hunter/forest green matching Figma
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  barContainerDark: {
+    backgroundColor: '#112215',
+    borderWidth: 1,
+    borderColor: '#223826',
+    shadowColor: '#000000',
+    shadowOpacity: 0.45,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    paddingTop: 8,
+  },
+  iconWrapper: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 2,
+  },
+  badgePill: {
+    position: 'absolute',
+    top: -3,
+    right: -7,
+    backgroundColor: '#E66826', // Vibrant orange notification badge
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#1C3723',
+  },
+  badgeNumber: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  tabLabel: {
+    fontSize: 11.5,
+    letterSpacing: 0.1,
+  },
+  indicatorDash: {
+    width: 14,
+    height: 3.5,
+    borderRadius: 2,
+    marginTop: 2.5,
+  },
+});

@@ -1,0 +1,2311 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+
+import { useLanguage } from '../../../src/i18n/languageStore';
+import { AppLanguage, SUPPORTED_LANGUAGES } from '../../../src/i18n/translations';
+import { useSupplierProfile, loadSupplierProfile } from '../../../src/store/supplierProfileStore';
+import { toggleDarkMode, useDarkMode } from '../../../src/store/uiStore';
+import { authService } from '../../../src/services/auth.service';
+import { setAuthState } from '../../../src/store/authStore';
+
+type ProfileTab = 'About' | 'Products' | 'Reviews' | 'Documents';
+
+const GREENHOUSE_BG = require('../../../assets/images/supplier_profile_greenhouse.jpg');
+
+export default function SupplierProfileScreen() {
+  const [isDark] = useDarkMode();
+  const [profile, updateProfile] = useSupplierProfile();
+  const { language, setLanguage, t, currentOption } = useLanguage();
+
+  // Active navigation tab
+  const [activeTab, setActiveTab] = useState<ProfileTab>('About');
+
+  // Edit Modal State
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedAvatarUri, setSelectedAvatarUri] = useState<string | null>(null);
+  const [selectedAvatarBase64, setSelectedAvatarBase64] = useState<string | null>(null);
+
+  const [editCompanyName, setEditCompanyName] = useState(profile.name || '');
+  const [editContactName, setEditContactName] = useState(profile.contactName || '');
+  const [editPhone, setEditPhone] = useState(profile.phone || '');
+  const [editEmail, setEditEmail] = useState(profile.email || '');
+  const [editStore, setEditStore] = useState(profile.store || '');
+  const [editLicence, setEditLicence] = useState(profile.licence || '');
+  const [editBio, setEditBio] = useState(profile.bio || '');
+
+  // Language Picker Modal State
+  const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
+
+  const handleOpenEdit = () => {
+    setEditCompanyName(profile.name?.trim() || '');
+    setEditContactName(profile.contactName?.trim() || '');
+    setEditPhone(profile.phone?.trim() || '');
+    setEditEmail(profile.email?.trim() || '');
+    setEditStore(profile.store?.trim() || '');
+    setEditLicence(profile.licence?.trim() || '');
+    setEditBio(profile.bio?.trim() || '');
+    setSelectedAvatarUri(null);
+    setSelectedAvatarBase64(null);
+    setIsEditModalVisible(true);
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow photo library access in device settings to change your avatar.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedAvatarUri(result.assets[0].uri);
+        setSelectedAvatarBase64(result.assets[0].base64 || null);
+      }
+    } catch (err) {
+      console.warn('Error selecting image from gallery:', err);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow camera access in device settings to take a profile photo.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedAvatarUri(result.assets[0].uri);
+        setSelectedAvatarBase64(result.assets[0].base64 || null);
+      }
+    } catch (err) {
+      console.warn('Error taking photo:', err);
+    }
+  };
+
+  const handlePhotoOptions = () => {
+    Alert.alert('Profile Photo', 'Choose an option to update your profile photo', [
+      { text: 'Choose from Gallery', onPress: handlePickImage },
+      { text: 'Take Photo', onPress: handleTakePhoto },
+      ...(selectedAvatarUri || profile.avatarUrl
+        ? [
+            {
+              text: 'Remove Photo',
+              style: 'destructive' as const,
+              onPress: () => {
+                setSelectedAvatarUri('');
+                setSelectedAvatarBase64(null);
+              },
+            },
+          ]
+        : []),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editCompanyName.trim()) {
+      Alert.alert('Required Field', 'Please enter your Store / Company Name.');
+      return;
+    }
+
+    const hasPhotoRemoval = selectedAvatarUri === '';
+    const hasNewLocalPhoto = Boolean(selectedAvatarUri && selectedAvatarUri !== '');
+
+    setIsSaving(true);
+    const res = await updateProfile(
+      {
+        name: editCompanyName.trim(),
+        contactName: editContactName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+        store: editStore.trim(),
+        licence: editLicence.trim(),
+        bio: editBio.trim(),
+        avatarUrl: hasPhotoRemoval ? undefined : (hasNewLocalPhoto ? selectedAvatarUri! : profile.avatarUrl),
+      },
+      hasNewLocalPhoto ? selectedAvatarUri! : undefined,
+      hasNewLocalPhoto && selectedAvatarBase64 ? selectedAvatarBase64 : undefined
+    );
+    setIsSaving(false);
+
+    if (res.success) {
+      const session = await authService.getSession();
+      if (session?.user?.id) {
+        setAuthState({
+          profile: {
+            id: session.user.id,
+            role: 'supplier',
+            full_name: editContactName.trim() || editCompanyName.trim(),
+            email: editEmail.trim() || session.user.email || '',
+            phone: editPhone.trim() || null,
+            avatar_url: res.avatarUrl || (profile.avatarUrl?.uri ? profile.avatarUrl.uri : null),
+          },
+        });
+      }
+      setIsEditModalVisible(false);
+      Alert.alert('Profile Updated', 'Your supplier profile has been successfully saved.');
+    } else {
+      Alert.alert('Update Failed', res.error || 'Failed to update supplier profile.');
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSupplierProfile(true);
+    setRefreshing(false);
+  };
+
+  const handleLogOut = () => {
+    const performLogout = async () => {
+      try {
+        await authService.signOut();
+      } catch (err) {
+        console.warn('Error during signOut:', err);
+      } finally {
+        setAuthState({
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          isLoading: false,
+        });
+        router.replace('/(auth)/login' as any);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmText = `${t('logOutConfirmTitle')}\n\n${t('logOutConfirmMessage')}`;
+      if (typeof window !== 'undefined' && window.confirm && window.confirm(confirmText)) {
+        performLogout();
+      }
+      return;
+    }
+
+    Alert.alert(t('logOutConfirmTitle'), t('logOutConfirmMessage'), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('logOut'),
+        style: 'destructive',
+        onPress: performLogout,
+      },
+    ]);
+  };
+
+  const handleSelectLanguage = (code: AppLanguage) => {
+    setLanguage(code);
+    updateProfile({ language: code === 'en' ? 'English' : code === 'si' ? 'Sinhala' : 'Tamil' });
+    setIsLanguageModalVisible(false);
+  };
+
+  return (
+    <SafeAreaView
+      style={[styles.safeArea, isDark && styles.safeAreaDark]}
+      edges={['top', 'left', 'right']}
+    >
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={isDark ? '#4ADE80' : '#1B3220'}
+            colors={['#1B3220']}
+          />
+        }
+      >
+        {/* 1. HEADER ROW */}
+        <View style={styles.headerRow}>
+          {/* Circular Back Button */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.back()}
+            style={[styles.backCircle, isDark && styles.backCircleDark]}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <MaterialCommunityIcons
+              name="chevron-left"
+              size={24}
+              color={isDark ? '#E5EFE7' : '#2C402E'}
+            />
+          </TouchableOpacity>
+
+          {/* Center Title Block */}
+          <View style={styles.titleBlock}>
+            <Text
+              style={[
+                styles.headerTagline,
+                isDark && styles.headerTaglineDark,
+              ]}
+            >
+              {t('yourAccount')}
+            </Text>
+
+            <View style={styles.headingRow}>
+              <Text
+                style={[
+                  styles.headingMyText,
+                  isDark && styles.headingMyTextDark,
+                ]}
+              >
+                {t('my')}{' '}
+              </Text>
+              <View
+                style={[
+                  styles.headingHighlight,
+                  isDark && styles.headingHighlightDark,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.headingProfileText,
+                    isDark && styles.headingProfileTextDark,
+                  ]}
+                >
+                  {t('profile')}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Right Action: Edit Button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleOpenEdit}
+            style={[styles.editButton, isDark && styles.editButtonDark]}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+          >
+            <MaterialCommunityIcons
+              name="book-open-outline"
+              size={15}
+              color="#FFFFFF"
+              style={{ marginRight: 5 }}
+            />
+            <Text style={styles.editButtonText}>{t('edit')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 2. HERO PROFILE CARD ("AgriSupply Co.") */}
+        <View style={styles.heroProfileCard}>
+          <Image
+            source={GREENHOUSE_BG}
+            style={styles.heroCardImage}
+            resizeMode="cover"
+          />
+
+          {/* Dark Atmospheric Gradient Overlay */}
+          <LinearGradient
+            colors={['rgba(15,35,20,0.45)', 'rgba(10,25,12,0.92)']}
+            style={styles.gradientOverlay}
+          />
+
+          <View style={styles.heroCardContent}>
+            {/* Top Row: Avatar & Company Info */}
+            <View style={styles.executiveRow}>
+              {/* Avatar with Verified Check Badge */}
+              <View style={styles.avatarWrapper}>
+                {profile.avatarUrl ? (
+                  <Image
+                    source={typeof profile.avatarUrl === 'string' ? { uri: profile.avatarUrl } : profile.avatarUrl}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={[styles.avatarPlaceholder, isDark && styles.avatarPlaceholderDark]}>
+                    <Text style={styles.avatarInitials}>
+                      {(profile.name || profile.contactName || 'TR').trim().substring(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                {profile.isVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={13}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                )}
+              </View>
+
+              {/* Company Info */}
+              <View style={styles.companyInfoColumn}>
+                {/* Verified Supplier Pill Tag */}
+                <View style={styles.verifiedPill}>
+                  <MaterialCommunityIcons
+                    name="shield-check"
+                    size={13}
+                    color="#395E3F"
+                    style={{ marginRight: 3 }}
+                  />
+                  <Text style={styles.verifiedPillText}>{t('verifiedSupplier')}</Text>
+                </View>
+
+                {/* Company Name */}
+                <Text style={styles.companyNameText} numberOfLines={1}>
+                  {profile.name}
+                </Text>
+
+                {/* District & Partnership */}
+                <View style={styles.locationTagRow}>
+                  <MaterialCommunityIcons
+                    name="map-marker-outline"
+                    size={13}
+                    color="rgba(255,255,255,0.75)"
+                    style={{ marginRight: 2 }}
+                  />
+                  <Text style={styles.districtText}>
+                    {profile.district} ·{' '}
+                  </Text>
+                  <Text style={styles.partnerTagText}>
+                    {t('buyBackPartner')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Bio Description Snippet */}
+            <Text style={styles.bioText} numberOfLines={3}>
+              {profile.bio}
+            </Text>
+
+            {/* Glassmorphic Stats Bar */}
+            <View style={styles.glassStatsBar}>
+              {/* Stat 1: Products */}
+              <View style={styles.statColumn}>
+                <MaterialCommunityIcons
+                  name="package-variant-closed"
+                  size={16}
+                  color="#A7CFA9"
+                  style={styles.statIcon}
+                />
+                <Text style={styles.statNumber}>{profile.productsCount}</Text>
+                <Text style={styles.statLabel}>{t('products')}</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              {/* Stat 2: Farmers */}
+              <View style={styles.statColumn}>
+                <MaterialCommunityIcons
+                  name="account-group-outline"
+                  size={16}
+                  color="#A7CFA9"
+                  style={styles.statIcon}
+                />
+                <Text style={styles.statNumber}>{profile.farmersCount}</Text>
+                <Text style={styles.statLabel}>{t('farmers')}</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              {/* Stat 3: Rating */}
+              <View style={styles.statColumn}>
+                <MaterialCommunityIcons
+                  name="white-balance-sunny"
+                  size={16}
+                  color="#A7CFA9"
+                  style={styles.statIcon}
+                />
+                <Text style={styles.statNumber}>{profile.rating}</Text>
+                <Text style={styles.statLabel}>{t('rating')}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* 3. TRUST SCORE CARD ("Highly trusted") */}
+        <View style={[styles.trustCard, isDark && styles.trustCardDark]}>
+          {/* Circular Ring Score */}
+          <View style={styles.scoreRing}>
+            <Text
+              style={[
+                styles.scoreNumber,
+                isDark && styles.scoreNumberDark,
+              ]}
+            >
+              {profile.trustScore}
+            </Text>
+          </View>
+
+          {/* Details Column */}
+          <View style={styles.trustDetailsColumn}>
+            <Text style={styles.trustTagText}>{t('trustScore')}</Text>
+            <Text
+              style={[
+                styles.trustTitleText,
+                isDark && styles.trustTitleTextDark,
+              ]}
+            >
+              {t('highlyTrusted')}
+            </Text>
+            <Text
+              style={[
+                styles.trustSubtitleText,
+                isDark && styles.trustSubtitleTextDark,
+              ]}
+            >
+              {t('trustSubtitle')}
+            </Text>
+          </View>
+        </View>
+
+        {/* 4. NAVIGATION TAB PILLS */}
+        <View style={styles.tabsRow}>
+          {[
+            { key: 'About' as ProfileTab, label: t('tabAbout') },
+            { key: 'Products' as ProfileTab, label: t('tabProducts') },
+            { key: 'Reviews' as ProfileTab, label: t('tabReviews') },
+            { key: 'Documents' as ProfileTab, label: t('tabDocuments') },
+          ].map((item) => {
+            const isActive = activeTab === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                activeOpacity={0.8}
+                onPress={() => setActiveTab(item.key)}
+                style={[
+                  styles.tabPill,
+                  isActive
+                    ? isDark
+                      ? styles.tabPillActiveDark
+                      : styles.tabPillActive
+                    : isDark
+                    ? styles.tabPillInactiveDark
+                    : styles.tabPillInactive,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Tab ${item.label}`}
+              >
+                <Text
+                  style={[
+                    styles.tabPillText,
+                    isActive
+                      ? styles.tabPillTextActive
+                      : isDark
+                      ? styles.tabPillTextInactiveDark
+                      : styles.tabPillTextInactive,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* 5. CONTACT & BUSINESS DETAILS CARD */}
+        <View style={[styles.detailsCard, isDark && styles.detailsCardDark]}>
+          {/* Phone */}
+          <View style={styles.detailsRow}>
+            <View
+              style={[
+                styles.detailsIconCircle,
+                isDark && styles.detailsIconCircleDark,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="phone-outline"
+                size={18}
+                color={isDark ? '#8ED697' : '#395E3F'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.detailsLabel,
+                isDark && styles.detailsLabelDark,
+              ]}
+            >
+              {t('phone')}
+            </Text>
+            <Text
+              style={[
+                styles.detailsValue,
+                isDark && styles.detailsValueDark,
+              ]}
+            >
+              {profile.phone}
+            </Text>
+          </View>
+
+          {/* Divider */}
+          <View
+            style={[styles.detailsDivider, isDark && styles.detailsDividerDark]}
+          />
+
+          {/* Email */}
+          <View style={styles.detailsRow}>
+            <View
+              style={[
+                styles.detailsIconCircle,
+                isDark && styles.detailsIconCircleDark,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="email-outline"
+                size={18}
+                color={isDark ? '#8ED697' : '#395E3F'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.detailsLabel,
+                isDark && styles.detailsLabelDark,
+              ]}
+            >
+              {t('email')}
+            </Text>
+            <Text
+              style={[
+                styles.detailsValue,
+                isDark && styles.detailsValueDark,
+              ]}
+            >
+              {profile.email}
+            </Text>
+          </View>
+
+          {/* Divider */}
+          <View
+            style={[styles.detailsDivider, isDark && styles.detailsDividerDark]}
+          />
+
+          {/* Store */}
+          <View style={styles.detailsRow}>
+            <View
+              style={[
+                styles.detailsIconCircle,
+                isDark && styles.detailsIconCircleDark,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="storefront-outline"
+                size={18}
+                color={isDark ? '#8ED697' : '#395E3F'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.detailsLabel,
+                isDark && styles.detailsLabelDark,
+              ]}
+            >
+              {t('store')}
+            </Text>
+            <Text
+              style={[
+                styles.detailsValue,
+                isDark && styles.detailsValueDark,
+              ]}
+            >
+              {profile.store}
+            </Text>
+          </View>
+
+          {/* Divider */}
+          <View
+            style={[styles.detailsDivider, isDark && styles.detailsDividerDark]}
+          />
+
+          {/* Licence */}
+          <View style={styles.detailsRow}>
+            <View
+              style={[
+                styles.detailsIconCircle,
+                isDark && styles.detailsIconCircleDark,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="shield-check-outline"
+                size={18}
+                color={isDark ? '#8ED697' : '#395E3F'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.detailsLabel,
+                isDark && styles.detailsLabelDark,
+              ]}
+            >
+              {t('licence')}
+            </Text>
+            <Text
+              style={[
+                styles.detailsValue,
+                isDark && styles.detailsValueDark,
+              ]}
+            >
+              {profile.licence}
+            </Text>
+          </View>
+        </View>
+
+        {/* 6. LOCATION RADAR CARD */}
+        <View style={styles.locationRadarCard}>
+          {/* Concentric Decorative Radar Rings */}
+          <View style={styles.radarOuterRing} />
+          <View style={styles.radarInnerRing} />
+          <View style={styles.radarBeaconDot} />
+
+          {/* Left Location Info */}
+          <View style={styles.radarContentColumn}>
+            <View style={styles.radarTagRow}>
+              <MaterialCommunityIcons
+                name="map-marker-outline"
+                size={13}
+                color="rgba(255,255,255,0.72)"
+                style={{ marginRight: 3 }}
+              />
+              <Text style={styles.radarTagText}>{t('location')}</Text>
+            </View>
+
+            <Text style={styles.radarDistrictText}>{profile.district}</Text>
+            <Text style={styles.radarProvinceText}>{t('centralProvince')}</Text>
+            <Text style={styles.radarCoordinatesText}>
+              {profile.coordinates}
+            </Text>
+          </View>
+        </View>
+
+        {/* 7. SETTINGS SECTION */}
+        <View style={styles.settingsSection}>
+          <Text
+            style={[
+              styles.settingsSectionTitle,
+              isDark && styles.settingsSectionTitleDark,
+            ]}
+          >
+            {t('settings')}
+          </Text>
+
+          <View
+            style={[
+              styles.settingsCard,
+              isDark && styles.settingsCardDark,
+            ]}
+          >
+            {/* Setting 1: Dark Mode */}
+            <View style={styles.settingItemRow}>
+              <View
+                style={[
+                  styles.settingIconCircle,
+                  isDark && styles.settingIconCircleDark,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={isDark ? 'weather-night' : 'white-balance-sunny'}
+                  size={18}
+                  color={isDark ? '#8ED697' : '#395E3F'}
+                />
+              </View>
+
+              <View style={styles.settingTextColumn}>
+                <Text
+                  style={[
+                    styles.settingTitle,
+                    isDark && styles.settingTitleDark,
+                  ]}
+                >
+                  {t('darkMode')}
+                </Text>
+                <Text
+                  style={[
+                    styles.settingSubtitle,
+                    isDark && styles.settingSubtitleDark,
+                  ]}
+                >
+                  {isDark ? t('on') : t('off')}
+                </Text>
+              </View>
+
+              <Switch
+                value={isDark}
+                onValueChange={() => toggleDarkMode()}
+                trackColor={{
+                  false: isDark ? '#2E4032' : '#D4CDC0',
+                  true: isDark ? '#467A4D' : '#426340',
+                }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View
+              style={[
+                styles.detailsDivider,
+                isDark && styles.detailsDividerDark,
+              ]}
+            />
+
+            {/* Setting 2: Notifications */}
+            <View style={styles.settingItemRow}>
+              <View
+                style={[
+                  styles.settingIconCircle,
+                  isDark && styles.settingIconCircleDark,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="bell-outline"
+                  size={18}
+                  color={isDark ? '#8ED697' : '#395E3F'}
+                />
+              </View>
+
+              <View style={styles.settingTextColumn}>
+                <Text
+                  style={[
+                    styles.settingTitle,
+                    isDark && styles.settingTitleDark,
+                  ]}
+                >
+                  {t('notifications')}
+                </Text>
+                <Text
+                  style={[
+                    styles.settingSubtitle,
+                    isDark && styles.settingSubtitleDark,
+                  ]}
+                >
+                  {t('notificationsSubtitle')}
+                </Text>
+              </View>
+
+              <Switch
+                value={profile.notificationsEnabled}
+                onValueChange={(val) =>
+                  updateProfile({ notificationsEnabled: val })
+                }
+                trackColor={{
+                  false: isDark ? '#2E4032' : '#D4CDC0',
+                  true: isDark ? '#467A4D' : '#426340',
+                }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View
+              style={[
+                styles.detailsDivider,
+                isDark && styles.detailsDividerDark,
+              ]}
+            />
+
+            {/* Setting 3: Language Button (interactive) */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => setIsLanguageModalVisible(true)}
+              style={styles.settingItemRow}
+              accessibilityRole="button"
+              accessibilityLabel="Change Language"
+            >
+              <View
+                style={[
+                  styles.settingIconCircle,
+                  isDark && styles.settingIconCircleDark,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="translate"
+                  size={18}
+                  color={isDark ? '#8ED697' : '#395E3F'}
+                />
+              </View>
+
+              <View style={styles.settingTextColumn}>
+                <Text
+                  style={[
+                    styles.settingTitle,
+                    isDark && styles.settingTitleDark,
+                  ]}
+                >
+                  {t('language')}
+                </Text>
+                <Text
+                  style={[
+                    styles.settingSubtitle,
+                    isDark && styles.settingSubtitleDark,
+                  ]}
+                >
+                  {currentOption.nativeName}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.languagePill,
+                  isDark && styles.languagePillDark,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languagePillText,
+                    isDark && styles.languagePillTextDark,
+                  ]}
+                >
+                  {currentOption.name}
+                </Text>
+                <MaterialCommunityIcons
+                  name="chevron-down"
+                  size={16}
+                  color={isDark ? '#A2B9A5' : '#4D6250'}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 8. LOG OUT BUTTON */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleLogOut}
+          style={[styles.logOutButton, isDark && styles.logOutButtonDark]}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+        >
+          <MaterialCommunityIcons
+            name="chevron-left"
+            size={18}
+            color="#C25E28"
+            style={{ marginRight: 2 }}
+          />
+          <Text style={styles.logOutButtonText}>{t('logOut')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* LANGUAGE SELECTION MODAL */}
+      <Modal
+        visible={isLanguageModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsLanguageModalVisible(false)}
+      >
+        <View style={styles.languageModalOverlay}>
+          <TouchableOpacity
+            style={styles.languageModalBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsLanguageModalVisible(false)}
+          />
+
+          <View
+            style={[
+              styles.languageModalSheet,
+              isDark && styles.languageModalSheetDark,
+            ]}
+          >
+            {/* Sheet Handle */}
+            <View
+              style={[
+                styles.sheetHandle,
+                isDark && styles.sheetHandleDark,
+              ]}
+            />
+
+            {/* Header */}
+            <View style={styles.languageModalHeader}>
+              <View>
+                <Text
+                  style={[
+                    styles.languageModalTitle,
+                    isDark && styles.languageModalTitleDark,
+                  ]}
+                >
+                  {t('selectLanguage')}
+                </Text>
+                <Text
+                  style={[
+                    styles.languageModalSubtitle,
+                    isDark && styles.languageModalSubtitleDark,
+                  ]}
+                >
+                  {t('chooseLanguageSubtitle')}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsLanguageModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={22}
+                  color={isDark ? '#F0F5F1' : '#162C1A'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Languages List */}
+            <View style={styles.languageOptionsList}>
+              {SUPPORTED_LANGUAGES.map((item) => {
+                const isSelected = language === item.code;
+                return (
+                  <TouchableOpacity
+                    key={item.code}
+                    activeOpacity={0.8}
+                    onPress={() => handleSelectLanguage(item.code)}
+                    style={[
+                      styles.languageOptionRow,
+                      isSelected &&
+                        (isDark
+                          ? styles.languageOptionRowSelectedDark
+                          : styles.languageOptionRowSelected),
+                      isDark && styles.languageOptionRowDark,
+                    ]}
+                  >
+                    <View style={styles.languageOptionLeft}>
+                      <View
+                        style={[
+                          styles.languageFlagCircle,
+                          isDark && styles.languageFlagCircleDark,
+                        ]}
+                      >
+                        <Text style={styles.languageCodeBadge}>
+                          {item.code.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ marginLeft: 12 }}>
+                        <Text
+                          style={[
+                            styles.languageOptionName,
+                            isSelected && styles.languageOptionNameSelected,
+                            isDark && styles.languageOptionNameDark,
+                          ]}
+                        >
+                          {item.name}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.languageOptionNative,
+                            isDark && styles.languageOptionNativeDark,
+                          ]}
+                        >
+                          {item.nativeName}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {isSelected ? (
+                      <View
+                        style={[
+                          styles.checkCircle,
+                          isDark && styles.checkCircleDark,
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={16}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.emptyCheckCircle,
+                          isDark && styles.emptyCheckCircleDark,
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* EDIT PROFILE MODAL */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          if (!isSaving) {
+            setIsEditModalVisible(false);
+          }
+        }}
+      >
+        <SafeAreaView
+          style={[
+            styles.modalSafeArea,
+            isDark && styles.modalSafeAreaDark,
+          ]}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            {/* Modal Header */}
+            <View
+              style={[
+                styles.modalHeader,
+                isDark && styles.modalHeaderDark,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.modalHeaderTitle,
+                  isDark && styles.modalHeaderTitleDark,
+                ]}
+              >
+                {t('editSupplierProfile')}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => !isSaving && setIsEditModalVisible(false)}
+                disabled={isSaving}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={isDark ? '#F0F5F1' : '#162C1A'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.modalContent}
+              contentContainerStyle={{ paddingBottom: 40 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Avatar Section */}
+              <View style={styles.modalAvatarSection}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handlePhotoOptions}
+                  style={styles.modalAvatarWrapper}
+                >
+                  {selectedAvatarUri === '' ? (
+                    <View style={[styles.modalAvatarPlaceholder, isDark && styles.modalAvatarPlaceholderDark]}>
+                      <Text style={[styles.modalAvatarInitials, isDark && styles.modalAvatarInitialsDark]}>
+                        {(editCompanyName || editContactName || 'TR').trim().substring(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                  ) : selectedAvatarUri ? (
+                    <Image source={{ uri: selectedAvatarUri }} style={styles.modalAvatarImage} />
+                  ) : profile.avatarUrl ? (
+                    <Image
+                      source={typeof profile.avatarUrl === 'string' ? { uri: profile.avatarUrl } : profile.avatarUrl}
+                      style={styles.modalAvatarImage}
+                    />
+                  ) : (
+                    <View style={[styles.modalAvatarPlaceholder, isDark && styles.modalAvatarPlaceholderDark]}>
+                      <Text style={[styles.modalAvatarInitials, isDark && styles.modalAvatarInitialsDark]}>
+                        {(editCompanyName || editContactName || 'TR').trim().substring(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={[styles.modalCameraBadge, isDark && styles.modalCameraBadgeDark]}>
+                    <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handlePhotoOptions}
+                  style={styles.modalChangePhotoBtn}
+                  disabled={isSaving}
+                >
+                  <Text style={[styles.modalChangePhotoText, isDark && styles.modalChangePhotoTextDark]}>
+                    Change Profile Photo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Field: Store / Company Name */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  {t('companyName') || 'Store / Business Name'} <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TextInput
+                  value={editCompanyName}
+                  onChangeText={setEditCompanyName}
+                  placeholder="e.g. AgriSupply Co."
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Contact Person Full Name */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  Contact Person Full Name
+                </Text>
+                <TextInput
+                  value={editContactName}
+                  onChangeText={setEditContactName}
+                  placeholder="e.g. Ruwan Silva"
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Phone */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  {t('phoneNumber')}
+                </Text>
+                <TextInput
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  placeholder="+94 81 222 4410"
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  keyboardType="phone-pad"
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Email */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  {t('emailAddress')}
+                </Text>
+                <TextInput
+                  value={editEmail}
+                  onChangeText={setEditEmail}
+                  placeholder="sales@agrisupply.lk"
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Store Address */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  {t('storeLocation') || 'Store / Warehouse Address'}
+                </Text>
+                <TextInput
+                  value={editStore}
+                  onChangeText={setEditStore}
+                  placeholder="e.g. Peradeniya Rd, Kandy"
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Licence / BR Number */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  Licence / BR Number
+                </Text>
+                <TextInput
+                  value={editLicence}
+                  onChangeText={setEditLicence}
+                  placeholder="e.g. BR-2024-KND-089"
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  style={[
+                    styles.modalInput,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Field: Bio */}
+              <View style={styles.modalFieldGroup}>
+                <Text
+                  style={[
+                    styles.modalLabel,
+                    isDark && styles.modalLabelDark,
+                  ]}
+                >
+                  {t('aboutDescription')}
+                </Text>
+                <TextInput
+                  value={editBio}
+                  onChangeText={setEditBio}
+                  placeholder="Describe your agricultural supply business..."
+                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                  multiline
+                  numberOfLines={4}
+                  style={[
+                    styles.modalInput,
+                    styles.modalTextArea,
+                    isDark && styles.modalInputDark,
+                  ]}
+                />
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={handleSaveProfile}
+                disabled={isSaving}
+                style={[
+                  styles.modalSaveButton,
+                  isDark && styles.modalSaveButtonDark,
+                  isSaving && { opacity: 0.7 },
+                ]}
+              >
+                {isSaving ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.modalSaveButtonText}>Saving...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.modalSaveButtonText}>{t('saveChanges')}</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const serifFont = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'serif',
+});
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F2EB', // Warm natural linen cream matching Figma
+  },
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 130, // Clearance for bottom navigation tab bar
+  },
+
+  /* HEADER */
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  backCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E4DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  backCircleDark: {
+    backgroundColor: '#16271A',
+    borderColor: '#263D2B',
+  },
+  titleBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTagline: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#556E58',
+    letterSpacing: 0.2,
+    marginBottom: 2,
+  },
+  headerTaglineDark: {
+    color: '#9CB39F',
+  },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headingMyText: {
+    fontSize: 26,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+    letterSpacing: -0.3,
+  },
+  headingMyTextDark: {
+    color: '#F0F5F1',
+  },
+  headingHighlight: {
+    backgroundColor: '#D7E5D4',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  headingHighlightDark: {
+    backgroundColor: '#26442C',
+  },
+  headingProfileText: {
+    fontSize: 26,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+    letterSpacing: -0.3,
+  },
+  headingProfileTextDark: {
+    color: '#D4E8D7',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C3723',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    shadowColor: '#1C3723',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editButtonDark: {
+    backgroundColor: '#264B30',
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  /* HERO PROFILE CARD */
+  heroProfileCard: {
+    borderRadius: 26,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 16,
+    backgroundColor: '#1C3723',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  heroCardImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  heroCardContent: {
+    padding: 16,
+    zIndex: 2,
+  },
+  executiveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 68,
+    height: 68,
+  },
+  avatarImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#EAE5D9',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E6821E', // Orange verified badge from Figma
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyInfoColumn: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  verifiedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  verifiedPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#395E3F',
+  },
+  companyNameText: {
+    fontSize: 23,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  locationTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  districtText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  partnerTagText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F3E3B6', // Warm golden cream
+  },
+  bioText: {
+    fontSize: 12.5,
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 18,
+    marginTop: 12,
+    marginBottom: 14,
+  },
+  glassStatsBar: {
+    backgroundColor: 'rgba(20, 38, 24, 0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  statColumn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statIcon: {
+    marginBottom: 2,
+  },
+  statNumber: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: serifFont,
+  },
+  statLabel: {
+    fontSize: 10.5,
+    color: 'rgba(255, 255, 255, 0.78)',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+
+  /* TRUST SCORE CARD */
+  trustCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#ECE6DC',
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  trustCardDark: {
+    backgroundColor: '#16271A',
+    borderColor: '#263D2B',
+  },
+  scoreRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 3.5,
+    borderColor: '#436340', // Deep olive green ring
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  scoreNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+  },
+  scoreNumberDark: {
+    color: '#E5EFE7',
+  },
+  trustDetailsColumn: {
+    flex: 1,
+  },
+  trustTagText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#9C7752', // Amber brown from Figma
+    letterSpacing: 0.2,
+  },
+  trustTitleText: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+    marginTop: 1,
+  },
+  trustTitleTextDark: {
+    color: '#F0F5F1',
+  },
+  trustSubtitleText: {
+    fontSize: 12,
+    color: '#718573',
+    marginTop: 2,
+  },
+  trustSubtitleTextDark: {
+    color: '#8EA491',
+  },
+
+  /* TABS ROW */
+  tabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  tabPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabPillActive: {
+    backgroundColor: '#426340', // Rich moss green
+    shadowColor: '#426340',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabPillActiveDark: {
+    backgroundColor: '#4D754B',
+  },
+  tabPillInactive: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DFD8CC',
+  },
+  tabPillInactiveDark: {
+    backgroundColor: '#16271A',
+    borderWidth: 1,
+    borderColor: '#263D2B',
+  },
+  tabPillText: {
+    fontSize: 13.5,
+  },
+  tabPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  tabPillTextInactive: {
+    color: '#344C36',
+    fontWeight: '500',
+  },
+  tabPillTextInactiveDark: {
+    color: '#A2B9A5',
+    fontWeight: '500',
+  },
+
+  /* DETAILS CARD */
+  detailsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#ECE6DC',
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  detailsCardDark: {
+    backgroundColor: '#16271A',
+    borderColor: '#263D2B',
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  detailsIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E6EFE4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  detailsIconCircleDark: {
+    backgroundColor: '#203925',
+  },
+  detailsLabel: {
+    fontSize: 13,
+    color: '#718573',
+    flex: 1,
+  },
+  detailsLabelDark: {
+    color: '#8EA491',
+  },
+  detailsValue: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1C3723',
+  },
+  detailsValueDark: {
+    color: '#F0F5F1',
+  },
+  detailsDivider: {
+    height: 1,
+    backgroundColor: '#EFEAE0',
+    marginVertical: 4,
+  },
+  detailsDividerDark: {
+    backgroundColor: '#223826',
+  },
+
+  /* LOCATION RADAR CARD */
+  locationRadarCard: {
+    backgroundColor: '#1C3723',
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#1C3723',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  radarOuterRing: {
+    position: 'absolute',
+    right: -20,
+    top: -20,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  radarInnerRing: {
+    position: 'absolute',
+    right: 5,
+    top: 5,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  radarBeaconDot: {
+    position: 'absolute',
+    right: 42,
+    top: 42,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#C06E35', // Warm terracotta orange dot
+    shadowColor: '#C06E35',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  radarContentColumn: {
+    zIndex: 2,
+  },
+  radarTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  radarTagText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.75)',
+  },
+  radarDistrictText: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  radarProvinceText: {
+    fontSize: 12.5,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: 8,
+  },
+  radarCoordinatesText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.65)',
+    letterSpacing: 0.3,
+  },
+
+  /* SETTINGS SECTION */
+  settingsSection: {
+    marginBottom: 20,
+  },
+  settingsSectionTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#718573',
+    marginBottom: 10,
+    letterSpacing: 0.1,
+  },
+  settingsSectionTitleDark: {
+    color: '#95AB98',
+  },
+  settingsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#ECE6DC',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  settingsCardDark: {
+    backgroundColor: '#16271A',
+    borderColor: '#263D2B',
+  },
+  settingItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  settingIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E6EFE4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  settingIconCircleDark: {
+    backgroundColor: '#203925',
+  },
+  settingTextColumn: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1C3723',
+    marginBottom: 1,
+  },
+  settingTitleDark: {
+    color: '#F0F5F1',
+  },
+  settingSubtitle: {
+    fontSize: 12,
+    color: '#718573',
+  },
+  settingSubtitleDark: {
+    color: '#8EA491',
+  },
+  languagePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F2EA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  languagePillDark: {
+    backgroundColor: '#1D2E21',
+  },
+  languagePillText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#1C3723',
+  },
+  languagePillTextDark: {
+    color: '#E5EFE7',
+  },
+
+  /* LOG OUT BUTTON */
+  logOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FAF5EE',
+    borderWidth: 1,
+    borderColor: '#E8C5A8',
+    marginBottom: 120, // Clearance for tab bar
+  },
+  logOutButtonDark: {
+    backgroundColor: '#221815',
+    borderColor: '#59352A',
+  },
+  logOutButtonText: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#C25E28',
+  },
+
+  /* LANGUAGE MODAL */
+  languageModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  languageModalBackdrop: {
+    flex: 1,
+  },
+  languageModalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  languageModalSheetDark: {
+    backgroundColor: '#142417',
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#DDD6C8',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetHandleDark: {
+    backgroundColor: '#2F4834',
+  },
+  languageModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  languageModalTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+    marginBottom: 2,
+  },
+  languageModalTitleDark: {
+    color: '#F0F5F1',
+  },
+  languageModalSubtitle: {
+    fontSize: 13,
+    color: '#718573',
+  },
+  languageModalSubtitleDark: {
+    color: '#8EA491',
+  },
+  languageOptionsList: {
+    gap: 10,
+  },
+  languageOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F7F5EE',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: '#E8E3D7',
+  },
+  languageOptionRowDark: {
+    backgroundColor: '#182A1C',
+    borderColor: '#263E2B',
+  },
+  languageOptionRowSelected: {
+    borderColor: '#1C3723',
+    backgroundColor: '#EEF4EC',
+  },
+  languageOptionRowSelectedDark: {
+    borderColor: '#4ADE80',
+    backgroundColor: '#1D3523',
+  },
+  languageOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  languageFlagCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#E6EFE4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languageFlagCircleDark: {
+    backgroundColor: '#223826',
+  },
+  languageCodeBadge: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#284E2F',
+    letterSpacing: 0.5,
+  },
+  languageOptionName: {
+    fontSize: 15.5,
+    fontWeight: '600',
+    color: '#1C3723',
+    marginBottom: 1,
+  },
+  languageOptionNameDark: {
+    color: '#F0F5F1',
+  },
+  languageOptionNameSelected: {
+    fontWeight: '700',
+  },
+  languageOptionNative: {
+    fontSize: 12.5,
+    color: '#718573',
+  },
+  languageOptionNativeDark: {
+    color: '#8EA491',
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1C3723',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkCircleDark: {
+    backgroundColor: '#2F683A',
+  },
+  emptyCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#C7C0B2',
+  },
+  emptyCheckCircleDark: {
+    borderColor: '#3B5740',
+  },
+
+  /* MODAL */
+  modalSafeArea: {
+    flex: 1,
+    backgroundColor: '#F5F2EB',
+  },
+  modalSafeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ECE6DC',
+  },
+  modalHeaderDark: {
+    backgroundColor: '#16271A',
+    borderBottomColor: '#263D2B',
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: serifFont,
+    color: '#1C3723',
+  },
+  modalHeaderTitleDark: {
+    color: '#F0F5F1',
+  },
+  modalContent: {
+    padding: 16,
+  },
+  modalFieldGroup: {
+    marginBottom: 14,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B614E',
+    marginBottom: 6,
+  },
+  modalLabelDark: {
+    color: '#95AB98',
+  },
+  modalInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14.5,
+    color: '#1C3723',
+    borderWidth: 1,
+    borderColor: '#DFD8CC',
+  },
+  modalInputDark: {
+    backgroundColor: '#101F14',
+    borderColor: '#29432F',
+    color: '#F0F5F1',
+  },
+  modalTextArea: {
+    minHeight: 80,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
+  modalSaveButton: {
+    backgroundColor: '#1C3723',
+    borderRadius: 26,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    shadowColor: '#1C3723',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  modalSaveButtonDark: {
+    backgroundColor: '#264B30',
+  },
+  modalSaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  avatarPlaceholder: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#1E3E26',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarPlaceholderDark: {
+    backgroundColor: '#142E1B',
+    borderColor: '#4ADE80',
+  },
+  avatarInitials: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: serifFont,
+  },
+  modalAvatarSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 6,
+  },
+  modalAvatarWrapper: {
+    position: 'relative',
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+  },
+  modalAvatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: '#1C3723',
+  },
+  modalAvatarPlaceholder: {
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    backgroundColor: '#E2EBE3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1C3723',
+  },
+  modalAvatarPlaceholderDark: {
+    backgroundColor: '#18331E',
+    borderColor: '#4ADE80',
+  },
+  modalAvatarInitials: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#1C3723',
+    fontFamily: serifFont,
+  },
+  modalAvatarInitialsDark: {
+    color: '#E8F0EA',
+  },
+  modalCameraBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#1C3723',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  modalCameraBadgeDark: {
+    backgroundColor: '#264B30',
+    borderColor: '#0E1710',
+  },
+  modalChangePhotoBtn: {
+    marginTop: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  modalChangePhotoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C3723',
+  },
+  modalChangePhotoTextDark: {
+    color: '#4ADE80',
+  },
+  requiredStar: {
+    color: '#D32F2F',
+  },
+});
