@@ -16,6 +16,7 @@ metro.config.local.js
 !.env.example
 .vercel/
 supabase/.temp/
+database/.temp/
 .DS_Store
 Thumbs.db
 *.log
