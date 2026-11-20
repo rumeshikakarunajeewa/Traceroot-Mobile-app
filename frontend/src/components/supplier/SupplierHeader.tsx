@@ -49,10 +49,10 @@ export const SupplierHeader: React.FC<SupplierHeaderProps> = ({
 
         <View style={styles.highlightWrapper}>
           <View
-            style={[
-              styles.highlightBar,
-              isDark && styles.highlightBarDark,
-            ]}
+            // style={[
+            //   styles.highlightBar,
+            //   isDark && styles.highlightBarDark,
+            // ]}
           />
           <Text style={[styles.companyName, isDark && styles.companyNameDark]}>
             {profile.name}
@@ -107,7 +107,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   centerInfo: {
-    alignItems: 'center',
+    fontWeight: '800',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   subtitleRow: {
@@ -134,19 +135,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  highlightBar: {
-    position: 'absolute',
-    bottom: 2,
-    left: -4,
-    right: -4,
-    height: 10,
-    backgroundColor: 'rgba(164, 203, 172, 0.38)', // Soft green highlighter effect
-    borderRadius: 3,
-    zIndex: -1,
-  },
-  highlightBarDark: {
-    backgroundColor: 'rgba(64, 115, 75, 0.45)',
-  },
+  // highlightBar: {
+  //   position: 'absolute',
+  //   bottom: 2,
+  //   left: -4,
+  //   right: -4,
+  //   height: 10,
+  //   backgroundColor: 'rgba(164, 203, 172, 0.38)', // Soft green highlighter effect
+  //   borderRadius: 3,
+  //   zIndex: -1,
+  // },
+  // highlightBarDark: {
+  //   backgroundColor: 'rgba(64, 115, 75, 0.45)',
+  // },
   companyName: {
     fontSize: 22,
     fontWeight: '700',
