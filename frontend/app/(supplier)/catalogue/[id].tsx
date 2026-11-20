@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
 import {
@@ -26,6 +26,7 @@ const DEFAULT_SEED_IMAGE = require('../../../assets/images/supplier_seed_sack.jp
 const UNIT_OPTIONS = ['kg', 'g', 'L', 'mL', 'pack'];
 
 export default function SupplierEditProductScreen() {
+  const navigation = useNavigation<any>();
   const [isDark] = useDarkMode();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [products] = useSupplierCatalogue();
@@ -77,6 +78,14 @@ export default function SupplierEditProductScreen() {
   const handleResetPhoto = () => {
     setPhotoUri(null);
     setPhotoBase64(null);
+  };
+
+  const handleBackToCatalogue = () => {
+    try {
+      navigation.navigate('catalogue/index');
+    } catch {
+      router.replace('/catalogue' as any);
+    }
   };
 
   const handlePickImage = () => {
@@ -178,7 +187,7 @@ export default function SupplierEditProductScreen() {
         photoBase64 || undefined
       );
       Alert.alert('Product Saved', 'Catalogue item details and inventory have been updated.');
-      router.back();
+      handleBackToCatalogue();
     } catch (e: any) {
       Alert.alert('Save Error', e.message || 'Failed to update product.');
     } finally {
@@ -199,7 +208,7 @@ export default function SupplierEditProductScreen() {
           onPress: () => {
             removeCatalogueProduct(id);
             Alert.alert('Product Removed', 'Item has been deleted from your catalogue.');
-            router.back();
+            handleBackToCatalogue();
           },
         },
       ]
@@ -227,7 +236,7 @@ export default function SupplierEditProductScreen() {
         {/* Back Button */}
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => router.back()}
+          onPress={handleBackToCatalogue}
           style={[styles.backPill, isDark && styles.backPillDark]}
           accessibilityRole="button"
           accessibilityLabel="Back to Catalogue"
