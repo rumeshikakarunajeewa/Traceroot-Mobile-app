@@ -1,118 +1,79 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   Image,
-  Platform,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { BuyerMessageThread } from '../../types/buyer.types';
-import { useDarkMode } from '../../store/uiStore';
+import { BuyerMessageItem } from '../../types/buyer.types';
 
 interface BuyerMessageCardProps {
-  thread: BuyerMessageThread;
-  onPress: (thread: BuyerMessageThread) => void;
+  message: BuyerMessageItem;
+  onPress: (message: BuyerMessageItem) => void;
 }
 
-export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({ thread, onPress }) => {
-  const [isDark] = useDarkMode();
-  const isRequest = thread.category === 'Request';
-
-  // Render the category tag (Request or Note)
-  const renderCategoryTag = () => {
-    return (
-      <View
-        style={[
-          styles.categoryTag,
-          isRequest ? styles.categoryTagRequest : styles.categoryTagNote,
-        ]}
-      >
-        <Text style={styles.categoryTagText}>{thread.category}</Text>
-      </View>
-    );
-  };
-
-  // Render the status indicator (✨ New, ✓ Replied, ⏳ Pending)
-  const renderStatus = () => {
-    switch (thread.status) {
-      case 'New':
-        return (
-          <View style={styles.statusRow}>
-            <Text style={styles.statusNewText}>✨ New</Text>
-          </View>
-        );
-      case 'Replied':
-        return (
-          <View style={styles.statusRow}>
-            <MaterialCommunityIcons name="check" size={14} color="#2A7337" style={styles.statusIcon} />
-            <Text style={styles.statusRepliedText}>Replied</Text>
-          </View>
-        );
-      case 'Pending':
-        return (
-          <View style={styles.statusRow}>
-            <MaterialCommunityIcons name="timer-sand" size={13} color="#3B82F6" style={styles.statusIcon} />
-            <Text style={styles.statusPendingText}>Pending</Text>
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
+export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({
+  message,
+  onPress,
+}) => {
+  const isRequest = message.tag === 'Request';
 
   return (
     <TouchableOpacity
       activeOpacity={0.88}
-      onPress={() => onPress(thread)}
-      style={[
-        styles.cardContainer,
-        isDark && styles.cardContainerDark,
-        thread.isUnread && (isDark ? styles.cardContainerUnreadDark : styles.cardContainerUnread),
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`Conversation with ${thread.senderName}`}
+      onPress={() => onPress(message)}
+      style={styles.card}
     >
-      {/* Left Avatar Column with Online Status Dot */}
+      {/* Left: Avatar with Unread Dot Indicator */}
       <View style={styles.avatarWrapper}>
         <Image
-          source={{ uri: thread.avatarUrl }}
+          source={{ uri: message.avatarUrl }}
           style={styles.avatarImage}
           resizeMode="cover"
         />
-        {thread.isOnline && (
-          <View style={[styles.onlineDot, isDark && styles.onlineDotDark]} />
-        )}
+        {message.isUnread && <View style={styles.unreadDot} />}
       </View>
 
-      {/* Right Column: Name, Time, Badges, and Preview Snippet */}
-      <View style={styles.contentColumn}>
-        {/* Top Row: Sender Name and Timestamp */}
+      {/* Right: Message Details */}
+      <View style={styles.contentContainer}>
+        {/* Row 1: Sender Name & Timestamp */}
         <View style={styles.topRow}>
-          <Text
-            style={[styles.senderName, isDark && styles.senderNameDark]}
-            numberOfLines={1}
+          <Text style={styles.senderName} numberOfLines={1}>
+            {message.senderName}
+          </Text>
+          <Text style={styles.timestampText}>{message.timestamp}</Text>
+        </View>
+
+        {/* Row 2: Tag & Status Pill Badges */}
+        <View style={styles.tagsRow}>
+          {/* Tag Pill (Request vs Note) */}
+          <View
+            style={[
+              styles.tagPill,
+              isRequest ? styles.requestTag : styles.noteTag,
+            ]}
           >
-            {thread.senderName}
-          </Text>
-          <Text style={[styles.timestamp, isDark && styles.timestampDark]}>
-            {thread.timestamp}
-          </Text>
+            <Text style={styles.tagText}>{message.tag}</Text>
+          </View>
+
+          {/* Status Indicator (✨ New, ✓ Replied, ⏳ Pending) */}
+          <View style={styles.statusWrapper}>
+            {message.status === 'New' && (
+              <Text style={styles.newStatusText}>✨ New</Text>
+            )}
+            {message.status === 'Replied' && (
+              <Text style={styles.repliedStatusText}>✓ Replied</Text>
+            )}
+            {message.status === 'Pending' && (
+              <Text style={styles.pendingStatusText}>⏳ Pending</Text>
+            )}
+          </View>
         </View>
 
-        {/* Badges Row: Category (Request / Note) + Status Indicator */}
-        <View style={styles.badgeRow}>
-          {renderCategoryTag()}
-          {renderStatus()}
-        </View>
-
-        {/* Message Snippet Preview */}
-        <Text
-          style={[styles.messageSnippet, isDark && styles.messageSnippetDark]}
-          numberOfLines={2}
-        >
-          {thread.messageSnippet}
+        {/* Row 3: Message Snippet */}
+        <Text style={styles.snippetText} numberOfLines={2}>
+          {message.snippet}
         </Text>
       </View>
     </TouchableOpacity>
@@ -120,70 +81,45 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({ thread, onPr
 };
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    flexDirection: 'row',
+  card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: '#E8ECE6',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 1.5,
-      },
-      default: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
-  },
-  cardContainerDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
-  },
-  cardContainerUnread: {
-    borderColor: '#CDE3D0',
-    backgroundColor: '#FBFDFB',
-  },
-  cardContainerUnreadDark: {
-    borderColor: '#396340',
-    backgroundColor: '#1E3224',
+    borderColor: '#ECE9E2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 1,
   },
   avatarWrapper: {
-    position: 'relative',
     width: 52,
     height: 52,
+    borderRadius: 26,
+    position: 'relative',
   },
   avatarImage: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#E5EAE3',
+    backgroundColor: '#E5E7EB',
   },
-  onlineDot: {
+  unreadDot: {
     position: 'absolute',
     top: 0,
-    right: 0,
+    right: 1,
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#E58B24', // Warm amber / orange status dot matching the Figma design
+    backgroundColor: '#D97706',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  onlineDotDark: {
-    borderColor: '#18271C',
-  },
-  contentColumn: {
+  contentContainer: {
     flex: 1,
     marginLeft: 14,
     justifyContent: 'center',
@@ -192,77 +128,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
   },
   senderName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#162C1A',
+    color: '#1F2937',
     flex: 1,
     marginRight: 8,
-    letterSpacing: -0.2,
   },
-  senderNameDark: {
-    color: '#F0F5F1',
+  timestampText: {
+    fontSize: 11.5,
+    color: '#6B7280',
+    fontWeight: '500',
   },
-  timestamp: {
-    fontSize: 12,
-    color: '#8A9A8C',
-    fontWeight: '400',
-  },
-  timestampDark: {
-    color: '#8CA390',
-  },
-  badgeRow: {
+  tagsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 4,
     marginBottom: 6,
   },
-  categoryTag: {
-    paddingHorizontal: 8,
+  tagPill: {
+    paddingHorizontal: 7,
     paddingVertical: 2.5,
     borderRadius: 6,
   },
-  categoryTagRequest: {
-    backgroundColor: '#E48F19', // Amber badge
+  requestTag: {
+    backgroundColor: '#D97706', // Warm amber / orange
   },
-  categoryTagNote: {
-    backgroundColor: '#1A4D2E', // Dark green badge
+  noteTag: {
+    backgroundColor: '#1E4D2B', // Deep forest green
   },
-  categoryTagText: {
+  tagText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  statusRow: {
+  statusWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  statusIcon: {
-    marginRight: 3,
+  newStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D97706',
   },
-  statusNewText: {
-    color: '#E48F19',
-    fontSize: 12,
-    fontWeight: '600',
+  repliedStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
   },
-  statusRepliedText: {
-    color: '#2A7337',
-    fontSize: 12,
-    fontWeight: '600',
+  pendingStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
   },
-  statusPendingText: {
-    color: '#3B82F6',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  messageSnippet: {
+  snippetText: {
     fontSize: 13,
-    color: '#465648',
+    color: '#4B5563',
     lineHeight: 18,
-  },
-  messageSnippetDark: {
-    color: '#BACEC0',
   },
 });
