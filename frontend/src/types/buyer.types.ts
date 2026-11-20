@@ -7,6 +7,7 @@ export interface BuyerProfile {
   isVerified: boolean;
   avatarUrl?: string | null;
   roleTitle?: string;
+  role?: string;
   company?: string;
   district?: string;
   province?: string;
@@ -21,11 +22,15 @@ export interface BuyerProfile {
   kgSourced?: string;
   trustScore?: number;
   trustScoreLabel?: string;
+  trustRating?: string;
   trustScoreDetail?: string;
+  trustDescription?: string;
   phone?: string;
   email?: string;
   businessType?: string;
   registrationId?: string;
+  regId?: string;
+  heroBackgroundUrl?: string;
 }
 
 export interface BuyerStats {
@@ -137,5 +142,40 @@ export interface BuyerMessageThread {
   isOnline?: boolean;
   isUnread?: boolean;
 }
+
+export interface BuyerOrderItem {
+  id: string;
+  orderNumber: string;
+  cropName: string;
+  quantityKg: number;
+  pricePerKg: number;
+  totalPrice: number;
+  currency: string;
+  farmerName: string;
+  location: string;
+  status: OrderStatus;
+  farmingType: FarmingType;
+  deliveryDateEst: string;
+  progressPercentage: number;
+  completedStages: number;
+  totalStages: number;
+  lockedRecordsCount: number;
+  imageUrl: string;
+}
+
+export type MessageTagType = 'Request' | 'Note';
+export type MessageStatusType = 'New' | 'Replied' | 'Pending';
+
+export interface BuyerMessageItem {
+  id: string;
+  senderName: string;
+  avatarUrl: string;
+  timestamp: string;
+  tag: MessageTagType;
+  status: MessageStatusType;
+  snippet: string;
+  isUnread?: boolean;
+}
+
 
 

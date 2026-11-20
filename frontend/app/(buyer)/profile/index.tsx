@@ -1,211 +1,43 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Switch,
+  ScrollView,
+  StyleSheet,
+  StatusBar,
   Platform,
+  Image,
+  ImageBackground,
+  Switch,
   Alert,
-  RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { BuyerProfile } from '../../../src/types/buyer.types';
-import { BuyerProfileHero } from '../../../src/components/buyer/BuyerProfileHero';
-import { BuyerProfileDetails } from '../../../src/components/buyer/BuyerProfileDetails';
-import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
-import { useDarkMode } from '../../../src/store/uiStore';
-import { StatusBar } from 'expo-status-bar';
-import { authService } from '../../../src/services/auth.service';
-import { useAuth, setAuthState } from '../../../src/store/authStore';
-import { profilesService } from '../../../src/services/profiles.service';
-import {
-  parseCoordinates,
-  formatCoordinates,
-  openInNativeMaps,
-} from '../../../src/services/location.service';
+import { mockBuyerProfile } from '../../../src/constants/buyerMockData';
 
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
-const defaultEmptyBuyerProfile: BuyerProfile = {
-  id: '',
-  fullName: ' ',
-  initials: ' ',
-  isVerified: false,
-  roleTitle: 'Wholesale Buyer',
-  company: ' ',
-  district: ' ',
-  province: ' ',
-  country: 'Sri Lanka',
-  coordinates: ' ',
-  bio: ' ',
-  ordersCount: 0,
-  contractsCount: 0,
-  kgSourced: '0 kg',
-  trustScore: 85,
-  trustScoreLabel: 'Verified Buyer',
-  trustScoreDetail: 'Standard rating for verified accounts',
-  phone: ' ',
-  email: ' ',
-  businessType: ' ',
-  registrationId: ' ',
-};
-
 export default function BuyerProfileScreen() {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<BuyerProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const profile = mockBuyerProfile;
   const [activeTab, setActiveTab] = useState<ProfileTab>('About');
-  const [darkMode, setDarkMode] = useDarkMode();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const displayProfile = profile || defaultEmptyBuyerProfile;
-
-  const loadProfile = useCallback(async () => {
-    try {
-      const currentUser = user || (await authService.getSession())?.user;
-      if (currentUser?.id) {
-        const realProfile = await profilesService.getBuyerProfile(currentUser.id);
-        if (realProfile) {
-          setProfile(realProfile);
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to load buyer profile:', err);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const currentUser = user || (await authService.getSession())?.user;
-        if (currentUser?.id && isMounted) {
-          const realProfile = await profilesService.getBuyerProfile(currentUser.id);
-          if (realProfile && isMounted) {
-            setProfile(realProfile);
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to load buyer profile on mount:', err);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-          setRefreshing(false);
-        }
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
-
-  // Pull-to-refresh
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadProfile();
-  };
-
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(buyer)' as any);
-    }
-  };
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
 
   const handleEditPress = () => {
-    setIsEditModalVisible(true);
-  };
-
-  const handleSaveProfile = async (
-    updatedFields: Partial<BuyerProfile>,
-    localAvatarUri?: string,
-    avatarBase64?: string
-  ) => {
-    const currentUser = user || (await authService.getSession())?.user;
-    if (!currentUser?.id) return;
-
-    setIsSaving(true);
-    const res = await profilesService.updateBuyerProfile(
-      currentUser.id,
-      updatedFields,
-      localAvatarUri,
-      avatarBase64
+    Alert.alert(
+      'Edit Profile',
+      'Update your company info, contact phone, or delivery district.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save Changes', onPress: () => Alert.alert('Profile Updated', 'Your profile details have been saved.') },
+      ]
     );
-    setIsSaving(false);
-
-    if (res.success) {
-      const finalAvatar = res.avatarUrl !== undefined ? res.avatarUrl : updatedFields.avatarUrl;
-      const mergedFields = {
-        ...updatedFields,
-        avatarUrl: finalAvatar || undefined,
-      };
-
-      setProfile((prev) => {
-        const base = prev || defaultEmptyBuyerProfile;
-        return {
-          ...base,
-          ...mergedFields,
-        };
-      });
-
-      setAuthState({
-        profile: {
-          id: currentUser.id,
-          role: 'buyer',
-          full_name: updatedFields.fullName || currentUser.user_metadata?.full_name || 'Buyer',
-          email: updatedFields.email || currentUser.email || '',
-          phone: updatedFields.phone || null,
-          avatar_url: finalAvatar || null,
-        },
-      });
-
-      setIsEditModalVisible(false);
-      Alert.alert('Profile Updated', 'Your profile changes have been successfully saved.');
-    } else {
-      Alert.alert('Update Failed', res.error || 'Failed to update profile.');
-    }
   };
 
   const handleLogout = () => {
-    const performLogout = async () => {
-      try {
-        await authService.signOut();
-      } catch (err) {
-        console.warn('Error during signOut:', err);
-      } finally {
-        setAuthState({
-          user: null,
-          profile: null,
-          session: null,
-          token: null,
-          isLoading: false,
-        });
-        router.replace('/(auth)/login' as any);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmText = 'Log Out\n\nAre you sure you want to log out of your TraceRoot account?';
-      if (typeof window !== 'undefined' && window.confirm && window.confirm(confirmText)) {
-        performLogout();
-      }
-      return;
-    }
-
     Alert.alert(
       'Log Out',
       'Are you sure you want to log out of your TraceRoot account?',
@@ -214,145 +46,188 @@ export default function BuyerProfileScreen() {
         {
           text: 'Log Out',
           style: 'destructive',
-          onPress: performLogout,
+          onPress: () => {
+            router.replace('/(auth)/login');
+          },
         },
       ]
     );
   };
 
-  const handleLanguagePress = () => {
-    Alert.alert(
-      'Select Language',
-      'Choose your preferred display language',
-      [
-        { text: 'English (Current)', style: 'default' },
-        { text: 'Sinhala (සිංහල)', style: 'default' },
-        { text: 'Tamil (தமிழ்)', style: 'default' },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleTabChange = (tab: ProfileTab) => {
+    setActiveTab(tab);
+    if (tab === 'Orders') {
+      router.push('/(buyer)/orders');
+    } else if (tab === 'Saved') {
+      router.push('/(buyer)/explore');
+    } else if (tab === 'Documents') {
+      Alert.alert('Documents', '4 verified trade certifications & trade licenses on file.');
+    }
   };
 
-  if (isLoading && !profile) {
-    return (
-      <SafeAreaView
-        style={[
-          styles.safeArea,
-          darkMode && styles.safeAreaDark,
-          { justifyContent: 'center', alignItems: 'center' },
-        ]}
-        edges={['top']}
-      >
-        <ActivityIndicator size="large" color={darkMode ? '#4ADE80' : '#1B3220'} />
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView
-      style={[styles.safeArea, darkMode && styles.safeAreaDark]}
-      edges={['top']}
-    >
-      <StatusBar
-        style={darkMode ? 'light' : 'dark'}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F1EA" />
 
-      />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ========================================================
+            1. TOP HEADER WITH BACK BUTTON, TITLE & EDIT BUTTON
+           ======================================================== */}
+        <View style={styles.headerRow}>
+          {/* Back Button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-back" size={20} color="#1F2937" />
+          </TouchableOpacity>
 
-      {/* 1. Header Bar */}
-      <View style={styles.headerContainer}>
-        {/* Left: Circular back button */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleBack}
-          style={[styles.backButton, darkMode && styles.backButtonDark]}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <MaterialCommunityIcons
-            name="chevron-left"
-            size={24}
-            color={darkMode ? '#E5EFE7' : '#16301A'}
-          />
-        </TouchableOpacity>
-
-        {/* Center: Account Title Stack */}
-        <View style={styles.headerTitleCenter}>
-          <Text style={[styles.headerSubtitle, darkMode && styles.headerSubtitleDark]}>
-            Your account <Text style={styles.sproutEmoji}>🌿</Text>
-          </Text>
-          <View style={styles.titleRow}>
-            <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>My </Text>
-            <View style={styles.profileTextWrapper}>
-              <View
-                style={[styles.profileHighlightBg, darkMode && styles.profileHighlightBgDark]}
-              />
-              <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>
-                Profile
-              </Text>
+          {/* Title & Subtitle */}
+          <View style={styles.titleContainer}>
+            <Text style={styles.subtitleText}>Your account 🌿</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.titleText}>My </Text>
+              <View style={styles.highlightWrapper}>
+                <Text style={styles.titleHighlightText}>Profile</Text>
+              </View>
             </View>
+          </View>
+
+          {/* Edit Button */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleEditPress}
+            style={styles.editButton}
+          >
+            <MaterialCommunityIcons name="square-edit-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ========================================================
+            2. HERO PROFILE CARD WITH HARVEST PHOTO BACKGROUND
+           ======================================================== */}
+        <View style={styles.heroCardContainer}>
+          <ImageBackground
+            source={{ uri: profile.heroBackgroundUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=80' }}
+            style={styles.heroBackground}
+            imageStyle={styles.heroBackgroundImage}
+            resizeMode="cover"
+          >
+            {/* Dark green gradient scrim for contrast */}
+            <View style={styles.heroOverlay}>
+              {/* Top Row: Avatar & Bio Info */}
+              <View style={styles.heroTopRow}>
+                {/* Avatar with Verified Checkmark Badge */}
+                <View style={styles.avatarWrapper}>
+                  <Image
+                    source={{ uri: profile.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.verifiedCheckBadge}>
+                    <MaterialCommunityIcons name="check" size={13} color="#FFFFFF" />
+                  </View>
+                </View>
+
+                {/* Name, Role & Location */}
+                <View style={styles.heroInfoColumn}>
+                  {/* Wholesale Buyer Pill */}
+                  <View style={styles.roleBadge}>
+                    <MaterialCommunityIcons name="basket-outline" size={12} color="#1D3524" />
+                    <Text style={styles.roleBadgeText}>{profile.role || 'Wholesale Buyer'}</Text>
+                  </View>
+
+                  {/* Name */}
+                  <Text style={styles.heroName} numberOfLines={1}>
+                    {profile.fullName}
+                  </Text>
+
+                  {/* Location & Organization */}
+                  <View style={styles.heroLocRow}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={13} color="#D4E3D8" />
+                    <Text style={styles.heroLocText} numberOfLines={1}>
+                      {profile.district} · {profile.company}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Bio Paragraph */}
+              <Text style={styles.bioText}>
+                {profile.bio}
+              </Text>
+
+              {/* Frosted Glass / Translucent Stats Row */}
+              <View style={styles.frostedStatsCard}>
+                {/* Orders */}
+                <View style={styles.statColumn}>
+                  <MaterialCommunityIcons name="basket-outline" size={15} color="#D4E2D8" />
+                  <Text style={styles.statNumber}>{profile.ordersCount}</Text>
+                  <Text style={styles.statLabel}>Orders</Text>
+                </View>
+
+                {/* Contracts */}
+                <View style={styles.statColumn}>
+                  <MaterialCommunityIcons name="file-document-outline" size={15} color="#D4E2D8" />
+                  <Text style={styles.statNumber}>{profile.contractsCount}</Text>
+                  <Text style={styles.statLabel}>Contracts</Text>
+                </View>
+
+                {/* kg sourced */}
+                <View style={styles.statColumn}>
+                  <MaterialCommunityIcons name="scale-balance" size={15} color="#D4E2D8" />
+                  <Text style={styles.statNumber}>{profile.kgSourced}</Text>
+                  <Text style={styles.statLabel}>kg sourced</Text>
+                </View>
+              </View>
+            </View>
+          </ImageBackground>
+        </View>
+
+        {/* ========================================================
+            3. TRUST SCORE CARD
+           ======================================================== */}
+        <View style={styles.trustScoreCard}>
+          {/* Circular Gauge Ring */}
+          <View style={styles.gaugeCircle}>
+            <Text style={styles.gaugeNumber}>{profile.trustScore || 96}</Text>
+          </View>
+
+          {/* Right Trust Details */}
+          <View style={styles.trustDetailsColumn}>
+            <Text style={styles.trustKicker}>Trust score</Text>
+            <Text style={styles.trustRatingTitle}>{profile.trustRating || 'Exemplary'}</Text>
+            <Text style={styles.trustSubtitle}>{profile.trustDescription}</Text>
           </View>
         </View>
 
-        {/* Right: Dark green Edit pill */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleEditPress}
-          style={[styles.editButton, darkMode && styles.editButtonDark]}
-          accessibilityRole="button"
-          accessibilityLabel="Edit profile"
-        >
-          <MaterialCommunityIcons
-            name="note-edit-outline"
-            size={16}
-            color="#FFFFFF"
-            style={styles.editIcon}
-          />
-          <Text style={styles.editText}>Edit</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={darkMode ? '#4ADE80' : '#1B3220'}
-            colors={[darkMode ? '#4ADE80' : '#1B3220']}
-          />
-        }
-      >
-        {/* 2. Hero Profile Card with Vegetable BG & Stats */}
-        <BuyerProfileHero
-          profile={displayProfile}
-          onPressStatsOrders={() => router.push('/(buyer)/orders' as any)}
-          onPressStatsContracts={() => router.push('/(buyer)/contracts' as any)}
-          onPressStatsSourced={() => router.push('/(buyer)/orders' as any)}
-        />
-
-        {/* 3. Tab Navigation Pills */}
+        {/* ========================================================
+            4. HORIZONTAL FILTER TABS (About, Orders, Saved, Documents)
+           ======================================================== */}
         <View style={styles.tabsRow}>
           {(['About', 'Orders', 'Saved', 'Documents'] as ProfileTab[]).map((tab) => {
             const isActive = activeTab === tab;
-                      return (
+            return (
               <TouchableOpacity
                 key={tab}
-                activeOpacity={0.75}
-                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.8}
+                onPress={() => handleTabChange(tab)}
                 style={[
                   styles.tabPill,
-                  isActive
-                    ? [styles.tabPillActive, darkMode && styles.tabPillActiveDark]
-                    : [styles.tabPillInactive, darkMode && styles.tabPillInactiveDark],
+                  isActive ? styles.tabPillActive : styles.tabPillInactive,
                 ]}
               >
                 <Text
                   style={[
                     styles.tabPillText,
-                    isActive
-                      ? styles.tabPillTextActive
-                      : [styles.tabPillTextInactive, darkMode && styles.tabPillTextInactiveDark],
+                    isActive ? styles.tabTextActive : styles.tabTextInactive,
                   ]}
                 >
                   {tab}
@@ -362,286 +237,149 @@ export default function BuyerProfileScreen() {
           })}
         </View>
 
-        {/* 5. Dynamic Tab Content */}
-        {activeTab === 'About' && (
-          <BuyerProfileDetails
-            profile={displayProfile}
-            isDark={darkMode}
-            onPressPhone={() =>
-              displayProfile.phone?.trim()
-                ? Alert.alert('Phone Contact', displayProfile.phone)
-                : undefined
-            }
-            onPressEmail={() =>
-              displayProfile.email?.trim()
-                ? Alert.alert('Email Contact', displayProfile.email)
-                : undefined
-            }
-            onPressLocation={() => {
-              const coords = parseCoordinates(displayProfile.coordinates, displayProfile.district);
-              const lat = displayProfile.latitude ?? coords.latitude;
-              const lng = displayProfile.longitude ?? coords.longitude;
-              const label =
-                [displayProfile.district, displayProfile.province].filter(Boolean).join(', ') ||
-                'Sri Lanka';
-
-              Alert.alert(
-                'Buyer Real Location',
-                `${displayProfile.company?.trim() || displayProfile.fullName?.trim() || 'Buyer'}\n${displayProfile.address ? displayProfile.address + '\n' : ''}${label}\nCoordinates: ${displayProfile.coordinates || formatCoordinates(lat, lng)}`,
-                [
-                  {
-                    text: 'Open in Maps',
-                    onPress: () =>
-                      openInNativeMaps(
-                        lat,
-                        lng,
-                        displayProfile.company || displayProfile.fullName || 'Buyer Location'
-                      ),
-                  },
-                  {
-                    text: 'Edit Location',
-                    onPress: () => setIsEditModalVisible(true),
-                  },
-                  { text: 'Cancel', style: 'cancel' },
-                ]
-              );
-            }}
-          />
-        )}
-
-        {activeTab === 'Orders' && (
-          <View style={[styles.tabContentCard, darkMode && styles.tabContentCardDark]}>
-            <View style={styles.tabContentHeader}>
-              <MaterialCommunityIcons
-                name="basket-check-outline"
-                size={20}
-                color={darkMode ? '#4ADE80' : '#2A4B2F'}
-              />
-              <Text
-                style={[styles.tabContentTitle, darkMode && styles.tabContentTitleDark]}
-              >
-                Recent Orders (142 Total)
-              </Text>
+        {/* ========================================================
+            5. CONTACT & BUSINESS DETAILS CARD
+           ======================================================== */}
+        <View style={styles.detailsCard}>
+          {/* Phone */}
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="chat-outline" size={16} color="#556D5B" />
+              </View>
+              <Text style={styles.detailLabel}>Phone</Text>
             </View>
-            <Text style={[styles.tabContentDesc, darkMode && styles.tabContentDescDark]}>
-              142 settled orders across Badulla, Kandy, and Nuwara Eliya farming clusters.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.push('/(buyer)/orders' as any)}
-              style={[styles.tabActionBtn, darkMode && styles.tabActionBtnDark]}
-            >
-              <Text
-                style={[styles.tabActionBtnText, darkMode && styles.tabActionBtnTextDark]}
-              >
-                View All Orders ›
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.detailValue}>{profile.phone}</Text>
           </View>
-        )}
 
-        {activeTab === 'Saved' && (
-          <View style={[styles.tabContentCard, darkMode && styles.tabContentCardDark]}>
-            <View style={styles.tabContentHeader}>
-              <MaterialCommunityIcons
-                name="bookmark-outline"
-                size={20}
-                color={darkMode ? '#4ADE80' : '#2A4B2F'}
-              />
-              <Text
-                style={[styles.tabContentTitle, darkMode && styles.tabContentTitleDark]}
-              >
-                Saved Farm Suppliers (18)
-              </Text>
+          {/* Email */}
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="email-outline" size={16} color="#556D5B" />
+              </View>
+              <Text style={styles.detailLabel}>Email</Text>
             </View>
-            <Text style={[styles.tabContentDesc, darkMode && styles.tabContentDescDark]}>
-              You have 18 verified partner farms bookmarked for seasonal harvest notifications.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.push('/(buyer)/explore' as any)}
-              style={[styles.tabActionBtn, darkMode && styles.tabActionBtnDark]}
-            >
-              <Text
-                style={[styles.tabActionBtnText, darkMode && styles.tabActionBtnTextDark]}
-              >
-                Explore Farmers Market ›
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.detailValue}>{profile.email}</Text>
           </View>
-        )}
 
-        {activeTab === 'Documents' && (
-          <View style={[styles.tabContentCard, darkMode && styles.tabContentCardDark]}>
-            <View style={styles.tabContentHeader}>
-              <MaterialCommunityIcons
-                name="file-certificate-outline"
-                size={20}
-                color={darkMode ? '#4ADE80' : '#2A4B2F'}
-              />
-              <Text
-                style={[styles.tabContentTitle, darkMode && styles.tabContentTitleDark]}
-              >
-                Verification & Certificates
-              </Text>
+          {/* Business */}
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="storefront-outline" size={16} color="#556D5B" />
+              </View>
+              <Text style={styles.detailLabel}>Business</Text>
             </View>
-            <Text style={[styles.tabContentDesc, darkMode && styles.tabContentDescDark]}>
-              Business Reg: {displayProfile.registrationId?.trim() ? displayProfile.registrationId : ' '} • Validated Invoicing
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                Alert.alert(
-                  'TraceRoot KYC Verification',
-                  `${displayProfile.company?.trim() || 'Your account'} commercial documentation is verified with TraceRoot.`
-                )
-              }
-              style={[styles.tabActionBtn, darkMode && styles.tabActionBtnDark]}
-            >
-              <Text
-                style={[styles.tabActionBtnText, darkMode && styles.tabActionBtnTextDark]}
-              >
-                View Verification Certificate ›
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.detailValue}>{profile.businessType}</Text>
           </View>
-        )}
 
-        {/* 6. Settings Section */}
-        <Text style={[styles.sectionHeaderTitle, darkMode && styles.sectionHeaderTitleDark]}>
-          Settings
-        </Text>
+          {/* Reg. ID */}
+          <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="shield-check-outline" size={16} color="#556D5B" />
+              </View>
+              <Text style={styles.detailLabel}>Reg. ID</Text>
+            </View>
+            <Text style={styles.detailValue}>{profile.regId}</Text>
+          </View>
+        </View>
 
-        <View style={[styles.settingsCard, darkMode && styles.settingsCardDark]}>
-          {/* Row 1: Dark mode Toggle */}
+        {/* ========================================================
+            6. DARK GREEN LOCATION CARD WITH RADAR PIN
+           ======================================================== */}
+        <View style={styles.locationCard}>
+          {/* Decorative Radar Circles on the right */}
+          <View style={styles.radarRingOuter} />
+          <View style={styles.radarRingInner} />
+          <View style={styles.radarPin} />
+
+          {/* Content */}
+          <View style={styles.locationContent}>
+            <View style={styles.locationHeaderRow}>
+              <MaterialCommunityIcons name="map-marker-outline" size={14} color="#A0B6A7" />
+              <Text style={styles.locationKicker}>Location</Text>
+            </View>
+            <Text style={styles.locationTitle}>{profile.district}</Text>
+            <Text style={styles.locationSubtitle}>{profile.province}</Text>
+            <Text style={styles.coordinatesText}>{profile.coordinates}</Text>
+          </View>
+        </View>
+
+        {/* ========================================================
+            7. SETTINGS SECTION
+           ======================================================== */}
+        <Text style={styles.sectionHeader}>Settings</Text>
+        <View style={styles.settingsCard}>
+          {/* Dark Mode */}
           <View style={styles.settingRow}>
-            <View
-              style={[styles.settingIconCircle, darkMode && styles.settingIconCircleDark]}
-            >
-              <MaterialCommunityIcons
-                name={darkMode ? 'weather-night' : 'weather-sunny'}
-                size={18}
-                color={darkMode ? '#FBBF24' : '#2A4B2F'}
-              />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, darkMode && styles.settingTitleDark]}>
-                Dark mode
-              </Text>
-              <Text style={[styles.settingSubtitle, darkMode && styles.settingSubtitleDark]}>
-                {darkMode ? 'On' : 'Off'}
-              </Text>
+            <View style={styles.settingLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="weather-sunny" size={16} color="#556D5B" />
+              </View>
+              <View>
+                <Text style={styles.settingTitle}>Dark mode</Text>
+                <Text style={styles.settingSubtitle}>{darkMode ? 'On' : 'Off'}</Text>
+              </View>
             </View>
             <Switch
               value={darkMode}
               onValueChange={setDarkMode}
-              trackColor={{ false: '#DFD9CB', true: '#2E7D42' }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor="#DFD9CB"
+              trackColor={{ false: '#E5E7EB', true: '#436647' }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
           </View>
 
-          <View style={[styles.settingDivider, darkMode && styles.settingDividerDark]} />
-
-          {/* Row 2: Notifications */}
+          {/* Notifications */}
           <View style={styles.settingRow}>
-            <View
-              style={[styles.settingIconCircle, darkMode && styles.settingIconCircleDark]}
-            >
-              <MaterialCommunityIcons
-                name="bell-outline"
-                size={18}
-                color={darkMode ? '#9FD9A7' : '#2A4B2F'}
-              />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, darkMode && styles.settingTitleDark]}>
-                Notifications
-              </Text>
-              <Text style={[styles.settingSubtitle, darkMode && styles.settingSubtitleDark]}>
-                Orders, contracts & alerts
-              </Text>
+            <View style={styles.settingLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="bell-outline" size={16} color="#556D5B" />
+              </View>
+              <View>
+                <Text style={styles.settingTitle}>Notifications</Text>
+                <Text style={styles.settingSubtitle}>Orders, contracts & alerts</Text>
+              </View>
             </View>
             <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#DFD9CB', true: '#2E7D42' }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor="#DFD9CB"
+              value={notifications}
+              onValueChange={setNotifications}
+              trackColor={{ false: '#E5E7EB', true: '#436647' }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
           </View>
 
-          <View style={[styles.settingDivider, darkMode && styles.settingDividerDark]} />
-
-          {/* Row 3: Language */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleLanguagePress}
-            style={styles.settingRow}
-          >
-            <View
-              style={[styles.settingIconCircle, darkMode && styles.settingIconCircleDark]}
-            >
-              <MaterialCommunityIcons
-                name="message-text-outline"
-                size={18}
-                color={darkMode ? '#9FD9A7' : '#2A4B2F'}
-              />
+          {/* Language */}
+          <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.settingLeft}>
+              <View style={styles.detailIconCircle}>
+                <MaterialCommunityIcons name="chat-processing-outline" size={16} color="#556D5B" />
+              </View>
+              <View>
+                <Text style={styles.settingTitle}>Language</Text>
+                <Text style={styles.settingSubtitle}>English</Text>
+              </View>
             </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, darkMode && styles.settingTitleDark]}>
-                Language
-              </Text>
-              <Text style={[styles.settingSubtitle, darkMode && styles.settingSubtitleDark]}>
-                English
-              </Text>
-            </View>
-            <View
-              style={[styles.languagePill, darkMode && styles.languagePillDark]}
-            >
-              <Text
-                style={[styles.languagePillText, darkMode && styles.languagePillTextDark]}
-              >
-                English
-              </Text>
-              <MaterialCommunityIcons
-                name="chevron-down"
-                size={16}
-                color={darkMode ? '#C4DAC7' : '#4A584B'}
-              />
-            </View>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.languagePill} activeOpacity={0.8}>
+              <Text style={styles.languagePillText}>English</Text>
+              <MaterialCommunityIcons name="chevron-down" size={16} color="#556D5B" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* 7. Terracotta Outlined Log Out Button */}
+        {/* ========================================================
+            8. LOG OUT BUTTON
+           ======================================================== */}
         <TouchableOpacity
-          activeOpacity={0.75}
+          activeOpacity={0.8}
           onPress={handleLogout}
-          style={[styles.logoutButton, darkMode && styles.logoutButtonDark]}
-          accessibilityRole="button"
-          accessibilityLabel="Log out"
+          style={styles.logoutButton}
         >
-          <MaterialCommunityIcons
-            name="chevron-left"
-            size={18}
-            color={darkMode ? '#F97316' : '#C86432'}
-            style={styles.logoutIcon}
-          />
-          <Text style={[styles.logoutText, darkMode && styles.logoutTextDark]}>
-            Log out
-          </Text>
+          <MaterialCommunityIcons name="chevron-left" size={17} color="#C06637" />
+          <Text style={styles.logoutButtonText}>Log out</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Edit Profile Modal */}
-      <BuyerEditProfileModal
-        visible={isEditModalVisible}
-        profile={displayProfile}
-        isDark={darkMode}
-        isSaving={isSaving}
-        onClose={() => setIsEditModalVisible(false)}
-        onSave={handleSaveProfile}
-      />
     </SafeAreaView>
   );
 }
@@ -649,341 +387,512 @@ export default function BuyerProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F2EB', // Theme warm linen background
+    backgroundColor: '#F4F1EA', // Warm organic ivory/cream matching design screenshot
   },
-  safeAreaDark: {
-    backgroundColor: '#0E1710', // Rich dark forest charcoal
+  scrollView: {
+    flex: 1,
   },
-  headerContainer: {
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 115, // Space for the floating bottom navigation bar
+  },
+
+  /* 1. Header */
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
+    marginTop: 6,
+    marginBottom: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#FFFFFF',
-    borderWidth: 0.5,
-    borderColor: '#ECE7DD',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ECE6DB',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  backButtonDark: {
-    backgroundColor: '#19281C',
-    borderColor: '#293D2C',
-  },
-  headerTitleCenter: {
-    alignItems: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#657E6B',
-    fontWeight: '500',
-    marginBottom: 1,
-  },
-  headerSubtitleDark: {
-    color: '#9CB3A0',
-  },
-  sproutEmoji: {
-    fontSize: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 21,
-    fontWeight: '700',
-    color: '#16301A',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-    letterSpacing: -0.3,
-  },
-  headerTitleDark: {
-    color: '#F0F5F1',
-  },
-  profileTextWrapper: {
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  profileHighlightBg: {
-    position: 'absolute',
-    bottom: 2,
-    left: -2,
-    right: -2,
-    height: 10,
-    backgroundColor: '#D9E6DA', // Soft mint highlight behind "Profile"
-    borderRadius: 3,
-    zIndex: -1,
-  },
-  profileHighlightBgDark: {
-    backgroundColor: '#1F4628',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1B3220', // Forest dark pill
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    gap: 4,
-    shadowColor: '#1B3220',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  editButtonDark: {
-    backgroundColor: '#235A33',
+  titleContainer: {
+    flex: 1,
+    marginLeft: 14,
   },
-  editIcon: {
-    marginRight: 1,
+  subtitleText: {
+    fontSize: 12,
+    color: '#586E5B',
+    fontWeight: '500',
+    marginBottom: 2,
   },
-  editText: {
-    fontSize: 13,
-    fontWeight: '600',
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  titleText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#152E1B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  highlightWrapper: {
+    backgroundColor: '#DEE8DF',
+    borderRadius: 6,
+    paddingHorizontal: 4,
+  },
+  titleHighlightText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#152E1B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  editButton: {
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
+    backgroundColor: '#1D3524',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  editButtonText: {
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  scrollContent: {
-    paddingBottom: 115, // Clear floating bottom bar
+
+  /* 2. Hero Profile Card */
+  heroCardContainer: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EAE5DB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  tabsRow: {
+  heroBackground: {
+    width: '100%',
+  },
+  heroBackgroundImage: {
+    borderRadius: 24,
+  },
+  heroOverlay: {
+    backgroundColor: 'rgba(18, 42, 23, 0.72)', // Rich forest green overlay
+    padding: 16,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    position: 'relative',
+    marginRight: 14,
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#E5E7EB',
+  },
+  verifiedCheckBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#D97706',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  heroInfoColumn: {
+    flex: 1,
+  },
+  roleBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  roleBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#1D3524',
+  },
+  heroName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    letterSpacing: 0.2,
+  },
+  heroLocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  heroLocText: {
+    fontSize: 12,
+    color: '#DEE8E2',
+    fontWeight: '500',
+  },
+  bioText: {
+    fontSize: 12.5,
+    color: '#EFF5F1',
+    lineHeight: 18,
+    marginTop: 12,
+    marginBottom: 14,
+    fontWeight: '400',
+  },
+  frostedStatsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  statColumn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    marginVertical: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#D4E2D8',
+    fontWeight: '500',
+  },
+
+  /* 3. Trust Score Card */
+  trustScoreCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#ECE9E2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  gaugeCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 3.5,
+    borderColor: '#34553B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gaugeNumber: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#162F1B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  trustDetailsColumn: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  trustKicker: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  trustRatingTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#152E1B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    marginVertical: 1,
+  },
+  trustSubtitle: {
+    fontSize: 12,
+    color: '#6B7E70',
+    fontWeight: '500',
+  },
+
+  /* 4. Filter Tabs */
+  tabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 14,
   },
   tabPill: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabPillActive: {
-    backgroundColor: '#3D593F', // Dark forest sage active pill
-    shadowColor: '#3D593F',
+    backgroundColor: '#3E6142',
+    shadowColor: '#3E6142',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
   },
-  tabPillActiveDark: {
-    backgroundColor: '#2B693A',
-  },
   tabPillInactive: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 0.8,
-    borderColor: '#ECE7DD',
-  },
-  tabPillInactiveDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#293D2C',
+    backgroundColor: '#FAF7F1',
+    borderWidth: 1,
+    borderColor: '#D8D1C3',
   },
   tabPillText: {
     fontSize: 13,
-    fontWeight: '600',
+    letterSpacing: 0.1,
   },
-  tabPillTextActive: {
+  tabTextActive: {
     color: '#FFFFFF',
-  },
-  tabPillTextInactive: {
-    color: '#495B4C',
-  },
-  tabPillTextInactiveDark: {
-    color: '#A0B6A3',
-  },
-  tabContentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginHorizontal: 16,
-    padding: 18,
-    borderWidth: 0.5,
-    borderColor: '#ECE8DF',
-    marginVertical: 4,
-  },
-  tabContentCardDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#283D2C',
-  },
-  tabContentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  tabContentTitle: {
-    fontSize: 16,
     fontWeight: '700',
-    color: '#16301A',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
-  tabContentTitleDark: {
-    color: '#F0F5F1',
+  tabTextInactive: {
+    color: '#283C2A',
+    fontWeight: '500',
   },
-  tabContentDesc: {
-    fontSize: 13,
-    color: '#6E8070',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  tabContentDescDark: {
-    color: '#A0B6A3',
-  },
-  tabActionBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#EEF3EE',
-    borderRadius: 12,
-  },
-  tabActionBtnDark: {
-    backgroundColor: '#243A2A',
-  },
-  tabActionBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A4B2F',
-  },
-  tabActionBtnTextDark: {
-    color: '#A5DCAD',
-  },
-  sectionHeaderTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6E8070',
-    marginHorizontal: 20,
-    marginTop: 18,
-    marginBottom: 8,
-    letterSpacing: 0.2,
-  },
-  sectionHeaderTitleDark: {
-    color: '#9CB3A0',
-  },
-  settingsCard: {
+
+  /* 5. Contact & Business Details Card */
+  detailsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginHorizontal: 16,
+    borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 4,
-    borderWidth: 0.5,
-    borderColor: '#ECE8DF',
-    shadowColor: '#16301A',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#ECE9E2',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-  settingsCardDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#283D2C',
-    shadowColor: '#000000',
-    shadowOpacity: 0.25,
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#F2EFEB',
+  },
+  detailLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  detailIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0F4F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: '#526756',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C3120',
+  },
+
+  /* 6. Dark Green Location Card */
+  locationCard: {
+    backgroundColor: '#1C3725',
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#1C3725',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  radarRingOuter: {
+    position: 'absolute',
+    right: -25,
+    top: -15,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  radarRingInner: {
+    position: 'absolute',
+    right: -5,
+    top: 5,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  radarPin: {
+    position: 'absolute',
+    right: 40,
+    top: 48,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#D97706',
+  },
+  locationContent: {
+    zIndex: 2,
+  },
+  locationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  locationKicker: {
+    fontSize: 11.5,
+    color: '#A0B6A7',
+    fontWeight: '500',
+  },
+  locationTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    marginVertical: 1,
+  },
+  locationSubtitle: {
+    fontSize: 12.5,
+    color: '#C8D8CE',
+    marginBottom: 8,
+  },
+  coordinatesText: {
+    fontSize: 11.5,
+    color: '#97AEA0',
+    fontWeight: '500',
+  },
+
+  /* 7. Settings Section */
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#687A6C',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  settingsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ECE9E2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#F2EFEB',
   },
-  settingIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EEF3EE',
+  settingLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  settingIconCircleDark: {
-    backgroundColor: '#263B2B',
-  },
-  settingTextContainer: {
+    gap: 12,
     flex: 1,
   },
   settingTitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
-    color: '#16301A',
-    marginBottom: 1,
-  },
-  settingTitleDark: {
-    color: '#F0F5F1',
+    color: '#1F3122',
   },
   settingSubtitle: {
-    fontSize: 12,
-    color: '#6E8070',
-  },
-  settingSubtitleDark: {
-    color: '#A0B6A3',
-  },
-  settingDivider: {
-    height: 0.6,
-    backgroundColor: '#F0ECE4',
-    marginLeft: 48,
-  },
-  settingDividerDark: {
-    backgroundColor: '#293D2C',
+    fontSize: 11.5,
+    color: '#768779',
+    marginTop: 1,
   },
   languagePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F6F3EC',
-    borderWidth: 0.8,
-    borderColor: '#DFD9CB',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    gap: 4,
+    backgroundColor: '#FAF7F1',
+    borderWidth: 1,
+    borderColor: '#D8D1C3',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 14,
-    gap: 3,
-  },
-  languagePillDark: {
-    backgroundColor: '#243A2A',
-    borderColor: '#34503B',
   },
   languagePillText: {
-    fontSize: 12.5,
+    fontSize: 12,
+    color: '#283C2A',
     fontWeight: '600',
-    color: '#4A584B',
   },
-  languagePillTextDark: {
-    color: '#CBE0CE',
-  },
+
+  /* 8. Log out Button */
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 20,
-    paddingVertical: 13,
+    height: 48,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E8A580', // Terracotta border from Figma
-    backgroundColor: '#F5F2EB',
+    borderColor: '#F0D5C3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
   },
-  logoutButtonDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#F97316',
-  },
-  logoutIcon: {
-    marginRight: 2,
-  },
-  logoutText: {
+  logoutButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#C86432', // Terracotta text
-  },
-  logoutTextDark: {
-    color: '#F97316',
+    color: '#C06637',
   },
 });

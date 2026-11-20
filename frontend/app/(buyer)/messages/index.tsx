@@ -1,254 +1,163 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  StatusBar,
   RefreshControl,
-  Platform,
-  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { messagesService } from '../../../src/services/messages.service';
-import { useAuth } from '../../../src/store/authStore';
-import { BuyerMessageThread } from '../../../src/types/buyer.types';
+import { mockBuyerMessages } from '../../../src/constants/buyerMockData';
+import { BuyerMessageItem } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
-import { useDarkMode } from '../../../src/store/uiStore';
-import { StatusBar } from 'expo-status-bar';
 
-type FilterTab = 'All' | 'Requests' | 'Notes' | 'Unread';
+type FilterType = 'All' | 'Requests' | 'Notes' | 'Unread';
 
 export default function BuyerMessagesScreen() {
-  const [isDark] = useDarkMode();
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<FilterTab>('All');
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>('All');
+  const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [threads, setThreads] = useState<BuyerMessageThread[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const userId = user?.id;
-
-  // Load conversations from Supabase
-  const loadThreads = useCallback(async () => {
-    if (!userId) {
-      setThreads([]);
-      setIsLoading(false);
-      return;
-    }
-    try {
-      const data = await messagesService.fetchConversations(userId);
-      setThreads(data);
-    } catch (err) {
-      console.warn('[BuyerMessages] Error loading conversations:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    let isMounted = true;
-    if (!userId) {
-      return;
-    }
-
-    messagesService.fetchConversations(userId)
-      .then((data) => {
-        if (isMounted) {
-          setThreads(data);
-          setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.warn('[BuyerMessages] Error loading conversations:', err);
-        if (isMounted) setIsLoading(false);
-      });
-
-    const unsubscribe = messagesService.subscribeToMessages(userId, () => {
-      loadThreads();
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, [userId, loadThreads]);
-
-  // Pull-to-refresh handler
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadThreads();
-    setRefreshing(false);
-  };
-
-  // Unread count calculated dynamically
+  // Unread messages count
   const unreadCount = useMemo(() => {
-    return threads.filter((m) => m.isUnread).length;
-  }, [threads]);
+    return mockBuyerMessages.filter((m) => m.isUnread).length;
+  }, []);
 
-  // Filter messages based on active chip and search query
+  // Filtered messages list
   const filteredMessages = useMemo(() => {
-    return threads.filter((msg) => {
-      // Filter tab check
-      if (activeTab === 'Requests' && msg.category !== 'Request') return false;
-      if (activeTab === 'Notes' && msg.category !== 'Note') return false;
-      if (activeTab === 'Unread' && !msg.isUnread) return false;
-
-      // Search query check
-      if (searchQuery.trim().length > 0) {
-        const query = searchQuery.toLowerCase().trim();
-        const matchesName = msg.senderName.toLowerCase().includes(query);
-        const matchesSnippet = msg.messageSnippet.toLowerCase().includes(query);
-        return matchesName || matchesSnippet;
+    return mockBuyerMessages.filter((item) => {
+      // 1. Category tab filter
+      if (selectedFilter === 'Requests' && item.tag !== 'Request') {
+        return false;
+      }
+      if (selectedFilter === 'Notes' && item.tag !== 'Note') {
+        return false;
+      }
+      if (selectedFilter === 'Unread' && !item.isUnread) {
+        return false;
       }
 
-      return true;
+      // 2. Search query filter
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase().trim();
+      return (
+        item.senderName.toLowerCase().includes(q) ||
+        item.snippet.toLowerCase().includes(q)
+      );
     });
-  }, [threads, activeTab, searchQuery]);
+  }, [selectedFilter, searchQuery]);
 
-  const handleThreadPress = (thread: BuyerMessageThread) => {
-    router.push({
-      pathname: '/(buyer)/messages/[userId]',
-      params: {
-        userId: thread.senderId,
-        name: thread.senderName,
-        category: thread.category,
-        avatar: thread.avatarUrl,
-      },
-    });
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 700);
   };
 
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(buyer)' as any);
-    }
+  const handleMessagePress = (message: BuyerMessageItem) => {
+    Alert.alert(
+      message.senderName,
+      `"${message.snippet}"\n\nTag: ${message.tag}\nStatus: ${message.status}\nReceived: ${message.timestamp}`,
+      [
+        { text: 'Close', style: 'cancel' },
+        {
+          text: 'Reply Message',
+          onPress: () => {
+            Alert.alert('Reply Sent', `Your message to ${message.senderName} has been queued.`);
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isDark && styles.safeAreaDark]}
-      edges={['top']}
-    >
-      <StatusBar
-        style={isDark ? 'light' : 'dark'}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      />
-
-      {/* Header Container */}
+      {/* ========================================================
+          1. TOP WHITE HEADER CONTAINER WITH ROUNDED BOTTOM
+         ======================================================== */}
       <View style={styles.headerContainer}>
-        {/* Left Side: Back Arrow + Screen Title */}
-        <View style={styles.headerLeft}>
+        {/* Header Top Bar */}
+        <View style={styles.headerTopRow}>
+          {/* Back Button */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={handleBack}
+            onPress={() => router.back()}
             style={styles.backButton}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={24}
-              color={isDark ? '#F0F5F1' : '#162C1A'}
-            />
+            <Ionicons name="arrow-back" size={22} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>
-            Messages
-          </Text>
+
+          {/* Title */}
+          <Text style={styles.headerTitle}>Messages</Text>
+
+          {/* Right Action Buttons */}
+          <View style={styles.headerRightButtons}>
+            {/* Search Icon Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSearchVisible(!searchVisible)}
+              style={styles.iconCircleButton}
+            >
+              <Ionicons name="search-outline" size={18} color="#374151" />
+            </TouchableOpacity>
+
+            {/* Grid/Options Icon Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSelectedFilter('All')}
+              style={styles.iconCircleButton}
+            >
+              <MaterialCommunityIcons name="dots-grid" size={18} color="#374151" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Right Side: Search Action Button */}
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => setIsSearchVisible((prev) => !prev)}
-            style={[
-              styles.actionCircleButton,
-              isDark && styles.actionCircleButtonDark,
-              isSearchVisible && (isDark ? styles.actionCircleButtonActiveDark : styles.actionCircleButtonActive),
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Search messages"
-          >
-            <MaterialCommunityIcons
-              name="magnify"
-              size={22}
-              color={isSearchVisible ? '#FFFFFF' : isDark ? '#E5EFE7' : '#162C1A'}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Expandable Search Input Bar */}
-      {isSearchVisible && (
-        <View style={styles.searchBarWrapper}>
-          <View
-            style={[
-              styles.searchBarInputContainer,
-              isDark && styles.searchBarInputContainerDark,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="magnify"
-              size={20}
-              color={isDark ? '#7E9B82' : '#758876'}
-              style={styles.searchBarIcon}
-            />
+        {/* Optional Search Input Field (when search is toggled) */}
+        {searchVisible && (
+          <View style={styles.searchBarWrapper}>
+            <Ionicons name="search-outline" size={16} color="#6B7280" style={styles.searchIcon} />
             <TextInput
-              style={[styles.searchTextInput, isDark && styles.searchTextInputDark]}
-              placeholder="Search conversations, farmers, requests..."
-              placeholderTextColor={isDark ? '#6B826F' : '#8C9E8D'}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              placeholder="Search conversations..."
+              placeholderTextColor="#9CA3AF"
+              style={styles.searchInput}
               autoFocus
-              clearButtonMode="while-editing"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery('')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <MaterialCommunityIcons
-                  name="close-circle"
-                  size={18}
-                  color={isDark ? '#7E9B82' : '#758876'}
-                />
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
               </TouchableOpacity>
             )}
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Filter Tabs Bar (All, Requests, Notes, Unread 1) */}
-      <View style={styles.filterTabsContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterTabsScrollContent}
-        >
+        {/* Filter Pills Row */}
+        <View style={styles.filterRow}>
           {/* All */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setActiveTab('All')}
+            onPress={() => setSelectedFilter('All')}
             style={[
-              styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'All' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              styles.filterPill,
+              selectedFilter === 'All' ? styles.filterPillActive : styles.filterPillInactive,
             ]}
           >
             <Text
               style={[
-                styles.filterTabText,
-                isDark && styles.filterTabTextDark,
-                activeTab === 'All' && styles.filterTabTextActive,
+                styles.filterText,
+                selectedFilter === 'All' ? styles.filterTextActive : styles.filterTextInactive,
               ]}
             >
               All
@@ -258,18 +167,16 @@ export default function BuyerMessagesScreen() {
           {/* Requests */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setActiveTab('Requests')}
+            onPress={() => setSelectedFilter('Requests')}
             style={[
-              styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'Requests' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              styles.filterPill,
+              selectedFilter === 'Requests' ? styles.filterPillActive : styles.filterPillInactive,
             ]}
           >
             <Text
               style={[
-                styles.filterTabText,
-                isDark && styles.filterTabTextDark,
-                activeTab === 'Requests' && styles.filterTabTextActive,
+                styles.filterText,
+                selectedFilter === 'Requests' ? styles.filterTextActive : styles.filterTextInactive,
               ]}
             >
               Requests
@@ -279,109 +186,89 @@ export default function BuyerMessagesScreen() {
           {/* Notes */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setActiveTab('Notes')}
+            onPress={() => setSelectedFilter('Notes')}
             style={[
-              styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'Notes' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              styles.filterPill,
+              selectedFilter === 'Notes' ? styles.filterPillActive : styles.filterPillInactive,
             ]}
           >
             <Text
               style={[
-                styles.filterTabText,
-                isDark && styles.filterTabTextDark,
-                activeTab === 'Notes' && styles.filterTabTextActive,
+                styles.filterText,
+                selectedFilter === 'Notes' ? styles.filterTextActive : styles.filterTextInactive,
               ]}
             >
               Notes
             </Text>
           </TouchableOpacity>
 
-          {/* Unread with Badge */}
+          {/* Unread 1 */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setActiveTab('Unread')}
+            onPress={() => setSelectedFilter('Unread')}
             style={[
-              styles.filterTabPill,
-              isDark && styles.filterTabPillDark,
-              activeTab === 'Unread' && (isDark ? styles.filterTabPillActiveDark : styles.filterTabPillActive),
+              styles.filterPill,
+              selectedFilter === 'Unread' ? styles.filterPillActive : styles.filterPillInactive,
             ]}
           >
             <Text
               style={[
-                styles.filterTabText,
-                isDark && styles.filterTabTextDark,
-                activeTab === 'Unread' && styles.filterTabTextActive,
+                styles.filterText,
+                selectedFilter === 'Unread' ? styles.filterTextActive : styles.filterTextInactive,
               ]}
             >
               Unread
             </Text>
             {unreadCount > 0 && (
               <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeNumber}>{unreadCount}</Text>
+                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
 
-      {/* Message List ScrollView */}
+      {/* ========================================================
+          2. MESSAGES LIST SCROLL AREA
+         ======================================================== */}
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[isDark ? '#4ADE80' : '#1D3724']}
-            tintColor={isDark ? '#4ADE80' : '#1D3724'}
+            tintColor="#1E4D2B"
           />
         }
       >
-        {isLoading ? (
-          <View style={styles.emptyContainer}>
-            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1D3724'} />
-            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 16 }]}>
-              Loading conversations...
-            </Text>
-          </View>
-        ) : filteredMessages.length > 0 ? (
-          filteredMessages.map((thread) => (
+        {filteredMessages.length > 0 ? (
+          filteredMessages.map((message) => (
             <BuyerMessageCard
-              key={thread.id}
-              thread={thread}
-              onPress={handleThreadPress}
+              key={message.id}
+              message={message}
+              onPress={handleMessagePress}
             />
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIconCircle, isDark && styles.emptyIconCircleDark]}>
-              <MaterialCommunityIcons
-                name="chat-outline"
-                size={32}
-                color={isDark ? '#8CA590' : '#7B8E7D'}
-              />
-            </View>
-            <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
-              {threads.length === 0 ? 'No messages yet' : 'No messages found'}
+            <MaterialCommunityIcons name="chat-outline" size={44} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>No messages found</Text>
+            <Text style={styles.emptySubtitle}>
+              {selectedFilter !== 'All'
+                ? `No conversations under "${selectedFilter}" category`
+                : 'Your message inbox is currently clear.'}
             </Text>
-            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
-              {threads.length === 0
-                ? 'Connect with farmers and suppliers through the marketplace to start a conversation.'
-                : searchQuery.trim().length > 0
-                ? `No results matching "${searchQuery}".`
-                : `There are currently no ${activeTab.toLowerCase()} messages in your inbox.`}
-            </Text>
-            {(searchQuery.trim().length > 0 || activeTab !== 'All') && (
+            {selectedFilter !== 'All' && (
               <TouchableOpacity
-                activeOpacity={0.8}
+                style={styles.resetButton}
                 onPress={() => {
-                  setActiveTab('All');
+                  setSelectedFilter('All');
                   setSearchQuery('');
                 }}
-                style={[styles.clearFilterButton, isDark && styles.clearFilterButtonDark]}
               >
-                <Text style={styles.clearFilterButtonText}>Reset Filters</Text>
+                <Text style={styles.resetButtonText}>View All Messages</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -394,197 +281,159 @@ export default function BuyerMessagesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F4EFE6', // Soft warm cream/beige background matching the design
+    backgroundColor: '#F5F6F3', // Soft organic off-white
   },
-  safeAreaDark: {
-    backgroundColor: '#0E1710',
-  },
+
+  /* 1. White Header Container */
   headerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    zIndex: 10,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 16,
   },
   backButton: {
-    paddingRight: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 2,
   },
   headerTitle: {
-    fontSize: 27,
+    flex: 1,
+    marginLeft: 16,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#162C1A',
-    letterSpacing: -0.5,
+    color: '#111827',
   },
-  headerTitleDark: {
-    color: '#F0F5F1',
-  },
-  headerActions: {
+  headerRightButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  actionCircleButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EDEAE0', // Soft pill background matching Figma screenshot
+  iconCircleButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  actionCircleButtonDark: {
-    backgroundColor: '#1E2F21',
-  },
-  actionCircleButtonActive: {
-    backgroundColor: '#1D3724',
-  },
-  actionCircleButtonActiveDark: {
-    backgroundColor: '#2E7A43',
   },
   searchBarWrapper: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  searchBarInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-    borderWidth: 1,
-    borderColor: '#E3E7DE',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    height: 40,
+    marginBottom: 14,
   },
-  searchBarInputContainerDark: {
-    backgroundColor: '#18271C',
-    borderColor: '#263B2B',
+  searchIcon: {
+    marginRight: 6,
   },
-  searchBarIcon: {
-    marginRight: 8,
-  },
-  searchTextInput: {
+  searchInput: {
     flex: 1,
-    fontSize: 14.5,
-    color: '#162C1A',
+    fontSize: 13.5,
+    color: '#1F2937',
   },
-  searchTextInputDark: {
-    color: '#F0F5F1',
-  },
-  filterTabsContainer: {
-    paddingBottom: 16,
-  },
-  filterTabsScrollContent: {
-    paddingHorizontal: 20,
+  filterRow: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    gap: 8,
   },
-  filterTabPill: {
+  filterPill: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ECEEE8', // Soft neutral pill background
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 22,
+    gap: 6,
   },
-  filterTabPillDark: {
-    backgroundColor: '#18271C',
-    borderWidth: 0.8,
-    borderColor: '#283D2C',
+  filterPillActive: {
+    backgroundColor: '#1E4D2B', // Dark forest green
+    shadowColor: '#1E4D2B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  filterTabPillActive: {
-    backgroundColor: '#1D3724', // Deep hunter/forest green matching active Figma pill
+  filterPillInactive: {
+    backgroundColor: '#F3F4F6',
   },
-  filterTabPillActiveDark: {
-    backgroundColor: '#2B6B3B',
-    borderColor: '#2B6B3B',
+  filterText: {
+    fontSize: 13,
   },
-  filterTabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#556957',
-  },
-  filterTabTextDark: {
-    color: '#9CB3A0',
-  },
-  filterTabTextActive: {
+  filterTextActive: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  filterTextInactive: {
+    color: '#4B5563',
+    fontWeight: '500',
   },
   unreadBadge: {
-    backgroundColor: '#E58B24', // Vibrant orange notification badge matching screenshot
-    width: 19,
-    height: 19,
-    borderRadius: 9.5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#D97706', // Orange badge
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 7,
   },
-  unreadBadgeNumber: {
+  unreadBadgeText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    textAlign: 'center',
+  },
+
+  /* 2. Messages List Scroll Area */
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 125, // Ample clearance above the floating capsule bottom navigation bar
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 115, // Space for the floating bottom navigation bar
   },
+
+  /* Empty State */
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#EAEFE8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyIconCircleDark: {
-    backgroundColor: '#1E2F22',
+    paddingVertical: 50,
+    paddingHorizontal: 20,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#162C1A',
-    marginBottom: 6,
-  },
-  emptyTitleDark: {
-    color: '#F0F5F1',
+    color: '#1F2937',
+    marginTop: 12,
+    marginBottom: 4,
   },
   emptySubtitle: {
-    fontSize: 13.5,
-    color: '#6F8071',
+    fontSize: 13,
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  emptySubtitleDark: {
-    color: '#8CA590',
+  resetButton: {
+    backgroundColor: '#1E4D2B',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 18,
   },
-  clearFilterButton: {
-    backgroundColor: '#1D3724',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  clearFilterButtonDark: {
-    backgroundColor: '#276938',
-  },
-  clearFilterButtonText: {
+  resetButtonText: {
     color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '600',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
 });
