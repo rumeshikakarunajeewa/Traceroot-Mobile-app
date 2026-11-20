@@ -62,43 +62,13 @@ export default function SupplierLayout() {
         }}
       />
 
-      {/* Hidden subroutes */}
-      <Tabs.Screen
-        name="catalogue/new"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="catalogue/[id]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="orders/[id]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="buyback/index"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="buyback/[id]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="farmers/index"
-        options={{
-          href: null,
-        }}
-      />
+      {/* Hidden subroutes (not in bottom tab bar, rendered on demand) */}
+      <Tabs.Screen name="catalogue/new" />
+      <Tabs.Screen name="catalogue/[id]" />
+      <Tabs.Screen name="orders/[id]" />
+      <Tabs.Screen name="buyback/index" />
+      <Tabs.Screen name="buyback/[id]" />
+      <Tabs.Screen name="farmers/index" />
     </Tabs>
   );
 }

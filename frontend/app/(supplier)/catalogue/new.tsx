@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
 import {
@@ -48,6 +48,7 @@ const SUITABLE_CROPS = ['Tomato', 'Rice', 'Onion', 'Chilli', 'Cabbage', 'Any'];
 const DEFAULT_SEED_IMAGE = require('../../../assets/images/supplier_seed_sack.jpg');
 
 export default function SupplierNewProductScreen() {
+  const navigation = useNavigation<any>();
   const [isDark] = useDarkMode();
   const { t } = useLanguage();
 
@@ -275,7 +276,11 @@ export default function SupplierNewProductScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(supplier)/catalogue' as any);
+      try {
+        navigation.navigate('catalogue/index');
+      } catch {
+        router.replace('/catalogue' as any);
+      }
     }
   };
 
@@ -370,7 +375,11 @@ export default function SupplierNewProductScreen() {
                   if (router.canGoBack()) {
                     router.back();
                   } else {
-                    router.replace('/(supplier)/catalogue' as any);
+                    try {
+                      navigation.navigate('catalogue/index');
+                    } catch {
+                      router.replace('/catalogue' as any);
+                    }
                   }
                 }}
                 style={[styles.backCircle, isDark && styles.backCircleDark]}

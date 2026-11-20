@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 
 import { useDarkMode } from '../../src/store/uiStore';
 import { SupplierHeader } from '../../src/components/supplier/SupplierHeader';
@@ -35,6 +35,7 @@ import { useSupplierProfile, loadSupplierProfile } from '../../src/store/supplie
 
 export default function SupplierDashboardScreen() {
   const [isDark] = useDarkMode();
+  const navigation = useNavigation<any>();
   const [refreshing, setRefreshing] = useState(false);
 
   const [products] = useSupplierCatalogue();
@@ -132,11 +133,44 @@ export default function SupplierDashboardScreen() {
 
   const handleQuickAction = (action: SupplierQuickActionItem) => {
     if (action.id === 'add_product') {
-      router.push('/(supplier)/catalogue/new' as any);
+      try {
+        navigation.navigate('catalogue/new');
+      } catch {
+        router.push('/catalogue/new' as any);
+      }
+      return;
+    }
+    if (action.id === 'catalogue') {
+      try {
+        navigation.navigate('catalogue/index');
+      } catch {
+        router.push('/catalogue' as any);
+      }
+      return;
+    }
+    if (action.id === 'requests') {
+      try {
+        navigation.navigate('orders/index');
+      } catch {
+        router.push('/orders' as any);
+      }
+      return;
+    }
+    if (action.id === 'buy_back') {
+      try {
+        navigation.navigate('buyback/index');
+      } catch {
+        router.push('/buyback' as any);
+      }
       return;
     }
     if (action.route) {
-      router.push(action.route as any);
+      const cleanRoute = action.route.replace(/^\//, '');
+      try {
+        navigation.navigate(cleanRoute);
+      } catch {
+        router.push(action.route as any);
+      }
     }
   };
 
@@ -158,15 +192,27 @@ export default function SupplierDashboardScreen() {
   };
 
   const handleViewAllRequests = () => {
-    router.push('/(supplier)/orders' as any);
+    try {
+      navigation.navigate('orders/index');
+    } catch {
+      router.push('/orders' as any);
+    }
   };
 
   const handleManageProducts = () => {
-    router.push('/(supplier)/catalogue' as any);
+    try {
+      navigation.navigate('catalogue/index');
+    } catch {
+      router.push('/catalogue' as any);
+    }
   };
 
   const handleProductPress = (product: TopProductItem) => {
-    router.push('/(supplier)/catalogue' as any);
+    try {
+      navigation.navigate('catalogue/index');
+    } catch {
+      router.push('/catalogue' as any);
+    }
   };
 
   const handleStorePress = () => {

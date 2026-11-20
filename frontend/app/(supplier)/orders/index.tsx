@@ -148,7 +148,7 @@ export default function SupplierOrdersScreen() {
 
   const handleMessageFarmer = (order: SupplierOrderRequest) => {
     router.push({
-      pathname: '/(supplier)/messages',
+      pathname: '/messages',
       params: { farmerName: order.farmerName, requestId: order.id },
     } as any);
   };
@@ -221,7 +221,7 @@ export default function SupplierOrdersScreen() {
           {/* Right Chat Action Button */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push('/(supplier)/messages')}
+            onPress={() => router.push('/messages')}
             style={[styles.chatButton, isDark && styles.chatButtonDark]}
             accessibilityRole="button"
             accessibilityLabel="Open messages"
