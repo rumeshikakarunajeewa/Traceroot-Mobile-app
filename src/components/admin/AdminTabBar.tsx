@@ -14,20 +14,23 @@ export interface AdminTabBarProps {
  * Represents the 5-tab shell matching the design reference:
  * [Overview] [Users] [Records] [Reports] [Profile]
  *
- * Enables two-way navigation between Overview (/(admin)) and Users (/(admin)/users).
- * The other three destinations remain disabled until their screens are implemented.
+ * Enables three-way navigation between Overview (/(admin)), Users (/(admin)/users),
+ * and Records (/(admin)/records).
+ * Reports and Profile remain disabled until their screens are implemented.
  */
 export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview' }) => {
   const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
-  const navigateTo = (tab: 'overview' | 'users') => {
+  const navigateTo = (tab: 'overview' | 'users' | 'records') => {
     if (tab === activeTab) return;
     if (tab === 'overview') {
       router.replace('/(admin)' as any);
     } else if (tab === 'users') {
       router.replace('/(admin)/users' as any);
+    } else if (tab === 'records') {
+      router.replace('/(admin)/records' as any);
     }
   };
 
@@ -74,23 +77,24 @@ export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview'
           <View style={activeTab === 'users' ? styles.activeIndicator : styles.inactiveIndicator} />
         </TouchableOpacity>
 
-        {/* Tab 3: Records (Disabled) */}
+        {/* Tab 3: Records */}
         <TouchableOpacity
-          style={[styles.tabItem, styles.tabItemDisabled]}
-          disabled={true}
+          style={styles.tabItem}
+          activeOpacity={0.8}
+          onPress={() => navigateTo('records')}
           accessibilityRole="tab"
-          accessibilityState={{ disabled: true }}
-          accessibilityLabel="Records tab (unavailable)"
+          accessibilityState={{ selected: activeTab === 'records' }}
+          accessibilityLabel="Records tab"
         >
           <MaterialCommunityIcons
             name="file-document-outline"
             size={20}
-            color="#88A38E"
+            color={activeTab === 'records' ? '#FFFFFF' : '#88A38E'}
           />
-          <Text style={styles.tabLabel}>
+          <Text style={[styles.tabLabel, activeTab === 'records' && styles.tabLabelActive]}>
             Records
           </Text>
-          <View style={styles.inactiveIndicator} />
+          <View style={activeTab === 'records' ? styles.activeIndicator : styles.inactiveIndicator} />
         </TouchableOpacity>
 
         {/* Tab 4: Reports (Disabled) */}
