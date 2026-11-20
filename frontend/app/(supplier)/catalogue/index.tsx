@@ -64,7 +64,7 @@ export default function SupplierCatalogueScreen() {
     try {
       navigation.navigate('index');
     } catch {
-      router.replace('/(supplier)' as any);
+      router.replace('/' as any);
     }
   };
 
@@ -72,11 +72,7 @@ export default function SupplierCatalogueScreen() {
     try {
       navigation.navigate('catalogue/new');
     } catch {
-      try {
-        router.navigate('/catalogue/new' as any);
-      } catch {
-        router.push('/catalogue/new' as any);
-      }
+      router.push('/catalogue/new' as any);
     }
   };
 
@@ -84,7 +80,7 @@ export default function SupplierCatalogueScreen() {
     try {
       navigation.navigate('catalogue/[id]', { id: product.id });
     } catch {
-      router.navigate({
+      router.push({
         pathname: '/catalogue/[id]' as any,
         params: { id: product.id },
       });

@@ -277,7 +277,7 @@ export default function SupplierBuybackScreen() {
                 activeOpacity={0.88}
                 onPress={() => {
                   router.push({
-                    pathname: '/(supplier)/buyback/[id]',
+                    pathname: '/buyback/[id]',
                     params: { id: agreement.id },
                   } as any);
                 }}

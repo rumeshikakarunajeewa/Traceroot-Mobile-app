@@ -27,28 +27,28 @@ export const mockSupplierQuickActions: SupplierQuickActionItem[] = [
     title: 'Catalogue',
     iconName: 'book-open-outline',
     isPrimary: true,
-    route: '/(supplier)/catalogue',
+    route: '/catalogue',
   },
   {
     id: 'add_product',
     title: 'Add Product',
     iconName: 'plus',
     isPrimary: false,
-    route: '/(supplier)/catalogue/new',
+    route: '/catalogue/new',
   },
   {
     id: 'requests',
     title: 'Requests',
     iconName: 'basket-outline',
     isPrimary: false,
-    route: '/(supplier)/orders',
+    route: '/orders',
   },
   {
     id: 'buy_back',
     title: 'Buy-back',
     iconName: 'sprout-outline',
     isPrimary: false,
-    route: '/(supplier)/buyback',
+    route: '/buyback',
   },
 ];
 
