@@ -79,17 +79,37 @@ export function removeCatalogueProduct(id: string) {
   });
 }
 
-export function updateCatalogueProduct(id: string, updates: Partial<CatalogueProduct>) {
+export function updateCatalogueProduct(
+  id: string,
+  updates: Partial<CatalogueProduct>,
+  imageUri?: string,
+  imageBase64?: string
+) {
+  const mergedUpdates: Partial<CatalogueProduct> = {
+    ...updates,
+    ...(imageUri ? { imageUrl: { uri: imageUri } } : {}),
+  };
+
   catalogueProducts = catalogueProducts.map((p) =>
-    p.id === id ? { ...p, ...updates } : p
+    p.id === id ? { ...p, ...mergedUpdates } : p
   );
   notify();
 
   authService.getSession().then((session) => {
     const supplierId = session?.user?.id || 'supplier-1';
-    catalogueService.updateCatalogueProduct(id, supplierId, updates).catch((err) => {
-      console.warn('Error updating catalogue product in Supabase:', err);
-    });
+    catalogueService
+      .updateCatalogueProduct(id, supplierId, updates, imageUri, imageBase64)
+      .then((res) => {
+        if (res.success && res.product) {
+          catalogueProducts = catalogueProducts.map((p) =>
+            p.id === id ? { ...p, ...res.product } : p
+          );
+          notify();
+        }
+      })
+      .catch((err) => {
+        console.warn('Error updating catalogue product in Supabase:', err);
+      });
   });
 }
 
