@@ -20,7 +20,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSupplierCatalogue, updateCatalogueProduct, removeCatalogueProduct } from '../../../src/store/supplierCatalogueStore';
 import { catalogueService } from '../../../src/services/catalogue.service';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useLanguage } from '../../../src/i18n/languageStore';
 import { CatalogueProduct } from '../../../src/types/supplier.types';
+
+type CategoryType = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Compost';
+
+interface CategoryOption {
+  key: CategoryType;
+  label: string;
+  iconName: keyof typeof MaterialCommunityIcons.glyphMap;
+}
+
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  { key: 'Seeds', label: 'Seeds', iconName: 'seed-outline' },
+  { key: 'Fertilizers', label: 'Fertilizers', iconName: 'water-outline' },
+  { key: 'Pesticides', label: 'Pesticides', iconName: 'leaf' },
+  { key: 'Compost', label: 'Compost', iconName: 'sprout-outline' },
+];
 
 const DEFAULT_SEED_IMAGE = require('../../../assets/images/supplier_seed_sack.jpg');
 const UNIT_OPTIONS = ['kg', 'g', 'L', 'mL', 'pack'];
@@ -28,13 +44,30 @@ const UNIT_OPTIONS = ['kg', 'g', 'L', 'mL', 'pack'];
 export default function SupplierEditProductScreen() {
   const navigation = useNavigation<any>();
   const [isDark] = useDarkMode();
+  const { t } = useLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [products] = useSupplierCatalogue();
+
+  const getCategoryLabel = (cat: CategoryType) => {
+    switch (cat) {
+      case 'Seeds':
+        return t('catSeeds');
+      case 'Fertilizers':
+        return t('catFertilizers');
+      case 'Pesticides':
+        return t('catPesticides');
+      case 'Compost':
+        return t('catCompost');
+      default:
+        return cat;
+    }
+  };
 
   const [product, setProduct] = useState<CatalogueProduct | null>(() => {
     return products.find((p) => p.id === id) || null;
   });
 
+  const [category, setCategory] = useState<CategoryType>(product?.category || 'Seeds');
   const [title, setTitle] = useState(product?.title || '');
   const [price, setPrice] = useState(product ? String(product.price) : '');
   const [stock, setStock] = useState(product ? String(product.stock) : '');
@@ -50,6 +83,7 @@ export default function SupplierEditProductScreen() {
       const found = products.find((p) => p.id === id);
       if (found) {
         setProduct(found);
+        setCategory(found.category || 'Seeds');
         setTitle(found.title);
         setPrice(String(found.price));
         setStock(String(found.stock));
@@ -59,6 +93,7 @@ export default function SupplierEditProductScreen() {
         const live = await catalogueService.getCatalogueProductById(id);
         if (live) {
           setProduct(live);
+          setCategory(live.category || 'Seeds');
           setTitle(live.title);
           setPrice(String(live.price));
           setStock(String(live.stock));
@@ -177,6 +212,7 @@ export default function SupplierEditProductScreen() {
         id,
         {
           title: trimmedTitle,
+          category,
           price: numPrice,
           stock: numStock,
           soldPer: unit,
@@ -323,27 +359,82 @@ export default function SupplierEditProductScreen() {
             placeholderTextColor={isDark ? '#7E9983' : '#8A998E'}
           />
 
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Price (LKR)</Text>
-              <TextInput
-                style={[styles.input, isDark && styles.inputDark]}
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor={isDark ? '#7E9983' : '#8A998E'}
-              />
-            </View>
-            <View style={styles.col}>
-              <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Category</Text>
-              <View style={[styles.readOnlyBox, isDark && styles.readOnlyBoxDark]}>
-                <Text style={[styles.readOnlyText, isDark && styles.readOnlyTextDark]}>
-                  {product.category}
-                </Text>
-              </View>
-            </View>
+          {/* Category Selection Cards */}
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Category</Text>
+          <View style={styles.categoryCardsRow}>
+            {CATEGORY_OPTIONS.map((item) => {
+              const isSelected = category === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  activeOpacity={0.85}
+                  onPress={() => setCategory(item.key)}
+                  style={[
+                    styles.categoryCard,
+                    isSelected
+                      ? isDark
+                        ? styles.categoryCardSelectedDark
+                        : styles.categoryCardSelected
+                      : isDark
+                      ? styles.categoryCardUnselectedDark
+                      : styles.categoryCardUnselected,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={isSelected ? { selected: true } : {}}
+                  accessibilityLabel={`Category ${getCategoryLabel(item.key)}`}
+                >
+                  <View
+                    style={[
+                      styles.categoryIconCircle,
+                      isSelected
+                        ? isDark
+                          ? styles.categoryIconCircleSelectedDark
+                          : styles.categoryIconCircleSelected
+                        : isDark
+                        ? styles.categoryIconCircleUnselectedDark
+                        : styles.categoryIconCircleUnselected,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.iconName}
+                      size={20}
+                      color={
+                        isSelected
+                          ? '#D8E8D5'
+                          : isDark
+                          ? '#97B69B'
+                          : '#355A3B'
+                      }
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.categoryCardLabel,
+                      isSelected
+                        ? styles.categoryCardLabelSelected
+                        : isDark
+                        ? styles.categoryCardLabelUnselectedDark
+                        : styles.categoryCardLabelUnselected,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {getCategoryLabel(item.key)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+
+          {/* Price (LKR) */}
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Price (LKR)</Text>
+          <TextInput
+            style={[styles.input, isDark && styles.inputDark]}
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor={isDark ? '#7E9983' : '#8A998E'}
+          />
 
           {/* Stock Stepper */}
           <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Current Inventory Stock (units)</Text>
@@ -778,5 +869,77 @@ const styles = StyleSheet.create({
   },
   unitPillTextInactiveDark: {
     color: '#7E9983',
+  },
+  categoryCardsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  categoryCard: {
+    flex: 1,
+    minHeight: 82,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  categoryCardSelected: {
+    backgroundColor: '#1C3723',
+    shadowColor: '#1C3723',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  categoryCardSelectedDark: {
+    backgroundColor: '#203D28',
+    borderColor: '#376241',
+    borderWidth: 1,
+  },
+  categoryCardUnselected: {
+    backgroundColor: '#F7F5EE',
+    borderWidth: 1,
+    borderColor: '#E6E1D4',
+  },
+  categoryCardUnselectedDark: {
+    backgroundColor: '#16271A',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  categoryIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  categoryIconCircleSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  categoryIconCircleSelectedDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  categoryIconCircleUnselected: {
+    backgroundColor: '#EBE7DC',
+  },
+  categoryIconCircleUnselectedDark: {
+    backgroundColor: '#1F3424',
+  },
+  categoryCardLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  categoryCardLabelSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  categoryCardLabelUnselected: {
+    color: '#344E39',
+  },
+  categoryCardLabelUnselectedDark: {
+    color: '#8CAE91',
   },
 });
