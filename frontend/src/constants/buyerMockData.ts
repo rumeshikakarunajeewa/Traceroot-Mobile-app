@@ -1,7 +1,15 @@
 // src/constants/buyerMockData.ts
-// Static configuration and image assets for the Buyer module
+// Static configuration, mocks and image assets for the Buyer module
 
-import { QuickActionItem } from '../types/buyer.types';
+import {
+  BuyerProfile,
+  BuyerStats,
+  QuickActionItem,
+  ProduceListing,
+  ActiveContractItem,
+  BuyerOrderItem,
+  BuyerMessageItem,
+} from '../types/buyer.types';
 
 export const BUYER_PROFILE_HERO_BG =
   'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80';
@@ -9,9 +17,203 @@ export const BUYER_PROFILE_HERO_BG =
 export const BUYER_HERO_IMAGE =
   'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&w=1200&q=80';
 
+export const mockBuyerProfile: BuyerProfile = {
+  id: 'buyer-001',
+  fullName: 'Saman Perera',
+  initials: 'SP',
+  isVerified: true,
+  role: 'Wholesale Buyer',
+  company: 'FreshMart Ltd',
+  district: 'Colombo District',
+  province: 'Western Province, Sri Lanka',
+  coordinates: '6.9271° N, 79.8612° E',
+  avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+  heroBackgroundUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=80',
+  bio: 'Lead purchasing manager for FreshMart Supermarkets, building long-term relationships with verified, sustainable farmers.',
+  ordersCount: 142,
+  contractsCount: 5,
+  kgSourced: '12.5k',
+  trustScore: 96,
+  trustRating: 'Exemplary',
+  trustDescription: 'Payments settled on time · 142 orders',
+  phone: '+94 71 987 6543',
+  email: 'saman.p@freshmart.lk',
+  businessType: 'Retail supermarket',
+  regId: 'BR-99321',
+};
+
+export const mockBuyerStats: BuyerStats = {
+  activeOrders: 2,
+  contractsCount: 1,
+  verifiedFarmsCount: 48,
+};
+
 export const mockQuickActions: QuickActionItem[] = [
   { id: '1', title: 'Market', iconName: 'storefront-outline', isActive: true, route: '/(buyer)/explore' },
   { id: '2', title: 'Contracts', iconName: 'file-document-outline', isActive: false, route: '/(buyer)/contracts' },
   { id: '3', title: 'Scan QR', iconName: 'qrcode-scan', isActive: false, route: 'scan-qr' },
   { id: '4', title: 'Orders', iconName: 'basket-outline', isActive: false, route: '/(buyer)/orders' },
+];
+
+export const mockProduceListings: ProduceListing[] = [
+  {
+    id: 'list-1',
+    cropName: 'Tomato',
+    cropEmoji: '🍅',
+    farmingType: 'greenhouse',
+    quantityKg: 150,
+    farmerName: 'Priya Kumari',
+    location: 'Kandy',
+    recordsCount: 10,
+    completedStages: 3,
+    totalStages: 5,
+    pricePerKg: 180,
+    currency: 'LKR',
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
+  },
+  {
+    id: 'list-2',
+    cropName: 'Cabbage',
+    cropEmoji: '🥬',
+    farmingType: 'open-field',
+    quantityKg: 200,
+    farmerName: 'Roshan Silva',
+    location: 'Nuwara Eliya',
+    recordsCount: 7,
+    completedStages: 4,
+    totalStages: 5,
+    pricePerKg: 90,
+    currency: 'LKR',
+    imageUrl: 'https://images.unsplash.com/photo-1598030304671-5aa1d6f21128?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'list-3',
+    cropName: 'Broccoli',
+    cropEmoji: '🥦',
+    farmingType: 'greenhouse',
+    quantityKg: 80,
+    farmerName: 'Amali Fernando',
+    location: 'Matale',
+    recordsCount: 12,
+    completedStages: 5,
+    totalStages: 5,
+    pricePerKg: 320,
+    currency: 'LKR',
+    imageUrl: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?auto=format&fit=crop&w=800&q=80',
+  },
+];
+
+export const mockActiveContract: ActiveContractItem = {
+  id: 'contract-001',
+  code: 'CF-001',
+  cropName: 'Cabbage',
+  quantityKg: 500,
+  farmerName: 'Roshan Silva',
+  dueDate: 'Due Dec 2026',
+  progressPercentage: 60,
+  status: 'In Progress',
+  coverImageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=80',
+};
+
+export const mockBuyerOrders: BuyerOrderItem[] = [
+  {
+    id: 'ord-1',
+    orderNumber: 'ORD-0012',
+    cropName: 'Tomato',
+    quantityKg: 50,
+    pricePerKg: 180,
+    totalPrice: 9000,
+    currency: 'LKR',
+    farmerName: 'Priya Kumari',
+    location: 'Kandy',
+    status: 'Growing',
+    farmingType: 'greenhouse',
+    deliveryDateEst: 'Est. 25 Sep 2026',
+    progressPercentage: 60,
+    completedStages: 3,
+    totalStages: 5,
+    lockedRecordsCount: 10,
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'ord-2',
+    orderNumber: 'ORD-0009',
+    cropName: 'Cabbage',
+    quantityKg: 100,
+    pricePerKg: 90,
+    totalPrice: 9000,
+    currency: 'LKR',
+    farmerName: 'Roshan Silva',
+    location: 'Nuwara Eliya',
+    status: 'Delivered',
+    farmingType: 'open-field',
+    deliveryDateEst: 'Delivered 12 Aug 2026',
+    progressPercentage: 100,
+    completedStages: 5,
+    totalStages: 5,
+    lockedRecordsCount: 14,
+    imageUrl: 'https://images.unsplash.com/photo-1598030304671-5aa1d6f21128?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'ord-3',
+    orderNumber: 'ORD-0014',
+    cropName: 'Broccoli',
+    quantityKg: 30,
+    pricePerKg: 320,
+    totalPrice: 9600,
+    currency: 'LKR',
+    farmerName: 'Amali Fernando',
+    location: 'Matale',
+    status: 'Pending',
+    farmingType: 'greenhouse',
+    deliveryDateEst: 'Est. 10 Oct 2026',
+    progressPercentage: 15,
+    completedStages: 1,
+    totalStages: 5,
+    lockedRecordsCount: 4,
+    imageUrl: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?auto=format&fit=crop&w=800&q=80',
+  },
+];
+
+export const mockBuyerMessages: BuyerMessageItem[] = [
+  {
+    id: 'msg-1',
+    senderName: 'Saman Perera',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    timestamp: '2h ago',
+    tag: 'Request',
+    status: 'New',
+    snippet: 'Can you confirm the exact harvest date for the upcoming tomato batch? Need to arrange',
+    isUnread: true,
+  },
+  {
+    id: 'msg-2',
+    senderName: 'Dr. Silva (Agronomist)',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    timestamp: 'Yesterday',
+    tag: 'Note',
+    status: 'Replied',
+    snippet: 'Soil moisture levels look great based on your recent records. Keep up the current irrigation',
+    isUnread: false,
+  },
+  {
+    id: 'msg-3',
+    senderName: 'FreshMart Ltd',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    timestamp: 'Mon',
+    tag: 'Request',
+    status: 'Pending',
+    snippet: 'We would like to increase our order quantity for next week to 500kg. Please let me know if',
+    isUnread: false,
+  },
+  {
+    id: 'msg-4',
+    senderName: 'Green Valley Co-op',
+    avatarUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=200&q=80',
+    timestamp: 'Last week',
+    tag: 'Note',
+    status: 'Replied',
+    snippet: 'Reminder: The organic farming certification renewal deadline is approaching next month.',
+    isUnread: false,
+  },
 ];
