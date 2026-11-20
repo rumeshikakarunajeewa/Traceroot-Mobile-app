@@ -1,4 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
@@ -12,12 +14,15 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSupplierCatalogue, updateCatalogueProduct, removeCatalogueProduct } from '../../../src/store/supplierCatalogueStore';
 import { catalogueService } from '../../../src/services/catalogue.service';
 import { useDarkMode } from '../../../src/store/uiStore';
 import { CatalogueProduct } from '../../../src/types/supplier.types';
+
+const DEFAULT_SEED_IMAGE = require('../../../assets/images/supplier_seed_sack.jpg');
 
 export default function SupplierEditProductScreen() {
   const [isDark] = useDarkMode();
@@ -32,6 +37,8 @@ export default function SupplierEditProductScreen() {
   const [price, setPrice] = useState(product ? String(product.price) : '');
   const [stock, setStock] = useState(product ? String(product.stock) : '');
   const [description, setDescription] = useState(product?.description || '');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -63,6 +70,76 @@ export default function SupplierEditProductScreen() {
     setStock(String(Math.max(0, cur + delta)));
   };
 
+  const handleResetPhoto = () => {
+    setPhotoUri(null);
+    setPhotoBase64(null);
+  };
+
+  const handlePickImage = () => {
+    Alert.alert(
+      'Change Product Photo',
+      'Choose a photo from your gallery or take a new one.',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            try {
+              const perm = await ImagePicker.requestCameraPermissionsAsync();
+              if (!perm.granted) {
+                Alert.alert(
+                  'Permission Required',
+                  'Camera permission is required to capture product photos.'
+                );
+                return;
+              }
+              const res = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                aspect: [16, 9],
+                quality: 0.85,
+                base64: true,
+              });
+              if (!res.canceled && res.assets && res.assets[0]?.uri) {
+                setPhotoUri(res.assets[0].uri);
+                setPhotoBase64(res.assets[0].base64 || null);
+              }
+            } catch (err) {
+              console.error('Error opening camera:', err);
+            }
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: async () => {
+            try {
+              const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!perm.granted) {
+                Alert.alert(
+                  'Permission Required',
+                  'Media library permission is required to select photos.'
+                );
+                return;
+              }
+              const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [16, 9],
+                quality: 0.85,
+                base64: true,
+              });
+              if (!res.canceled && res.assets && res.assets[0]?.uri) {
+                setPhotoUri(res.assets[0].uri);
+                setPhotoBase64(res.assets[0].base64 || null);
+              }
+            } catch (err) {
+              console.error('Error selecting photo:', err);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   const handleSaveChanges = async () => {
     if (!id || !product) return;
     const trimmedTitle = title.trim();
@@ -83,12 +160,17 @@ export default function SupplierEditProductScreen() {
 
     setIsSaving(true);
     try {
-      updateCatalogueProduct(id, {
-        title: trimmedTitle,
-        price: numPrice,
-        stock: numStock,
-        description: description.trim(),
-      });
+      updateCatalogueProduct(
+        id,
+        {
+          title: trimmedTitle,
+          price: numPrice,
+          stock: numStock,
+          description: description.trim(),
+        },
+        photoUri || undefined,
+        photoBase64 || undefined
+      );
       Alert.alert('Product Saved', 'Catalogue item details and inventory have been updated.');
       router.back();
     } catch (e: any) {
@@ -161,6 +243,62 @@ export default function SupplierEditProductScreen() {
 
         {/* Edit Form Card */}
         <View style={[styles.card, isDark && styles.cardDark]}>
+          {/* Product Image Section */}
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Product Image</Text>
+          <View style={[styles.imagePreviewContainer, isDark && styles.imagePreviewContainerDark]}>
+            <Image
+              source={
+                photoUri
+                  ? { uri: photoUri }
+                  : product.imageUrl || DEFAULT_SEED_IMAGE
+              }
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(12,28,16,0.75)']}
+              style={styles.imageGradientOverlay}
+            />
+
+            {/* Action Buttons Row */}
+            <View style={styles.imageActionsRow}>
+              {photoUri && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleResetPhoto}
+                  style={[styles.revertPill, isDark && styles.revertPillDark]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reset to original photo"
+                >
+                  <MaterialCommunityIcons name="undo" size={14} color="#DC2626" />
+                  <Text style={styles.revertPillText}>Reset</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handlePickImage}
+                style={[styles.changePhotoPill, isDark && styles.changePhotoPillDark]}
+                accessibilityRole="button"
+                accessibilityLabel="Change product photo"
+              >
+                <MaterialCommunityIcons
+                  name="camera-outline"
+                  size={15}
+                  color={isDark ? '#4ADE80' : '#1C3723'}
+                />
+                <Text
+                  style={[
+                    styles.changePhotoPillText,
+                    isDark && styles.changePhotoPillTextDark,
+                  ]}
+                >
+                  {photoUri ? 'Change' : 'Change Photo'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Product Title</Text>
           <TextInput
             style={[styles.input, isDark && styles.inputDark]}
@@ -461,5 +599,90 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 13.5,
     fontWeight: '600',
+  },
+  imagePreviewContainer: {
+    height: 180,
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#EAE6DB',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ECE7DC',
+  },
+  imagePreviewContainerDark: {
+    backgroundColor: '#1E2F22',
+    borderColor: '#263B2B',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageGradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  imageActionsRow: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  changePhotoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  changePhotoPillDark: {
+    backgroundColor: 'rgba(24, 39, 28, 0.95)',
+    borderWidth: 1,
+    borderColor: '#36533B',
+  },
+  changePhotoPillText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1C3723',
+  },
+  changePhotoPillTextDark: {
+    color: '#4ADE80',
+  },
+  revertPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  revertPillDark: {
+    backgroundColor: 'rgba(40, 20, 20, 0.95)',
+    borderWidth: 1,
+    borderColor: '#7F1D1D',
+  },
+  revertPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#DC2626',
   },
 });
