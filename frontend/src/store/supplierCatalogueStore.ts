@@ -31,7 +31,8 @@ export async function loadCatalogueProducts(supplierId?: string, force = false):
 
     const data = await catalogueService.getCatalogueProducts(targetSupplierId);
     if (data && data.length > 0) {
-      catalogueProducts = data;
+      const unique = Array.from(new Map(data.map((item) => [item.id, item])).values());
+      catalogueProducts = unique;
     }
   } catch (err) {
     console.warn('[supplierCatalogueStore] Error loading products:', err);
@@ -46,26 +47,52 @@ export function addCatalogueProduct(newProduct: Omit<CatalogueProduct, 'id'> & {
     ...newProduct,
     id: newProduct.id || `cat-${Date.now()}`,
   };
-  catalogueProducts = [created, ...catalogueProducts.filter((p) => p.id !== created.id)];
+
+  // Prevent duplicate insertion: remove matching ID or matching fallback entry
+  catalogueProducts = [
+    created,
+    ...catalogueProducts.filter(
+      (p) =>
+        p.id !== created.id &&
+        !(
+          p.title.trim().toLowerCase() === created.title.trim().toLowerCase() &&
+          p.category === created.category &&
+          (p.id.startsWith('cat-') || created.id.startsWith('cat-'))
+        )
+    ),
+  ];
   notify();
 
-  // Async persist to Supabase in background
-  authService.getSession().then((session) => {
-    const supplierId = newProduct.supplierId || session?.user?.id;
-    if (supplierId) {
-      catalogueService.createCatalogueProduct({
-        supplierId,
-        title: newProduct.title,
-        category: newProduct.category,
-        price: newProduct.price,
-        unit: newProduct.soldPer || 'kg',
-        stock: newProduct.stock,
-        description: newProduct.description,
-        suitableFor: newProduct.suitableFor,
-        isOrganicCertified: newProduct.isOrganicCertified,
-      }).catch((err) => console.warn('Error saving catalogue product to Supabase:', err));
-    }
-  });
+  // ONLY persist to Supabase if this is a brand new local product without a remote backend ID
+  const isAlreadySavedToBackend = Boolean(newProduct.id && !newProduct.id.startsWith('cat-'));
+  if (!isAlreadySavedToBackend) {
+    authService.getSession().then((session) => {
+      const supplierId = newProduct.supplierId || session?.user?.id;
+      if (supplierId) {
+        catalogueService
+          .createCatalogueProduct({
+            supplierId,
+            title: newProduct.title,
+            category: newProduct.category,
+            price: newProduct.price,
+            unit: newProduct.soldPer || 'kg',
+            stock: newProduct.stock,
+            description: newProduct.description,
+            suitableFor: newProduct.suitableFor,
+            isOrganicCertified: newProduct.isOrganicCertified,
+          })
+          .then((res) => {
+            if (res.success && res.product) {
+              catalogueProducts = catalogueProducts.map((p) =>
+                p.id === created.id ? res.product! : p
+              );
+              notify();
+            }
+          })
+          .catch((err) => console.warn('Error saving catalogue product to Supabase:', err));
+      }
+    });
+  }
 
   return created;
 }

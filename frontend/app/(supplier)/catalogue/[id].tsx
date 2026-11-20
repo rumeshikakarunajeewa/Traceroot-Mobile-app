@@ -23,6 +23,7 @@ import { useDarkMode } from '../../../src/store/uiStore';
 import { CatalogueProduct } from '../../../src/types/supplier.types';
 
 const DEFAULT_SEED_IMAGE = require('../../../assets/images/supplier_seed_sack.jpg');
+const UNIT_OPTIONS = ['kg', 'g', 'L', 'mL', 'pack'];
 
 export default function SupplierEditProductScreen() {
   const [isDark] = useDarkMode();
@@ -36,6 +37,7 @@ export default function SupplierEditProductScreen() {
   const [title, setTitle] = useState(product?.title || '');
   const [price, setPrice] = useState(product ? String(product.price) : '');
   const [stock, setStock] = useState(product ? String(product.stock) : '');
+  const [unit, setUnit] = useState(product?.soldPer || 'kg');
   const [description, setDescription] = useState(product?.description || '');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function SupplierEditProductScreen() {
         setTitle(found.title);
         setPrice(String(found.price));
         setStock(String(found.stock));
+        setUnit(found.soldPer || 'kg');
         setDescription(found.description || '');
       } else {
         const live = await catalogueService.getCatalogueProductById(id);
@@ -58,6 +61,7 @@ export default function SupplierEditProductScreen() {
           setTitle(live.title);
           setPrice(String(live.price));
           setStock(String(live.stock));
+          setUnit(live.soldPer || 'kg');
           setDescription(live.description || '');
         }
       }
@@ -166,6 +170,8 @@ export default function SupplierEditProductScreen() {
           title: trimmedTitle,
           price: numPrice,
           stock: numStock,
+          soldPer: unit,
+          packageSize: `1 ${unit} pack`,
           description: description.trim(),
         },
         photoUri || undefined,
@@ -363,6 +369,40 @@ export default function SupplierEditProductScreen() {
             >
               <Text style={[styles.adjustBtnText, isDark && styles.adjustBtnTextDark]}>+10</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Sold Per Segmented Control */}
+          <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Sold per</Text>
+          <View style={[styles.unitSegmentedContainer, isDark && styles.unitSegmentedContainerDark]}>
+            {UNIT_OPTIONS.map((opt) => {
+              const isSelected = unit === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  activeOpacity={0.8}
+                  onPress={() => setUnit(opt)}
+                  style={[
+                    styles.unitPill,
+                    isSelected && (isDark ? styles.unitPillActiveDark : styles.unitPillActive),
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sold per ${opt}`}
+                >
+                  <Text
+                    style={[
+                      styles.unitPillText,
+                      isSelected
+                        ? styles.unitPillTextActive
+                        : isDark
+                        ? styles.unitPillTextInactiveDark
+                        : styles.unitPillTextInactive,
+                    ]}
+                  >
+                    {opt}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* Description */}
@@ -684,5 +724,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#DC2626',
+  },
+  unitSegmentedContainer: {
+    backgroundColor: '#F5F2EA',
+    borderRadius: 16,
+    padding: 3.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  unitSegmentedContainerDark: {
+    backgroundColor: '#101F14',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  unitPill: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+  },
+  unitPillActive: {
+    backgroundColor: '#1C3723',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  unitPillActiveDark: {
+    backgroundColor: '#274B30',
+  },
+  unitPillText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  unitPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  unitPillTextInactive: {
+    color: '#5C7362',
+  },
+  unitPillTextInactiveDark: {
+    color: '#7E9983',
   },
 });
