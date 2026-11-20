@@ -103,7 +103,25 @@ class CatalogueService {
         return mockCatalogueProducts;
       }
 
-      return data.map((row: any) => this.mapDbRowToProduct(row));
+      // Filter out duplicate entries (e.g. identical name + category from same supplier created simultaneously)
+      const seen = new Map<string, number>();
+      const deduplicatedRows: any[] = [];
+
+      for (const row of data) {
+        const key = `${row.supplier_id || ''}_${(row.name || '').trim().toLowerCase()}_${row.category || ''}`;
+        const rowTime = row.created_at ? new Date(row.created_at).getTime() : 0;
+        const prevTime = seen.get(key);
+
+        // If duplicate with same name and category was created within 60 seconds, skip the duplicate
+        if (prevTime !== undefined && Math.abs(prevTime - rowTime) < 60000) {
+          continue;
+        }
+
+        seen.set(key, rowTime);
+        deduplicatedRows.push(row);
+      }
+
+      return deduplicatedRows.map((row: any) => this.mapDbRowToProduct(row));
     } catch (err) {
       console.warn('[CatalogueService] getCatalogueProducts exception:', err);
       return mockCatalogueProducts;
@@ -165,13 +183,10 @@ class CatalogueService {
         supplierId,
         title,
         category,
-        packageSize,
         price,
         unit,
         stock,
         description,
-        suitableFor,
-        isOrganicCertified,
       } = params;
 
       if (!supplierId) {

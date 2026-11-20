@@ -67,7 +67,7 @@ export default function BuyerProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F1EA" />
+      <StatusBar barStyle="dark-content" />
 
       <ScrollView
         style={styles.scrollView}

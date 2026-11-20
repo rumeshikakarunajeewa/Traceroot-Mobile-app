@@ -80,7 +80,7 @@ export default function BuyerMessagesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
 
       {/* ========================================================
           1. TOP WHITE HEADER CONTAINER WITH ROUNDED BOTTOM

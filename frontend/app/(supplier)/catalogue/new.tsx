@@ -202,6 +202,7 @@ export default function SupplierNewProductScreen() {
 
   // Publish Product to Catalogue
   const handlePublish = async () => {
+    if (isPublishing) return;
     const trimmedTitle = productName.trim() || 'Certified Agri Input';
     const parsedPrice = price.trim() ? Math.max(0, parseFloat(price)) : 850;
     const parsedStock = stock.trim() ? Math.max(0, parseInt(stock, 10)) : 50;
