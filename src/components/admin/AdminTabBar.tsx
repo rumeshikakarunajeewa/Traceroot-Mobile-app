@@ -14,16 +14,20 @@ export interface AdminTabBarProps {
  * Represents the 5-tab shell matching the design reference:
  * [Overview] [Users] [Records] [Reports] [Profile]
  *
- * Enables three-way navigation between Overview (/(admin)), Users (/(admin)/users),
- * and Records (/(admin)/records).
- * Reports and Profile remain disabled until their screens are implemented.
+ * Enables four-way navigation between:
+ * - Overview (/(admin))
+ * - Users (/(admin)/users)
+ * - Records (/(admin)/records)
+ * - Reports (/(admin)/reports)
+ *
+ * Profile remains disabled until its screen is implemented.
  */
 export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview' }) => {
   const [isDark] = useDarkMode();
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
 
-  const navigateTo = (tab: 'overview' | 'users' | 'records') => {
+  const navigateTo = (tab: 'overview' | 'users' | 'records' | 'reports') => {
     if (tab === activeTab) return;
     if (tab === 'overview') {
       router.replace('/(admin)' as any);
@@ -31,6 +35,8 @@ export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview'
       router.replace('/(admin)/users' as any);
     } else if (tab === 'records') {
       router.replace('/(admin)/records' as any);
+    } else if (tab === 'reports') {
+      router.replace('/(admin)/reports' as any);
     }
   };
 
@@ -97,23 +103,24 @@ export const AdminTabBar: React.FC<AdminTabBarProps> = ({ activeTab = 'overview'
           <View style={activeTab === 'records' ? styles.activeIndicator : styles.inactiveIndicator} />
         </TouchableOpacity>
 
-        {/* Tab 4: Reports (Disabled) */}
+        {/* Tab 4: Reports */}
         <TouchableOpacity
-          style={[styles.tabItem, styles.tabItemDisabled]}
-          disabled={true}
+          style={styles.tabItem}
+          activeOpacity={0.8}
+          onPress={() => navigateTo('reports')}
           accessibilityRole="tab"
-          accessibilityState={{ disabled: true }}
-          accessibilityLabel="Reports tab (unavailable)"
+          accessibilityState={{ selected: activeTab === 'reports' }}
+          accessibilityLabel="Reports tab"
         >
           <MaterialCommunityIcons
             name="chart-bar"
             size={20}
-            color="#88A38E"
+            color={activeTab === 'reports' ? '#FFFFFF' : '#88A38E'}
           />
-          <Text style={styles.tabLabel}>
+          <Text style={[styles.tabLabel, activeTab === 'reports' && styles.tabLabelActive]}>
             Reports
           </Text>
-          <View style={styles.inactiveIndicator} />
+          <View style={activeTab === 'reports' ? styles.activeIndicator : styles.inactiveIndicator} />
         </TouchableOpacity>
 
         {/* Tab 5: Profile (Disabled) */}
