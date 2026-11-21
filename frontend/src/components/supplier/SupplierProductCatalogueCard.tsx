@@ -21,10 +21,24 @@ export const SupplierProductCatalogueCard: React.FC<
 > = ({ product, onPress, onEditPress }) => {
   const [isDark] = useDarkMode();
 
-  const progressPercentage = Math.min(
-    100,
-    Math.max(8, Math.round((product.stock / product.maxStock) * 100))
-  );
+  const capacity =
+    product.maxStock > 0 && product.maxStock !== product.stock * 2
+      ? product.maxStock
+      : product.stock > 100
+      ? Math.ceil(product.stock / 50) * 50
+      : 100;
+
+  const realPercentage =
+    product.stock <= 0
+      ? 0
+      : Math.min(100, Math.round((product.stock / capacity) * 100));
+
+  const isOutOfStock = product.stock <= 0;
+  const isLowStock = isOutOfStock || product.isLowStock || realPercentage <= 15;
+
+  const progressFillWidth = isOutOfStock
+    ? '0%'
+    : `${Math.min(100, Math.max(2, realPercentage))}%`;
 
   return (
     <TouchableOpacity
@@ -32,7 +46,7 @@ export const SupplierProductCatalogueCard: React.FC<
       onPress={() => onPress?.(product)}
       style={[styles.card, isDark && styles.cardDark]}
       accessibilityRole="button"
-      accessibilityLabel={`${product.title}, ${product.packageSize}, ${product.currency} ${product.price}, Stock ${product.stock} units`}
+      accessibilityLabel={`${product.title}, ${product.packageSize}, ${product.currency} ${product.price}, Stock ${product.stock} units, ${realPercentage} percent in stock`}
     >
       {/* Product Image with Overlays */}
       <View style={styles.imageContainer}>
@@ -54,11 +68,23 @@ export const SupplierProductCatalogueCard: React.FC<
           </Text>
         </View>
 
-        {/* Low Stock Badge Overlay */}
-        {product.isLowStock && (
-          <View style={styles.lowStockBadge}>
-            <View style={styles.lowStockDot} />
-            <Text style={styles.lowStockText}>Low stock</Text>
+        {/* Low Stock / Out of Stock Badge Overlay */}
+        {isLowStock && (
+          <View
+            style={[
+              styles.lowStockBadge,
+              isOutOfStock && styles.outOfStockBadge,
+            ]}
+          >
+            <View
+              style={[
+                styles.lowStockDot,
+                isOutOfStock && styles.outOfStockDot,
+              ]}
+            />
+            <Text style={styles.lowStockText}>
+              {isOutOfStock ? 'Out of stock' : 'Low stock'}
+            </Text>
           </View>
         )}
       </View>
@@ -90,16 +116,31 @@ export const SupplierProductCatalogueCard: React.FC<
           <View
             style={[
               styles.progressFill,
-              { width: `${progressPercentage}%` },
-              product.isLowStock && styles.progressFillLowStock,
+              { width: progressFillWidth as any },
+              isLowStock && styles.progressFillLowStock,
             ]}
           />
         </View>
 
-        {/* Stock Count */}
-        <Text style={[styles.stockText, isDark && styles.stockTextDark]}>
-          Stock: {product.stock} units
-        </Text>
+        {/* Stock Count & Real Percentage */}
+        <View style={styles.stockInfoRow}>
+          <Text style={[styles.stockText, isDark && styles.stockTextDark]}>
+            {isOutOfStock ? (
+              <Text style={styles.outOfStockText}>Out of stock</Text>
+            ) : (
+              `Stock: ${product.stock} units`
+            )}
+          </Text>
+          <Text
+            style={[
+              styles.percentageText,
+              isDark && styles.percentageTextDark,
+              isLowStock && styles.percentageTextLowStock,
+            ]}
+          >
+            {realPercentage}%
+          </Text>
+        </View>
 
         {/* Price & Edit Button Row */}
         <View style={styles.footerRow}>
@@ -254,14 +295,40 @@ const styles = StyleSheet.create({
   progressFillLowStock: {
     backgroundColor: '#E66826',
   },
+  stockInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   stockText: {
     fontSize: 11,
     color: '#768778',
     fontWeight: '500',
-    marginBottom: 10,
   },
   stockTextDark: {
     color: '#95A997',
+  },
+  outOfStockText: {
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  percentageText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4B7045',
+  },
+  percentageTextDark: {
+    color: '#4ADE80',
+  },
+  percentageTextLowStock: {
+    color: '#E66826',
+  },
+  outOfStockBadge: {
+    backgroundColor: '#DC2626',
+  },
+  outOfStockDot: {
+    backgroundColor: '#FFFFFF',
   },
   footerRow: {
     flexDirection: 'row',

@@ -60,10 +60,23 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
         contentContainerStyle={styles.scrollList}
       >
         {products.map((product) => {
-          const progressPercentage = Math.min(
-            100,
-            Math.max(10, Math.round((product.stock / product.maxStock) * 100))
-          );
+          const capacity =
+            product.maxStock > 0 && product.maxStock !== product.stock * 2
+              ? product.maxStock
+              : product.stock > 100
+              ? Math.ceil(product.stock / 50) * 50
+              : 100;
+
+          const progressPercentage =
+            product.stock <= 0
+              ? 0
+              : Math.min(100, Math.round((product.stock / capacity) * 100));
+
+          const isOutOfStock = product.stock <= 0;
+          const isLowStock = isOutOfStock || progressPercentage <= 15;
+          const progressFillWidth = isOutOfStock
+            ? '0%'
+            : `${Math.min(100, Math.max(2, progressPercentage))}%`;
 
           return (
             <TouchableOpacity
@@ -122,15 +135,21 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
                   <View
                     style={[
                       styles.progressBarFill,
-                      { width: `${progressPercentage}%` },
+                      { width: progressFillWidth as any },
+                      isLowStock && { backgroundColor: '#E66826' },
                     ]}
                   />
                 </View>
 
-                {/* Stock Label */}
-                <Text style={[styles.stockText, isDark && styles.stockTextDark]}>
-                  {t('stockLabel')}: {product.stock}
-                </Text>
+                {/* Stock Label & Percentage */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={[styles.stockText, isDark && styles.stockTextDark]}>
+                    {t('stockLabel')}: {product.stock}
+                  </Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: isLowStock ? '#E66826' : (isDark ? '#4ADE80' : '#4B7045') }}>
+                    {progressPercentage}%
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           );

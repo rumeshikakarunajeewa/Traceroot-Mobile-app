@@ -240,7 +240,7 @@ export default function SupplierNewProductScreen() {
           price: parsedPrice,
           currency: 'LKR',
           stock: parsedStock,
-          maxStock: Math.max(parsedStock * 2, 100),
+          maxStock: parsedStock > 100 ? Math.ceil(parsedStock / 50) * 50 : 100,
           isLowStock: parsedStock < 10,
           imageUrl: photoUri ? { uri: photoUri } : DEFAULT_SEED_IMAGE,
           soldPer: unit,

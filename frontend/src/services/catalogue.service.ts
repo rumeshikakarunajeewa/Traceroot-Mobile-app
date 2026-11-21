@@ -366,7 +366,7 @@ class CatalogueService {
       price: Number(row.price) || 0,
       currency: 'LKR',
       stock,
-      maxStock: Math.max(stock * 2, 100),
+      maxStock: stock > 100 ? Math.ceil(stock / 50) * 50 : 100,
       isLowStock: stock < 10,
       imageUrl,
       soldPer: unit,
