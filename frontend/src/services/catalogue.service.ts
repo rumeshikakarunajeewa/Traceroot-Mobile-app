@@ -28,23 +28,26 @@ class CatalogueService {
     if (!cat) return 'seed';
     const lower = cat.toLowerCase();
     if (lower.includes('seed')) return 'seed';
+    if (lower.includes('compost')) return 'other';
     if (lower.includes('fertilizer')) return 'fertilizer';
     if (lower.includes('pesticide')) return 'pesticide';
     if (lower.includes('tool')) return 'tool';
-    if (lower.includes('compost')) return 'fertilizer';
     return 'other';
   }
 
   /**
    * Map database category back to frontend category
    */
-  toUiCategory(cat?: string): 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Compost' {
+  toUiCategory(cat?: string, name?: string): 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Compost' {
+    if (name && name.toLowerCase().includes('compost')) {
+      return 'Compost';
+    }
     if (!cat) return 'Seeds';
     const lower = cat.toLowerCase();
-    if (lower === 'seed') return 'Seeds';
-    if (lower === 'fertilizer') return 'Fertilizers';
-    if (lower === 'pesticide') return 'Pesticides';
-    if (lower === 'other' || lower === 'compost') return 'Compost';
+    if (lower === 'seed' || lower === 'seeds') return 'Seeds';
+    if (lower === 'pesticide' || lower === 'pesticides') return 'Pesticides';
+    if (lower === 'other' || lower === 'compost' || lower === 'tool') return 'Compost';
+    if (lower === 'fertilizer' || lower === 'fertilizers') return 'Fertilizers';
     return 'Fertilizers';
   }
 
@@ -345,7 +348,7 @@ class CatalogueService {
 
   private mapDbRowToProduct(row: any): CatalogueProduct {
     const stock = Number(row.stock_qty) || 0;
-    const category = this.toUiCategory(row.category);
+    const category = this.toUiCategory(row.category, row.name);
     const unit = row.unit || 'kg';
     const profile = row.profiles as any;
 
