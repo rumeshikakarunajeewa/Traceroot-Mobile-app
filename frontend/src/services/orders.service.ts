@@ -133,7 +133,7 @@ class OrdersService {
             is_verified
           )
         `)
-        .eq('is_listed', true)
+        .or('is_listed.eq.true,status.eq.active')
         .order('created_at', { ascending: false });
 
       const mappedFromHarvests: ProduceListing[] = [];

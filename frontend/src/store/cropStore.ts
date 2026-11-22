@@ -7,9 +7,8 @@ import {
   CustomStageActivity,
   ActivityApplicabilityRecord,
   StageApplicabilityRecord,
-  JourneyStage,
 } from '../types/farmer.types';
-import { FarmingStageKey, FarmingStageKeyType } from '../constants/stages';
+import { FarmingStageKeyType } from '../constants/stages';
 import { stageIndex, stageLabel } from '../utils/stageHelpers';
 import { supabase } from '../lib/supabase';
 import { uploadHarvestImage, uploadCultivationPhoto } from '../services/storage.service';
@@ -272,7 +271,7 @@ export async function createNewCrop(payload: CreateCropPayload): Promise<FieldIt
       current_stage: 'planting',
       description: plotDesc,
       cover_image_url: coverImageUrl,
-      is_listed: false,
+      is_listed: true,
     })
     .select()
     .single();

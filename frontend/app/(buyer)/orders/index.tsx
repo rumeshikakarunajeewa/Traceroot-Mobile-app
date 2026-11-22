@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,45 +9,125 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
-import { mockBuyerOrders } from '../../../src/constants/buyerMockData';
-import { BuyerOrderItem, OrderStatus } from '../../../src/types/buyer.types';
+import { BuyerOrderItem, BuyerOrder } from '../../../src/types/buyer.types';
 import { BuyerOrderCard } from '../../../src/components/buyer/BuyerOrderCard';
+import { ordersService } from '../../../src/services/orders.service';
+import { useAuth } from '../../../src/store/authStore';
+import { authService } from '../../../src/services/auth.service';
 
 type FilterTab = 'All' | 'Growing' | 'Pending' | 'Delivered';
 
+function toBuyerOrderItem(order: BuyerOrder): BuyerOrderItem {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber || order.id,
+    cropName: order.cropName,
+    quantityKg: order.quantityKg,
+    pricePerKg: order.pricePerKg,
+    totalPrice: order.totalPrice,
+    currency: order.currency || 'LKR',
+    farmerName: order.farmerName,
+    location: order.location,
+    status: order.status,
+    farmingType: order.farmingType,
+    deliveryDateEst: order.estimatedDelivery || 'In Progress',
+    progressPercentage: order.progressPercentage || 25,
+    completedStages: order.stagesCount ?? (order.status === 'Delivered' ? 5 : order.status === 'Growing' ? 3 : 1),
+    totalStages: 5,
+    lockedRecordsCount: order.recordsCount ?? 8,
+    imageUrl: order.imageUrl,
+  };
+}
+
 export default function BuyerOrdersScreen() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<BuyerOrderItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<FilterTab>('All');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Load live orders from Supabase
+  const loadOrders = useCallback(async () => {
+    try {
+      const buyerId = user?.id || (await authService.getSession())?.user?.id;
+      if (!buyerId) {
+        setOrders([]);
+        return;
+      }
+      const liveOrders = await ordersService.fetchBuyerOrders(buyerId);
+      if (Array.isArray(liveOrders)) {
+        setOrders(liveOrders.map(toBuyerOrderItem));
+      }
+    } catch (err) {
+      console.warn('Failed to load live buyer orders from Supabase:', err);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const buyerId = user?.id || (await authService.getSession())?.user?.id;
+      if (!buyerId) {
+        if (isMounted) {
+          setOrders([]);
+          setIsLoading(false);
+        }
+        return;
+      }
+      try {
+        const liveOrders = await ordersService.fetchBuyerOrders(buyerId);
+        if (isMounted && Array.isArray(liveOrders)) {
+          setOrders(liveOrders.map(toBuyerOrderItem));
+        }
+      } catch (err) {
+        console.warn('Failed to load live buyer orders from Supabase:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    })();
+
+    // Real-time subscription to order updates made by farmers
+    const unsubscribe = ordersService.subscribeToOrders({ buyerId: user?.id }, () => {
+      loadOrders();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [user, loadOrders]);
+
   // Counts for each tab badge
   const counts = useMemo(() => {
-    const growingCount = mockBuyerOrders.filter((o) => o.status === 'Growing').length;
-    const pendingCount = mockBuyerOrders.filter((o) => o.status === 'Pending').length;
-    const deliveredCount = mockBuyerOrders.filter((o) => o.status === 'Delivered').length;
+    const growingCount = orders.filter((o) => o.status === 'Growing').length;
+    const pendingCount = orders.filter((o) => o.status === 'Pending').length;
+    const deliveredCount = orders.filter((o) => o.status === 'Delivered').length;
     return {
-      all: mockBuyerOrders.length,
+      all: orders.length,
       growing: growingCount,
       pending: pendingCount,
       delivered: deliveredCount,
     };
-  }, []);
+  }, [orders]);
 
   // Filtered orders list
   const filteredOrders = useMemo(() => {
-    if (selectedFilter === 'All') return mockBuyerOrders;
-    return mockBuyerOrders.filter((o) => o.status === selectedFilter);
-  }, [selectedFilter]);
+    if (selectedFilter === 'All') return orders;
+    return orders.filter((o) => o.status === selectedFilter);
+  }, [orders, selectedFilter]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
+    loadOrders();
   };
 
   const handleCropJourney = (order: BuyerOrderItem) => {
@@ -57,9 +137,9 @@ export default function BuyerOrdersScreen() {
       [
         { text: 'Close', style: 'cancel' },
         {
-          text: 'View Farm Profile',
+          text: 'View Full Timeline',
           onPress: () => {
-            router.push('/(buyer)/explore');
+            router.push(`/(buyer)/orders/${order.id}` as any);
           },
         },
       ]
@@ -257,13 +337,15 @@ export default function BuyerOrdersScreen() {
         {/* ========================================================
             4. ORANGE AWAITING CONFIRMATION ALERT BANNER
            ======================================================== */}
-        {(selectedFilter === 'All' || selectedFilter === 'Pending') && (
+        {(selectedFilter === 'All' || selectedFilter === 'Pending') && counts.pending > 0 && (
           <View style={styles.alertBanner}>
             <View style={styles.alertIconCircle}>
               <MaterialCommunityIcons name="bell-outline" size={17} color="#FFFFFF" />
             </View>
             <View style={styles.alertTextContainer}>
-              <Text style={styles.alertTitle}>1 order awaiting confirmation</Text>
+              <Text style={styles.alertTitle}>
+                {counts.pending} {counts.pending === 1 ? 'order' : 'orders'} awaiting confirmation
+              </Text>
               <Text style={styles.alertSubtitle}>
                 Farmers usually confirm within 24 hours
               </Text>
@@ -275,16 +357,37 @@ export default function BuyerOrdersScreen() {
             5. ORDER CARDS LIST
            ======================================================== */}
         <View style={styles.ordersList}>
-          {filteredOrders.length > 0 ? (
+          {isLoading && orders.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#436647" />
+              <Text style={styles.loadingText}>Loading your orders...</Text>
+            </View>
+          ) : filteredOrders.length > 0 ? (
             filteredOrders.map((order, idx) => (
               <BuyerOrderCard
                 key={order.id}
                 order={order}
-                initiallyExpanded={idx === 0} // First order (Tomato/Growing) expanded by default as in design
+                initiallyExpanded={idx === 0}
                 onCropJourneyPress={handleCropJourney}
                 onScanPress={handleScanPress}
               />
             ))
+          ) : orders.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="clipboard-text-outline" size={52} color="#8A9E8E" />
+              <Text style={styles.emptyTitle}>No Orders Yet</Text>
+              <Text style={styles.emptySubtitle}>
+                You haven&apos;t placed any produce orders with farmers yet. Explore our verified marketplace to source fresh harvest!
+              </Text>
+              <TouchableOpacity
+                style={styles.browseButton}
+                activeOpacity={0.85}
+                onPress={() => router.push('/(buyer)/explore')}
+              >
+                <MaterialCommunityIcons name="basket-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.browseButtonText}>Browse Marketplace</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons name="basket-off-outline" size={44} color="#9BAAA0" />
@@ -511,6 +614,17 @@ const styles = StyleSheet.create({
   ordersList: {
     marginTop: 2,
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#4B6350',
+    fontWeight: '500',
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -518,11 +632,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#283D2B',
-    marginTop: 10,
-    marginBottom: 16,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#657D6A',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+    maxWidth: 300,
+  },
+  browseButton: {
+    backgroundColor: '#3E6142',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3E6142',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  browseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '700',
   },
   resetButton: {
     backgroundColor: '#436647',

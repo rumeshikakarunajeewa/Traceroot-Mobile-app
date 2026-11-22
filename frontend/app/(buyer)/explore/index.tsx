@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,27 +10,69 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 
-import { mockProduceListings } from '../../../src/constants/buyerMockData';
 import { ProduceListing, FarmingType } from '../../../src/types/buyer.types';
 import { BuyerMarketCard } from '../../../src/components/buyer/BuyerMarketCard';
+import { ordersService } from '../../../src/services/orders.service';
+import { useAuth } from '../../../src/store/authStore';
+import { authService } from '../../../src/services/auth.service';
 
 type FilterType = 'all' | FarmingType;
 
 export default function BuyerExploreScreen() {
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ search?: string; crop?: string }>();
   const [searchQuery, setSearchQuery] = useState(params.search || params.crop || '');
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
+  const [listings, setListings] = useState<ProduceListing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
 
+  // Load real produce listings from Supabase
+  const loadListings = useCallback(async () => {
+    try {
+      const data = await ordersService.fetchMarketplaceListings();
+      if (Array.isArray(data)) {
+        setListings(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load marketplace listings from Supabase:', err);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    ordersService
+      .fetchMarketplaceListings()
+      .then((data) => {
+        if (isMounted && Array.isArray(data)) {
+          setListings(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load marketplace listings from Supabase:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter listings based on search input & farming type filter
   const filteredListings = useMemo(() => {
-    return mockProduceListings.filter((item) => {
+    return listings.filter((item) => {
       // 1. Farming type filter
       if (selectedFilter !== 'all' && item.farmingType !== selectedFilter) {
         return false;
@@ -45,21 +87,59 @@ export default function BuyerExploreScreen() {
         item.location.toLowerCase().includes(q)
       );
     });
-  }, [searchQuery, selectedFilter]);
+  }, [listings, searchQuery, selectedFilter]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
+    loadListings();
   };
 
   const handleCardPress = (listing: ProduceListing) => {
+    const orderQty = Math.min(50, listing.quantityKg || 50);
     Alert.alert(
       listing.cropName,
-      `Farmer: ${listing.farmerName}\nLocation: ${listing.location}\nAvailable: ${listing.quantityKg} kg\nPrice: ${listing.currency} ${listing.pricePerKg}/kg\nCompleted Stages: ${listing.completedStages}/${listing.totalStages}\n\nWould you like to initiate a Forward Contract with this farmer?`,
+      `Farmer: ${listing.farmerName}\nLocation: ${listing.location}\nAvailable: ${listing.quantityKg} kg\nPrice: ${listing.currency} ${listing.pricePerKg}/kg\nCompleted Stages: ${listing.completedStages}/${listing.totalStages}\n\nWould you like to place an order or initiate a contract?`,
       [
         { text: 'Cancel', style: 'cancel' },
+        {
+          text: `Place Order (${orderQty} kg)`,
+          onPress: async () => {
+            const buyerId = user?.id || (await authService.getSession())?.user?.id;
+            if (!buyerId) {
+              Alert.alert('Authentication Required', 'Please log in as a buyer to place orders.');
+              return;
+            }
+            try {
+              const res = await ordersService.placeBuyerOrder({
+                buyerId,
+                cropId: listing.id,
+                farmerId: listing.farmerId,
+                quantity: orderQty,
+                unitPrice: listing.pricePerKg,
+                cropName: listing.cropName,
+                deadline: 'Within 7 business days',
+              });
+              if (res.success) {
+                Alert.alert(
+                  'Order Placed! 🌿',
+                  `Your order for ${orderQty} kg ${listing.cropName} (Order #${res.orderId}) has been sent to ${listing.farmerName}.`,
+                  [
+                    { text: 'Keep Browsing', style: 'cancel' },
+                    {
+                      text: 'View My Orders',
+                      onPress: () => router.push('/(buyer)/orders'),
+                    },
+                  ]
+                );
+                loadListings();
+              } else {
+                Alert.alert('Order Failed', res.error || 'Could not place order. Please try again.');
+              }
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to place order');
+            }
+          },
+        },
         {
           text: 'Initiate Contract',
           onPress: () => {
@@ -227,7 +307,12 @@ export default function BuyerExploreScreen() {
         {/* ========================================================
             5. PRODUCE LISTINGS CARDS
            ======================================================== */}
-        {filteredListings.length > 0 ? (
+        {isLoading && listings.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3E6142" />
+            <Text style={styles.loadingText}>Loading farmer produce...</Text>
+          </View>
+        ) : filteredListings.length > 0 ? (
           filteredListings.map((listing) => (
             <BuyerMarketCard
               key={listing.id}
@@ -387,6 +472,19 @@ const styles = StyleSheet.create({
   },
   tracedText: {
     fontSize: 12.5,
+    color: '#5B6F5E',
+    fontWeight: '500',
+  },
+
+  /* Loading State */
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
     color: '#5B6F5E',
     fontWeight: '500',
   },
