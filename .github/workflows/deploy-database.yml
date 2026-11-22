@@ -29,5 +29,5 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }} --password "$SUPABASE_DB_PASSWORD" --workdir database
-          supabase db push --workdir database
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }} --workdir database
+          supabase db push --remote --workdir database
