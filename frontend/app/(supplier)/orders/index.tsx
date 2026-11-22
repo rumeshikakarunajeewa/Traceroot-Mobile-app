@@ -41,15 +41,19 @@ export default function SupplierOrdersScreen() {
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Expanded cards set (default expanding REQ-2041 or the first order)
+  // Expanded cards set (tracked by order id)
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
-    new Set(['REQ-2041'])
+    new Set<string>()
   );
 
   const toggleExpand = (id: string) => {
     setExpandedCardIds((prev) => {
+      const isCurrentlyExpanded = prev.has(id) || (prev.size === 0 && orders[0]?.id === id);
       const next = new Set(prev);
-      if (next.has(id)) {
+      if (prev.size === 0 && orders[0]?.id) {
+        next.add(orders[0].id);
+      }
+      if (isCurrentlyExpanded) {
         next.delete(id);
       } else {
         next.add(id);
@@ -62,6 +66,18 @@ export default function SupplierOrdersScreen() {
   const newCount = orders.filter((o) => o.status === 'New').length;
   const packingCount = orders.filter((o) => o.status === 'Packing').length;
   const completedCount = orders.filter((o) => o.status === 'Completed').length;
+
+  const totalEarned = useMemo(() => {
+    return orders
+      .filter((o) => o.status === 'Completed')
+      .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  }, [orders]);
+
+  const formattedEarned = useMemo(() => {
+    if (totalEarned >= 1000000) return `${(totalEarned / 1000000).toFixed(1)}M`;
+    if (totalEarned >= 1000) return `${(totalEarned / 1000).toFixed(1)}k`;
+    return totalEarned.toLocaleString();
+  }, [totalEarned]);
 
   // Filtered orders list
   const filteredOrders = useMemo(() => {
@@ -305,7 +321,7 @@ export default function SupplierOrdersScreen() {
                   color="#A7CFA9"
                   style={styles.metricIcon}
                 />
-                <Text style={styles.metricValue}>6.8k</Text>
+                <Text style={styles.metricValue}>{formattedEarned}</Text>
                 <Text style={styles.metricLabel}>{t('metricLkrEarned')}</Text>
               </View>
             </View>
@@ -517,7 +533,7 @@ export default function SupplierOrdersScreen() {
             </View>
           ) : (
             filteredOrders.map((order) => {
-              const isExpanded = expandedCardIds.has(order.id);
+              const isExpanded = expandedCardIds.has(order.id) || (expandedCardIds.size === 0 && orders[0]?.id === order.id);
               const isNew = order.status === 'New';
               const isPacking = order.status === 'Packing';
               const isCompleted = order.status === 'Completed';
@@ -913,6 +929,26 @@ export default function SupplierOrdersScreen() {
                           </Text>
                         </TouchableOpacity>
                       </View>
+
+                      {/* Farmer Notes if present */}
+                      {order.notes ? (
+                        <View style={[styles.farmerNotesCard, isDark && styles.farmerNotesCardDark]}>
+                          <View style={styles.farmerNotesHeader}>
+                            <MaterialCommunityIcons
+                              name="note-text-outline"
+                              size={15}
+                              color={isDark ? '#8EA491' : '#5E7462'}
+                              style={{ marginRight: 6 }}
+                            />
+                            <Text style={[styles.farmerNotesTitle, isDark && styles.farmerNotesTitleDark]}>
+                              Farmer Instructions & Notes
+                            </Text>
+                          </View>
+                          <Text style={[styles.farmerNotesBody, isDark && styles.farmerNotesBodyDark]}>
+                            {order.notes}
+                          </Text>
+                        </View>
+                      ) : null}
 
                       {/* Action Buttons */}
                       {isNew && (
@@ -1696,5 +1732,40 @@ const styles = StyleSheet.create({
   },
   fullWidthActionButtonDark: {
     backgroundColor: '#264B30',
+  },
+  farmerNotesCard: {
+    backgroundColor: '#FAF7EE',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E8E2D2',
+  },
+  farmerNotesCardDark: {
+    backgroundColor: '#152518',
+    borderColor: '#243C28',
+  },
+  farmerNotesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  farmerNotesTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4B6250',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  farmerNotesTitleDark: {
+    color: '#9CB7A1',
+  },
+  farmerNotesBody: {
+    fontSize: 13.5,
+    color: '#28402D',
+    lineHeight: 19,
+  },
+  farmerNotesBodyDark: {
+    color: '#DCE8DE',
   },
 });

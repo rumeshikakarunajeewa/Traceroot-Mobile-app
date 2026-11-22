@@ -53,7 +53,19 @@ export const SupplierFarmerRequests: React.FC<SupplierFarmerRequestsProps> = ({
 
       {/* Requests List */}
       <View style={styles.cardsList}>
-        {requests.map((request) => {
+        {requests.length === 0 ? (
+          <View style={[styles.emptyContainer, isDark && styles.emptyContainerDark]}>
+            <MaterialCommunityIcons
+              name="inbox-outline"
+              size={32}
+              color={isDark ? '#4A624E' : '#A3B4A5'}
+            />
+            <Text style={[styles.emptyText, isDark && styles.emptyTextDark]}>
+              No incoming farmer requests yet
+            </Text>
+          </View>
+        ) : (
+          requests.map((request) => {
           const isPending = request.status === 'Pending';
 
           return (
@@ -148,7 +160,7 @@ export const SupplierFarmerRequests: React.FC<SupplierFarmerRequestsProps> = ({
               )}
             </View>
           );
-        })}
+        }))}
       </View>
     </View>
   );
@@ -306,5 +318,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '600',
+  },
+  emptyContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ECE7DC',
+  },
+  emptyContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#253B2A',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#718573',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  emptyTextDark: {
+    color: '#8EA491',
   },
 });

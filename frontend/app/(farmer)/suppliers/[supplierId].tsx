@@ -189,9 +189,11 @@ export default function SupplierStorefrontScreen() {
 
       const totalAmount = selectedProduct.price * orderQty;
 
+      const targetSupplierId = selectedProduct.supplierId || supplierId;
+
       const result = await supplierOrdersService.placeSupplierOrder({
         farmerId: resolvedFarmerId,
-        supplierId: supplierId || 'supplier-demo',
+        supplierId: targetSupplierId,
         items: [
           {
             catalogueItemId: selectedProduct.id,
@@ -202,6 +204,8 @@ export default function SupplierStorefrontScreen() {
             imageUrl:
               typeof selectedProduct.imageUrl === 'object' && selectedProduct.imageUrl?.uri
                 ? selectedProduct.imageUrl.uri
+                : typeof selectedProduct.imageUrl === 'string'
+                ? selectedProduct.imageUrl
                 : undefined,
           },
         ],

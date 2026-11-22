@@ -136,7 +136,12 @@ export default function FarmerSupplierMarketplaceScreen() {
         return;
       }
 
-      const supplierId = selectedProduct.supplierId || 'supplier-demo';
+      const supplierId = selectedProduct.supplierId;
+      if (!supplierId) {
+        Alert.alert('Supplier Not Found', 'Could not locate the supplier for this product.');
+        setIsSubmittingOrder(false);
+        return;
+      }
       const totalAmount = selectedProduct.price * orderQty;
 
       const result = await supplierOrdersService.placeSupplierOrder({
@@ -152,6 +157,8 @@ export default function FarmerSupplierMarketplaceScreen() {
             imageUrl:
               typeof selectedProduct.imageUrl === 'object' && selectedProduct.imageUrl?.uri
                 ? selectedProduct.imageUrl.uri
+                : typeof selectedProduct.imageUrl === 'string'
+                ? selectedProduct.imageUrl
                 : undefined,
           },
         ],

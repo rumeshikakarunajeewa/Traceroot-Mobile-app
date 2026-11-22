@@ -7,7 +7,6 @@ import {
   SupplierOrderStatus,
   SupplierOrderItem,
 } from '../types/supplier.types';
-import { INITIAL_ORDERS } from '../store/supplierOrdersStore';
 
 export interface PlaceSupplierOrderParams {
   farmerId: string;
@@ -65,11 +64,9 @@ class SupplierOrdersService {
   /**
    * Fetch all orders received by a Supplier from Farmers.
    */
-  async getSupplierOrders(supplierId: string): Promise<SupplierOrderRequest[]> {
+  async getSupplierOrders(supplierId?: string): Promise<SupplierOrderRequest[]> {
     try {
-      if (!supplierId) return INITIAL_ORDERS;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('supplier_orders')
         .select(`
           id,
@@ -89,12 +86,17 @@ class SupplierOrdersService {
             avatar_url
           )
         `)
-        .eq('supplier_id', supplierId)
         .order('created_at', { ascending: false });
+
+      if (supplierId) {
+        query = query.eq('supplier_id', supplierId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.warn('[SupplierOrdersService] Error fetching orders:', error.message);
-        return INITIAL_ORDERS;
+        return [];
       }
 
       if (!Array.isArray(data) || data.length === 0) {
@@ -104,7 +106,61 @@ class SupplierOrdersService {
       return data.map((row) => this.mapDbRowToOrderRequest(row));
     } catch (err) {
       console.warn('[SupplierOrdersService] getSupplierOrders exception:', err);
-      return INITIAL_ORDERS;
+      return [];
+    }
+  }
+
+  /**
+   * Fetch a single order by its display ID (e.g. REQ-XXXX) or database UUID.
+   */
+  async getOrderById(orderId: string): Promise<SupplierOrderRequest | null> {
+    try {
+      if (!orderId) return null;
+
+      const selectClause = `
+        id,
+        farmer_id,
+        supplier_id,
+        items,
+        total_amount,
+        status,
+        notes,
+        created_at,
+        profiles!supplier_orders_farmer_id_fkey (
+          id,
+          full_name,
+          farm_name,
+          district,
+          province,
+          avatar_url
+        )
+      `;
+
+      if (orderId.startsWith('REQ-')) {
+        const { data, error } = await supabase
+          .from('supplier_orders')
+          .select(selectClause)
+          .order('created_at', { ascending: false });
+
+        if (error || !Array.isArray(data)) return null;
+
+        const match = data.find(
+          (r) => `REQ-${r.id ? r.id.substring(0, 4).toUpperCase() : '0000'}` === orderId.toUpperCase()
+        );
+        return match ? this.mapDbRowToOrderRequest(match) : null;
+      } else {
+        const { data, error } = await supabase
+          .from('supplier_orders')
+          .select(selectClause)
+          .eq('id', orderId)
+          .single();
+
+        if (error || !data) return null;
+        return this.mapDbRowToOrderRequest(data);
+      }
+    } catch (err) {
+      console.warn('[SupplierOrdersService] getOrderById exception:', err);
+      return null;
     }
   }
 
@@ -344,6 +400,14 @@ class SupplierOrdersService {
 
     const shortId = `REQ-${row.id ? row.id.substring(0, 4).toUpperCase() : '0000'}`;
 
+    let deliveryMethod = 'Farm delivery';
+    let cleanNotes = row.notes || undefined;
+    if (row.notes && row.notes.includes('[')) {
+      const parts = row.notes.split(']');
+      deliveryMethod = parts[0].replace('[', '').trim();
+      cleanNotes = parts.slice(1).join(']').trim() || undefined;
+    }
+
     return {
       id: shortId,
       dbId: row.id,
@@ -357,8 +421,8 @@ class SupplierOrdersService {
       stepperStage,
       items: parsedItems,
       totalAmount: Number(row.total_amount) || 0,
-      deliveryMethod: row.notes?.includes('[') ? row.notes.split(']')[0].replace('[', '') : 'Farm delivery',
-      notes: row.notes || undefined,
+      deliveryMethod,
+      notes: cleanNotes,
       farmerId: row.farmer_id,
       supplierId: row.supplier_id,
       createdAt: row.created_at,

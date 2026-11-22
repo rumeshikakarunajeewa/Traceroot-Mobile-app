@@ -16,6 +16,9 @@ export interface SupplierProfileData {
   district: string;
   province: string;
   coordinates: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
   partnerTag: string;
   bio: string;
   productsCount: number;

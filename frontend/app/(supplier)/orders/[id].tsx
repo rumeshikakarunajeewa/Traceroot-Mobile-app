@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSupplierOrders, updateOrderStatus, declineOrder } from '../../../src/store/supplierOrdersStore';
+import { supplierOrdersService } from '../../../src/services/supplierOrders.service';
 import { useDarkMode } from '../../../src/store/uiStore';
 import { SupplierOrderRequest } from '../../../src/types/supplier.types';
 
@@ -23,17 +24,27 @@ export default function SupplierOrderDetailScreen() {
   const [isDark] = useDarkMode();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [orders] = useSupplierOrders();
+  const [fetchedOrder, setFetchedOrder] = useState<SupplierOrderRequest | null>(null);
 
-  const [order, setOrder] = useState<SupplierOrderRequest | null>(() => {
-    return orders.find((o) => o.id === id) || null;
-  });
+  const matchedOrder = React.useMemo(() => {
+    return orders.find((o) => o.id === id || o.dbId === id) || null;
+  }, [orders, id]);
+
+  const order = matchedOrder || fetchedOrder;
 
   useEffect(() => {
-    const found = orders.find((o) => o.id === id);
-    if (found) {
-      setOrder(found);
+    let isMounted = true;
+    if (!matchedOrder && id) {
+      supplierOrdersService.getOrderById(id).then((fetched) => {
+        if (isMounted && fetched) {
+          setFetchedOrder(fetched);
+        }
+      });
     }
-  }, [id, orders]);
+    return () => {
+      isMounted = false;
+    };
+  }, [matchedOrder, id]);
 
   if (!order) {
     return (
@@ -55,7 +66,7 @@ export default function SupplierOrderDetailScreen() {
           text: 'Accept & Pack',
           onPress: () => {
             updateOrderStatus(order.id, 'Packing');
-            setOrder((prev) => (prev ? { ...prev, status: 'Packing', stepperStage: 'Packing' } : null));
+            setFetchedOrder((prev) => (prev ? { ...prev, status: 'Packing', stepperStage: 'Packing' } : null));
           },
         },
       ]
@@ -72,7 +83,7 @@ export default function SupplierOrderDetailScreen() {
           text: 'Confirm Delivered',
           onPress: () => {
             updateOrderStatus(order.id, 'Completed');
-            setOrder((prev) => (prev ? { ...prev, status: 'Completed', stepperStage: 'Delivered' } : null));
+            setFetchedOrder((prev) => (prev ? { ...prev, status: 'Completed', stepperStage: 'Delivered' } : null));
           },
         },
       ]
@@ -90,7 +101,7 @@ export default function SupplierOrderDetailScreen() {
           style: 'destructive',
           onPress: () => {
             declineOrder(order.id);
-            setOrder((prev) => (prev ? { ...prev, status: 'Declined' } : null));
+            setFetchedOrder((prev) => (prev ? { ...prev, status: 'Declined' } : null));
           },
         },
       ]
