@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,17 @@ import {
   ImageBackground,
   Switch,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
 import { mockBuyerProfile } from '../../../src/constants/buyerMockData';
+import { BuyerProfile } from '../../../src/types/buyer.types';
+import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
+import { profilesService } from '../../../src/services/profiles.service';
+import { useAuth } from '../../../src/store/authStore';
 import {
   parseCoordinates,
   getStaticMapUrl,
@@ -27,14 +32,58 @@ import {
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
 export default function BuyerProfileScreen() {
-  const profile = mockBuyerProfile;
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<BuyerProfile>(mockBuyerProfile);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('About');
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
+  useEffect(() => {
+    let isMounted = true;
+    if (user?.id) {
+      profilesService
+        .getBuyerProfile(user.id)
+        .then((remote) => {
+          if (isMounted && remote) {
+            setProfile((prev) => ({
+              ...prev,
+              ...remote,
+            }));
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load buyer profile from Supabase:', err);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const handleRefresh = async () => {
+    if (!user?.id) return;
+    setRefreshing(true);
+    try {
+      const remote = await profilesService.getBuyerProfile(user.id);
+      if (remote) {
+        setProfile((prev) => ({
+          ...prev,
+          ...remote,
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to refresh buyer profile from Supabase:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const coords = parseCoordinates(profile.coordinates, profile.district);
-  const effectiveLat = coords.latitude;
-  const effectiveLng = coords.longitude;
+  const effectiveLat = profile.latitude ?? coords.latitude;
+  const effectiveLng = profile.longitude ?? coords.longitude;
   const staticMapUrl = getStaticMapUrl(effectiveLat, effectiveLng, 13, 260, 220);
   const locationLabel =
     [profile.district, profile.province].filter((s) => s && s.trim()).join(', ') || 'Sri Lanka';
@@ -52,14 +101,44 @@ export default function BuyerProfileScreen() {
   };
 
   const handleEditPress = () => {
-    Alert.alert(
-      'Edit Profile',
-      'Update your company info, contact phone, or delivery district.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Save Changes', onPress: () => Alert.alert('Profile Updated', 'Your profile details have been saved.') },
-      ]
-    );
+    setIsEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async (
+    updatedProfile: Partial<BuyerProfile>,
+    localAvatarUri?: string,
+    avatarBase64?: string
+  ) => {
+    setIsSaving(true);
+    try {
+      if (user?.id) {
+        const result = await profilesService.updateBuyerProfile(
+          user.id,
+          updatedProfile,
+          localAvatarUri,
+          avatarBase64
+        );
+        if (!result.success) {
+          Alert.alert('Update Failed', result.error || 'Failed to update buyer profile.');
+          setIsSaving(false);
+          return;
+        }
+        if (result.avatarUrl) {
+          updatedProfile.avatarUrl = result.avatarUrl;
+        }
+      }
+
+      setProfile((prev) => ({
+        ...prev,
+        ...updatedProfile,
+      }));
+      setIsEditModalVisible(false);
+      Alert.alert('Profile Updated', 'Your profile details have been saved successfully.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'An unexpected error occurred while saving.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -98,6 +177,14 @@ export default function BuyerProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#436647"
+            colors={['#436647']}
+          />
+        }
       >
         {/* ========================================================
             1. TOP HEADER WITH BACK BUTTON, TITLE & EDIT BUTTON
@@ -348,7 +435,7 @@ export default function BuyerProfileScreen() {
               </View>
               <Text style={styles.detailLabel}>Reg. ID</Text>
             </View>
-            <Text style={styles.detailValue}>{profile.regId}</Text>
+            <Text style={styles.detailValue}>{profile.registrationId || profile.regId || ' '}</Text>
           </View>
         </View>
 
@@ -414,7 +501,7 @@ export default function BuyerProfileScreen() {
         </View>
 
         {/* ========================================================
-            8. LOG OUT BUTTON
+            7. LOG OUT BUTTON
            ======================================================== */}
         <TouchableOpacity
           activeOpacity={0.8}
@@ -425,6 +512,16 @@ export default function BuyerProfileScreen() {
           <Text style={styles.logoutButtonText}>Log out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <BuyerEditProfileModal
+        visible={isEditModalVisible}
+        profile={profile}
+        isDark={darkMode}
+        isSaving={isSaving}
+        onClose={() => setIsEditModalVisible(false)}
+        onSave={handleSaveProfile}
+      />
     </SafeAreaView>
   );
 }
