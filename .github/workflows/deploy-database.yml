@@ -6,6 +6,7 @@ on:
       - main
       - Hemalsha
     paths:
+      - 'supabase/migrations/**'
       - 'database/migrations/**'
       - '.github/workflows/deploy-database.yml'
   workflow_dispatch:
@@ -24,10 +25,17 @@ jobs:
         with:
           version: latest
 
+      - name: Sync Migrations to supabase/migrations
+        run: |
+          mkdir -p supabase/migrations
+          if [ -d "database/migrations" ]; then
+            cp -rn database/migrations/* supabase/migrations/ 2>/dev/null || true
+          fi
+
       - name: Push Migrations to Supabase Cloud
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }} --workdir database
-          supabase db push --remote --workdir database
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF || 'twwuqaxmoiaqmvvcwqqw' }}
+          supabase db push --remote --include-all

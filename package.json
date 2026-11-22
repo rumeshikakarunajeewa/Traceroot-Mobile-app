@@ -10,7 +10,7 @@
     "web": "npm run web --prefix frontend",
     "typecheck": "npm run typecheck --prefix frontend",
     "lint": "npm run lint --prefix frontend",
-    "db:push": "supabase db push --workdir database",
+    "db:push": "supabase db push --remote --include-all",
     "backend:deploy": "npx supabase functions deploy verify-live-capture --project-ref twwuqaxmoiaqmvvcwqqw --yes && npx supabase functions deploy send-notification --project-ref twwuqaxmoiaqmvvcwqqw --yes && npx supabase functions deploy sync-offline-records --project-ref twwuqaxmoiaqmvvcwqqw --yes"
   }
 }
