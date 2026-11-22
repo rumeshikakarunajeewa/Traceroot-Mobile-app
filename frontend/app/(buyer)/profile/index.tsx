@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,12 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
 import { mockBuyerProfile } from '../../../src/constants/buyerMockData';
+import {
+  parseCoordinates,
+  getStaticMapUrl,
+  openInNativeMaps,
+  formatCoordinates,
+} from '../../../src/services/location.service';
 
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
@@ -25,6 +31,25 @@ export default function BuyerProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('About');
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+
+  const coords = parseCoordinates(profile.coordinates, profile.district);
+  const effectiveLat = coords.latitude;
+  const effectiveLng = coords.longitude;
+  const staticMapUrl = getStaticMapUrl(effectiveLat, effectiveLng, 13, 260, 220);
+  const locationLabel =
+    [profile.district, profile.province].filter((s) => s && s.trim()).join(', ') || 'Sri Lanka';
+  const displayCoords =
+    profile.coordinates && profile.coordinates.trim()
+      ? profile.coordinates.trim()
+      : formatCoordinates(effectiveLat, effectiveLng);
+
+  const handleOpenMap = () => {
+    openInNativeMaps(
+      effectiveLat,
+      effectiveLng,
+      profile.company || profile.fullName || 'Buyer Location'
+    );
+  };
 
   const handleEditPress = () => {
     Alert.alert(
@@ -192,21 +217,62 @@ export default function BuyerProfileScreen() {
         </View>
 
         {/* ========================================================
-            3. TRUST SCORE CARD
+            3. DEEP FOREST GREEN LOCATION CARD WITH REAL SMALL MAP
            ======================================================== */}
-        <View style={styles.trustScoreCard}>
-          {/* Circular Gauge Ring */}
-          <View style={styles.gaugeCircle}>
-            <Text style={styles.gaugeNumber}>{profile.trustScore || 96}</Text>
+        <TouchableOpacity
+          activeOpacity={0.88}
+          onPress={handleOpenMap}
+          style={[styles.locationCard, darkMode && styles.locationCardDark]}
+        >
+          {/* Left Column info */}
+          <View style={styles.locationContent}>
+            <View style={styles.locationTagRow}>
+              <MaterialCommunityIcons
+                name="map-marker-radius-outline"
+                size={15}
+                color="#A6C5A8"
+                style={styles.locPin}
+              />
+              <Text style={styles.locationTag}>Real Location</Text>
+            </View>
+
+            <Text style={styles.locationTitle}>{locationLabel}</Text>
+            <Text style={styles.locationSubtitle} numberOfLines={2}>
+              {profile.company || profile.province || 'Sri Lanka'}
+            </Text>
+            <Text style={styles.coordinates}>{displayCoords}</Text>
+
+            <View style={styles.openMapActionRow}>
+              <Text style={styles.openMapActionText}>Open in Maps</Text>
+              <MaterialCommunityIcons name="chevron-right" size={14} color="#A6C5A8" />
+            </View>
           </View>
 
-          {/* Right Trust Details */}
-          <View style={styles.trustDetailsColumn}>
-            <Text style={styles.trustKicker}>Trust score</Text>
-            <Text style={styles.trustRatingTitle}>{profile.trustRating || 'Exemplary'}</Text>
-            <Text style={styles.trustSubtitle}>{profile.trustDescription}</Text>
-          </View>
-        </View>
+          {/* Right Column: Small Map Preview of Real Location */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleOpenMap}
+            style={styles.miniMapContainer}
+            accessibilityLabel="Open small map in native maps"
+          >
+            <Image
+              source={{ uri: staticMapUrl }}
+              style={styles.miniMapImage}
+              resizeMode="cover"
+            />
+            <View style={styles.miniMapOverlay} />
+            {/* Centered Location Pin Marker */}
+            <View style={styles.miniMapPinWrapper}>
+              <View style={styles.miniMapPinPulse} />
+              <MaterialCommunityIcons name="map-marker" size={24} color="#F97316" />
+            </View>
+            {/* Small Map Tag Badge */}
+            <View style={styles.miniMapBadge}>
+              <MaterialCommunityIcons name="open-in-new" size={10} color="#FFFFFF" style={{ marginRight: 2 }} />
+              <Text style={styles.miniMapBadgeText}>MAP</Text>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
 
         {/* ========================================================
             4. HORIZONTAL FILTER TABS (About, Orders, Saved, Documents)
@@ -287,28 +353,7 @@ export default function BuyerProfileScreen() {
         </View>
 
         {/* ========================================================
-            6. DARK GREEN LOCATION CARD WITH RADAR PIN
-           ======================================================== */}
-        <View style={styles.locationCard}>
-          {/* Decorative Radar Circles on the right */}
-          <View style={styles.radarRingOuter} />
-          <View style={styles.radarRingInner} />
-          <View style={styles.radarPin} />
-
-          {/* Content */}
-          <View style={styles.locationContent}>
-            <View style={styles.locationHeaderRow}>
-              <MaterialCommunityIcons name="map-marker-outline" size={14} color="#A0B6A7" />
-              <Text style={styles.locationKicker}>Location</Text>
-            </View>
-            <Text style={styles.locationTitle}>{profile.district}</Text>
-            <Text style={styles.locationSubtitle}>{profile.province}</Text>
-            <Text style={styles.coordinatesText}>{profile.coordinates}</Text>
-          </View>
-        </View>
-
-        {/* ========================================================
-            7. SETTINGS SECTION
+            6. SETTINGS SECTION
            ======================================================== */}
         <Text style={styles.sectionHeader}>Settings</Text>
         <View style={styles.settingsCard}>
@@ -600,57 +645,136 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  /* 3. Trust Score Card */
-  trustScoreCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 16,
+  /* 3. Deep Forest Green Location Card */
+  locationCard: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#1B3220', // Forest dark matching Supplier & Buyer theme
+    borderRadius: 24,
+    marginBottom: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#ECE9E2',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    justifyContent: 'space-between',
+    shadowColor: '#1B3220',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  gaugeCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 3.5,
-    borderColor: '#34553B',
+  locationCardDark: {
+    backgroundColor: '#152518',
+    borderColor: '#243C28',
+    borderWidth: 0.5,
+  },
+  locationContent: {
+    flex: 1,
+    zIndex: 2,
+  },
+  locationTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  locPin: {
+    marginRight: 3,
+  },
+  locationTag: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#A6C5A8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  locationTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
+  locationSubtitle: {
+    fontSize: 12,
+    color: '#D4E2D8',
+    fontWeight: '400',
+    marginBottom: 6,
+    lineHeight: 16,
+  },
+  coordinates: {
+    fontSize: 11,
+    color: '#A6C5A8',
+    fontWeight: '600',
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
+    letterSpacing: 0.4,
+    marginBottom: 8,
+  },
+  openMapActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  openMapActionText: {
+    fontSize: 11.5,
+    color: '#A6C5A8',
+    fontWeight: '600',
+  },
+
+  /* Small Map Preview */
+  miniMapContainer: {
+    width: 104,
+    height: 104,
+    borderRadius: 18,
+    overflow: 'hidden',
+    position: 'relative',
+    marginLeft: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: '#0F1E13',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  gaugeNumber: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#162F1B',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  miniMapImage: {
+    width: '100%',
+    height: '100%',
   },
-  trustDetailsColumn: {
-    marginLeft: 16,
-    flex: 1,
+  miniMapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
   },
-  trustKicker: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#B45309',
+  miniMapPinWrapper: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  trustRatingTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#152E1B',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-    marginVertical: 1,
+  miniMapPinPulse: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(249, 115, 22, 0.28)',
   },
-  trustSubtitle: {
-    fontSize: 12,
-    color: '#6B7E70',
-    fontWeight: '500',
+  miniMapBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  miniMapBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 
   /* 4. Filter Tabs */
@@ -740,82 +864,7 @@ const styles = StyleSheet.create({
     color: '#1C3120',
   },
 
-  /* 6. Dark Green Location Card */
-  locationCard: {
-    backgroundColor: '#1C3725',
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#1C3725',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  radarRingOuter: {
-    position: 'absolute',
-    right: -25,
-    top: -15,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  radarRingInner: {
-    position: 'absolute',
-    right: -5,
-    top: 5,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  radarPin: {
-    position: 'absolute',
-    right: 40,
-    top: 48,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#D97706',
-  },
-  locationContent: {
-    zIndex: 2,
-  },
-  locationHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  locationKicker: {
-    fontSize: 11.5,
-    color: '#A0B6A7',
-    fontWeight: '500',
-  },
-  locationTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
-    marginVertical: 1,
-  },
-  locationSubtitle: {
-    fontSize: 12.5,
-    color: '#C8D8CE',
-    marginBottom: 8,
-  },
-  coordinatesText: {
-    fontSize: 11.5,
-    color: '#97AEA0',
-    fontWeight: '500',
-  },
-
-  /* 7. Settings Section */
+  /* 6. Settings Section */
   sectionHeader: {
     fontSize: 13,
     fontWeight: '600',
