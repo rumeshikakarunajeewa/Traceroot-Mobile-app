@@ -124,10 +124,10 @@ export default function AdminReportsScreen() {
           <Text style={styles.previewNoticeText}>Design preview — sample data</Text>
         </View>
 
-        {/* If 'This month' is selected: show sample statistics & bar chart */}
+        {/* If 'This month' is selected: show sample statistics & detailed breakdown */}
         {selectedPeriod === 'This month' ? (
           <>
-            {/* Farm-Image Summary Hero Card */}
+            {/* 1. Farm-Image Summary Hero Card */}
             <View style={styles.heroCardContainer}>
               <ImageBackground
                 source={require('@/assets/images/auth_sprouts.jpg')}
@@ -174,7 +174,7 @@ export default function AdminReportsScreen() {
               </ImageBackground>
             </View>
 
-            {/* "Record activity" Bar Chart Card */}
+            {/* 2. "Record activity" Bar Chart Card */}
             <View
               style={[
                 styles.activityCard,
@@ -207,7 +207,6 @@ export default function AdminReportsScreen() {
               {/* Bar Chart View */}
               <View style={styles.chartContainer}>
                 {WEEKLY_DATA.map((item) => {
-                  // Draw bar heights proportionally to shared scale: (value / MAX_BAR_VALUE) * CHART_MAX_HEIGHT
                   const barHeight = Math.round((item.value / MAX_BAR_VALUE) * CHART_MAX_HEIGHT);
 
                   return (
@@ -242,6 +241,190 @@ export default function AdminReportsScreen() {
                 })}
               </View>
             </View>
+
+            {/* 3. "Crop mix" Section with Stacked Bar & Two-Column Legend */}
+            <View style={styles.sectionContainer}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                Crop mix
+              </Text>
+
+              <View
+                style={[
+                  styles.cropMixCard,
+                  { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                ]}
+              >
+                {/* Horizontal Stacked Bar */}
+                <View style={styles.stackedBarTrack}>
+                  {/* Tomato: 34% (Orange) */}
+                  <View style={[styles.stackedSegment, { flex: 34, backgroundColor: '#D96528' }]} />
+                  {/* Gap */}
+                  <View style={styles.segmentGap} />
+                  {/* Cabbage: 26% (Olive Green) */}
+                  <View style={[styles.stackedSegment, { flex: 26, backgroundColor: '#52734D' }]} />
+                  {/* Gap */}
+                  <View style={styles.segmentGap} />
+                  {/* Broccoli: 18% (Light Sage Green) */}
+                  <View style={[styles.stackedSegment, { flex: 18, backgroundColor: '#9BB796' }]} />
+                  {/* Gap */}
+                  <View style={styles.segmentGap} />
+                  {/* Carrot: 13% (Brown) */}
+                  <View style={[styles.stackedSegment, { flex: 13, backgroundColor: '#8D6238' }]} />
+                  {/* Gap */}
+                  <View style={styles.segmentGap} />
+                  {/* Other: 9% (Dark Green) */}
+                  <View style={[styles.stackedSegment, { flex: 9, backgroundColor: '#1E3523' }]} />
+                </View>
+
+                {/* Two-Column Legend */}
+                <View style={styles.legendContainer}>
+                  {/* Column 1: Tomato, Broccoli, Other */}
+                  <View style={styles.legendColumn}>
+                    {/* Tomato */}
+                    <View style={styles.legendItemRow}>
+                      <View style={styles.legendLabelWrap}>
+                        <View style={[styles.legendDot, { backgroundColor: '#D96528' }]} />
+                        <Text style={[styles.legendCropName, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                          Tomato
+                        </Text>
+                      </View>
+                      <Text style={[styles.legendPercentage, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        34%
+                      </Text>
+                    </View>
+
+                    {/* Broccoli */}
+                    <View style={styles.legendItemRow}>
+                      <View style={styles.legendLabelWrap}>
+                        <View style={[styles.legendDot, { backgroundColor: '#9BB796' }]} />
+                        <Text style={[styles.legendCropName, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                          Broccoli
+                        </Text>
+                      </View>
+                      <Text style={[styles.legendPercentage, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        18%
+                      </Text>
+                    </View>
+
+                    {/* Other */}
+                    <View style={styles.legendItemRow}>
+                      <View style={styles.legendLabelWrap}>
+                        <View style={[styles.legendDot, { backgroundColor: '#1E3523' }]} />
+                        <Text style={[styles.legendCropName, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                          Other
+                        </Text>
+                      </View>
+                      <Text style={[styles.legendPercentage, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        9%
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Column 2: Cabbage, Carrot */}
+                  <View style={styles.legendColumn}>
+                    {/* Cabbage */}
+                    <View style={styles.legendItemRow}>
+                      <View style={styles.legendLabelWrap}>
+                        <View style={[styles.legendDot, { backgroundColor: '#52734D' }]} />
+                        <Text style={[styles.legendCropName, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                          Cabbage
+                        </Text>
+                      </View>
+                      <Text style={[styles.legendPercentage, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        26%
+                      </Text>
+                    </View>
+
+                    {/* Carrot */}
+                    <View style={styles.legendItemRow}>
+                      <View style={styles.legendLabelWrap}>
+                        <View style={[styles.legendDot, { backgroundColor: '#8D6238' }]} />
+                        <Text style={[styles.legendCropName, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                          Carrot
+                        </Text>
+                      </View>
+                      <Text style={[styles.legendPercentage, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        13%
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* 4. "Compliance by region" Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                Compliance by region
+              </Text>
+
+              <View style={styles.regionCardsList}>
+                {/* Region Card 1: Kandy (98%, 18 farms) */}
+                <View
+                  style={[
+                    styles.regionCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  {/* Left Location Icon */}
+                  <View style={[styles.regionIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={18} color="#2E7D32" />
+                  </View>
+
+                  {/* Middle & Right Content */}
+                  <View style={styles.regionInfoCol}>
+                    <View style={styles.regionHeaderRow}>
+                      <Text style={[styles.regionNameText, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                        Kandy
+                      </Text>
+                      <Text style={[styles.regionPercentageText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        98%
+                      </Text>
+                    </View>
+
+                    {/* Progress Bar (0 to 100% scale) */}
+                    <View style={[styles.progressTrack, { backgroundColor: isDark ? '#283D2C' : '#E5EAE3' }]}>
+                      <View style={[styles.progressFill, { width: '98%', backgroundColor: '#5D7C49' }]} />
+                    </View>
+
+                    {/* Subtext */}
+                    <Text style={[styles.regionFarmsText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                      18 farms
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Region Card 2: Nuwara Eliya (95%, no invented farm count) */}
+                <View
+                  style={[
+                    styles.regionCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  {/* Left Location Icon */}
+                  <View style={[styles.regionIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={18} color="#2E7D32" />
+                  </View>
+
+                  {/* Middle & Right Content */}
+                  <View style={styles.regionInfoCol}>
+                    <View style={styles.regionHeaderRow}>
+                      <Text style={[styles.regionNameText, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                        Nuwara Eliya
+                      </Text>
+                      <Text style={[styles.regionPercentageText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        95%
+                      </Text>
+                    </View>
+
+                    {/* Progress Bar (0 to 100% scale) */}
+                    <View style={[styles.progressTrack, { backgroundColor: isDark ? '#283D2C' : '#E5EAE3' }]}>
+                      <View style={[styles.progressFill, { width: '95%', backgroundColor: '#5D7C49' }]} />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
           </>
         ) : (
           /* Honest Unavailable Preview State when another period is selected */
@@ -264,13 +447,6 @@ export default function AdminReportsScreen() {
             </Text>
           </View>
         )}
-
-        {/* "Crop mix" Heading Only (Content cut off in screenshot) */}
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
-            Crop mix
-          </Text>
-        </View>
       </ScrollView>
 
       {/* 5-Tab Floating Shell with Reports Active */}
@@ -546,6 +722,123 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
   },
+
+  // Crop Mix Section
+  cropMixCard: {
+    borderRadius: 22,
+    padding: 16,
+    marginTop: spacing.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  stackedBarTrack: {
+    flexDirection: 'row',
+    height: 14,
+    borderRadius: 7,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  stackedSegment: {
+    height: '100%',
+  },
+  segmentGap: {
+    width: 2,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  legendColumn: {
+    flex: 1,
+    gap: 10,
+  },
+  legendItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: spacing.sm,
+  },
+  legendLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendCropName: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  legendPercentage: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Compliance by Region Section
+  regionCardsList: {
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  regionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  regionIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  regionInfoCol: {
+    flex: 1,
+  },
+  regionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  regionNameText: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  regionPercentageText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  progressTrack: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  regionFarmsText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+
   unavailablePeriodCard: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -572,11 +865,12 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     marginTop: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
     fontSize: 19,
     fontWeight: '800',
     letterSpacing: -0.3,
+    marginBottom: spacing.xs,
   },
 });
