@@ -28,6 +28,14 @@ import { useSupplierProfile, loadSupplierProfile } from '../../../src/store/supp
 import { toggleDarkMode, useDarkMode } from '../../../src/store/uiStore';
 import { authService } from '../../../src/services/auth.service';
 import { setAuthState } from '../../../src/store/authStore';
+import {
+  parseCoordinates,
+  getStaticMapUrl,
+  openInNativeMaps,
+  formatCoordinates,
+  getCurrentGpsLocation,
+  resolveDistrictInfo,
+} from '../../../src/services/location.service';
 
 type ProfileTab = 'About' | 'Products' | 'Reviews' | 'Documents';
 
@@ -53,23 +61,86 @@ export default function SupplierProfileScreen() {
   const [editPhone, setEditPhone] = useState(profile.phone || '');
   const [editEmail, setEditEmail] = useState(profile.email || '');
   const [editStore, setEditStore] = useState(profile.store || '');
+  const [editDistrict, setEditDistrict] = useState(profile.district || '');
+  const [editProvince, setEditProvince] = useState(profile.province || '');
+  const [editCoordinates, setEditCoordinates] = useState(profile.coordinates || '');
+  const [editLatitude, setEditLatitude] = useState<number | undefined>(profile.latitude);
+  const [editLongitude, setEditLongitude] = useState<number | undefined>(profile.longitude);
+  const [isLocating, setIsLocating] = useState(false);
   const [editLicence, setEditLicence] = useState(profile.licence || '');
   const [editBio, setEditBio] = useState(profile.bio || '');
 
   // Language Picker Modal State
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
 
+  // Resolved location metrics for main screen
+  const coords = parseCoordinates(profile.coordinates, profile.district);
+  const effectiveLat = profile.latitude ?? coords.latitude;
+  const effectiveLng = profile.longitude ?? coords.longitude;
+  const staticMapUrl = getStaticMapUrl(effectiveLat, effectiveLng, 13, 260, 220);
+  const locationLabel =
+    [profile.district, profile.province].filter((s) => s && s.trim() && s !== ' ').join(', ') ||
+    profile.district ||
+    'Sri Lanka';
+  const displayCoords =
+    profile.coordinates && profile.coordinates.trim() && profile.coordinates !== ' '
+      ? profile.coordinates.trim()
+      : formatCoordinates(effectiveLat, effectiveLng);
+
+  const handleOpenMap = () => {
+    openInNativeMaps(
+      effectiveLat,
+      effectiveLng,
+      profile.name || profile.contactName || 'Supplier Location'
+    );
+  };
+
+  // Preview coordinates for edit modal live map preview
+  const modalCoords = parseCoordinates(editCoordinates, editDistrict);
+  const previewLat = editLatitude ?? modalCoords.latitude;
+  const previewLng = editLongitude ?? modalCoords.longitude;
+  const previewMapUrl = getStaticMapUrl(previewLat, previewLng, 13, 200, 160);
+
   const handleOpenEdit = () => {
     setEditCompanyName(profile.name?.trim() || '');
     setEditContactName(profile.contactName?.trim() || '');
     setEditPhone(profile.phone?.trim() || '');
     setEditEmail(profile.email?.trim() || '');
-    setEditStore(profile.store?.trim() || '');
+    setEditStore(profile.store?.trim() || profile.address?.trim() || '');
+    setEditDistrict(profile.district?.trim() || '');
+    setEditProvince(profile.province?.trim() || '');
+    setEditCoordinates(profile.coordinates?.trim() || '');
+    setEditLatitude(profile.latitude);
+    setEditLongitude(profile.longitude);
     setEditLicence(profile.licence?.trim() || '');
     setEditBio(profile.bio?.trim() || '');
     setSelectedAvatarUri(null);
     setSelectedAvatarBase64(null);
     setIsEditModalVisible(true);
+  };
+
+  const handleDetectLocation = async () => {
+    setIsLocating(true);
+    const result = await getCurrentGpsLocation();
+    setIsLocating(false);
+
+    if (result.success && result.latitude && result.longitude) {
+      setEditLatitude(result.latitude);
+      setEditLongitude(result.longitude);
+      if (result.coordinates) setEditCoordinates(result.coordinates);
+      if (result.district) setEditDistrict(result.district);
+      if (result.province) setEditProvince(result.province);
+      if (result.address && !editStore) setEditStore(result.address);
+      Alert.alert(
+        'GPS Location Detected',
+        `Updated to ${result.district || 'Location'}${result.province ? ', ' + result.province : ''}\nCoordinates: ${result.coordinates || ''}`
+      );
+    } else {
+      Alert.alert(
+        'Location Detection Failed',
+        result.error || 'Could not access GPS location. Please check device permissions.'
+      );
+    }
   };
 
   const handlePickImage = async () => {
@@ -164,6 +235,12 @@ export default function SupplierProfileScreen() {
         phone: editPhone.trim(),
         email: editEmail.trim(),
         store: editStore.trim(),
+        address: editStore.trim(),
+        district: editDistrict.trim(),
+        province: editProvince.trim(),
+        coordinates: editCoordinates.trim(),
+        latitude: editLatitude,
+        longitude: editLongitude,
         licence: editLicence.trim(),
         bio: editBio.trim(),
         avatarUrl: hasPhotoRemoval ? undefined : (hasNewLocalPhoto ? selectedAvatarUri! : profile.avatarUrl),
@@ -463,41 +540,65 @@ export default function SupplierProfileScreen() {
           </View>
         </View>
 
-        {/* 3. TRUST SCORE CARD ("Highly trusted") */}
-        <View style={[styles.trustCard, isDark && styles.trustCardDark]}>
-          {/* Circular Ring Score */}
-          <View style={styles.scoreRing}>
-            <Text
-              style={[
-                styles.scoreNumber,
-                isDark && styles.scoreNumberDark,
-              ]}
-            >
-              {profile.trustScore}
+        {/* 3. DEEP FOREST GREEN LOCATION CARD WITH REAL SMALL MAP */}
+        <TouchableOpacity
+          activeOpacity={0.88}
+          onPress={handleOpenMap}
+          style={[styles.locationCard, isDark && styles.locationCardDark]}
+        >
+          {/* Left Column info */}
+          <View style={styles.locationContent}>
+            <View style={styles.locationTagRow}>
+              <MaterialCommunityIcons
+                name="map-marker-radius-outline"
+                size={15}
+                color="#A6C5A8"
+                style={styles.locPin}
+              />
+              <Text style={styles.locationTag}>Real Location</Text>
+            </View>
+
+            <Text style={styles.locationTitle}>{locationLabel}</Text>
+            <Text style={styles.locationSubtitle} numberOfLines={2}>
+              {profile.store && profile.store.trim() && profile.store !== ' '
+                ? profile.store
+                : profile.address && profile.address.trim() && profile.address !== ' '
+                ? profile.address
+                : 'Sri Lanka'}
             </Text>
+            <Text style={styles.coordinates}>{displayCoords}</Text>
+
+            <View style={styles.openMapActionRow}>
+              <Text style={styles.openMapActionText}>Open in Maps</Text>
+              <MaterialCommunityIcons name="chevron-right" size={14} color="#A6C5A8" />
+            </View>
           </View>
 
-          {/* Details Column */}
-          <View style={styles.trustDetailsColumn}>
-            <Text style={styles.trustTagText}>{t('trustScore')}</Text>
-            <Text
-              style={[
-                styles.trustTitleText,
-                isDark && styles.trustTitleTextDark,
-              ]}
-            >
-              {t('highlyTrusted')}
-            </Text>
-            <Text
-              style={[
-                styles.trustSubtitleText,
-                isDark && styles.trustSubtitleTextDark,
-              ]}
-            >
-              {t('trustSubtitle')}
-            </Text>
-          </View>
-        </View>
+          {/* Right Column: Small Map Preview of Real Location */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleOpenMap}
+            style={styles.miniMapContainer}
+            accessibilityLabel="Open small map in native maps"
+          >
+            <Image
+              source={{ uri: staticMapUrl }}
+              style={styles.miniMapImage}
+              resizeMode="cover"
+            />
+            <View style={styles.miniMapOverlay} />
+            {/* Centered Location Pin Marker */}
+            <View style={styles.miniMapPinWrapper}>
+              <View style={styles.miniMapPinPulse} />
+              <MaterialCommunityIcons name="map-marker" size={24} color="#F97316" />
+            </View>
+            {/* Small Map Tag Badge */}
+            <View style={styles.miniMapBadge}>
+              <MaterialCommunityIcons name="open-in-new" size={10} color="#FFFFFF" style={{ marginRight: 2 }} />
+              <Text style={styles.miniMapBadgeText}>MAP</Text>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
 
         {/* 4. NAVIGATION TAB PILLS */}
         <View style={styles.tabsRow}>
@@ -685,33 +786,6 @@ export default function SupplierProfileScreen() {
               ]}
             >
               {profile.licence}
-            </Text>
-          </View>
-        </View>
-
-        {/* 6. LOCATION RADAR CARD */}
-        <View style={styles.locationRadarCard}>
-          {/* Concentric Decorative Radar Rings */}
-          <View style={styles.radarOuterRing} />
-          <View style={styles.radarInnerRing} />
-          <View style={styles.radarBeaconDot} />
-
-          {/* Left Location Info */}
-          <View style={styles.radarContentColumn}>
-            <View style={styles.radarTagRow}>
-              <MaterialCommunityIcons
-                name="map-marker-outline"
-                size={13}
-                color="rgba(255,255,255,0.72)"
-                style={{ marginRight: 3 }}
-              />
-              <Text style={styles.radarTagText}>{t('location')}</Text>
-            </View>
-
-            <Text style={styles.radarDistrictText}>{profile.district}</Text>
-            <Text style={styles.radarProvinceText}>{t('centralProvince')}</Text>
-            <Text style={styles.radarCoordinatesText}>
-              {profile.coordinates}
             </Text>
           </View>
         </View>
@@ -1251,6 +1325,82 @@ export default function SupplierProfileScreen() {
                 />
               </View>
 
+              {/* Location Section Header Row with GPS Button */}
+              <View style={styles.modalSectionHeaderRow}>
+                <Text style={[styles.modalSectionTitle, isDark && styles.modalSectionTitleDark]}>
+                  Location & Coordinates
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleDetectLocation}
+                  disabled={isLocating}
+                  style={[styles.gpsButton, isDark && styles.gpsButtonDark]}
+                >
+                  {isLocating ? (
+                    <ActivityIndicator size="small" color={isDark ? '#4ADE80' : '#1C3723'} />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons
+                        name="crosshairs-gps"
+                        size={14}
+                        color={isDark ? '#4ADE80' : '#1C3723'}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={[styles.gpsButtonText, isDark && styles.gpsButtonTextDark]}>
+                        Use Current GPS
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* District & Province Row */}
+              <View style={styles.rowTwoCols}>
+                <View style={[styles.modalFieldGroup, { flex: 1 }]}>
+                  <Text style={[styles.modalLabel, isDark && styles.modalLabelDark]}>
+                    District
+                  </Text>
+                  <TextInput
+                    value={editDistrict}
+                    onChangeText={(text) => {
+                      setEditDistrict(text);
+                      const info = resolveDistrictInfo(text);
+                      if (info) {
+                        setEditLatitude(info.lat);
+                        setEditLongitude(info.lng);
+                        setEditCoordinates(formatCoordinates(info.lat, info.lng));
+                        if (!editProvince || editProvince.trim() === '' || editProvince === 'Western Province') {
+                          setEditProvince(info.province);
+                        }
+                      }
+                    }}
+                    placeholder="e.g. Kandy"
+                    placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                    style={[
+                      styles.modalInput,
+                      isDark && styles.modalInputDark,
+                    ]}
+                  />
+                </View>
+
+                <View style={[styles.modalFieldGroup, { flex: 1 }]}>
+                  <Text style={[styles.modalLabel, isDark && styles.modalLabelDark]}>
+                    Province
+                  </Text>
+                  <TextInput
+                    value={editProvince}
+                    onChangeText={setEditProvince}
+                    placeholder="e.g. Central"
+                    placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                    style={[
+                      styles.modalInput,
+                      isDark && styles.modalInputDark,
+                    ]}
+                  />
+                </View>
+              </View>
+
               {/* Field: Store Address */}
               <View style={styles.modalFieldGroup}>
                 <Text
@@ -1264,13 +1414,38 @@ export default function SupplierProfileScreen() {
                 <TextInput
                   value={editStore}
                   onChangeText={setEditStore}
-                  placeholder="e.g. Peradeniya Rd, Kandy"
+                  placeholder="e.g. 142 Peradeniya Rd, Kandy"
                   placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
                   style={[
                     styles.modalInput,
                     isDark && styles.modalInputDark,
                   ]}
                 />
+              </View>
+
+              {/* Coordinates & Map Preview Banner */}
+              <View style={[styles.modalMapPreviewBox, isDark && styles.modalMapPreviewBoxDark]}>
+                <View style={styles.modalMapThumbnailContainer}>
+                  <Image
+                    source={{ uri: previewMapUrl }}
+                    style={styles.modalMapThumbnail}
+                    resizeMode="cover"
+                  />
+                  <MaterialCommunityIcons
+                    name="map-marker"
+                    size={20}
+                    color="#F97316"
+                    style={styles.modalMapMarkerIcon}
+                  />
+                </View>
+                <View style={styles.modalMapPreviewTextCol}>
+                  <Text style={[styles.modalMapCoordsLabel, isDark && styles.modalMapCoordsLabelDark]}>
+                    GPS Coordinates:
+                  </Text>
+                  <Text style={[styles.modalMapCoordsVal, isDark && styles.modalMapCoordsValDark]}>
+                    {editCoordinates || formatCoordinates(previewLat, previewLng)}
+                  </Text>
+                </View>
               </View>
 
               {/* Field: Licence / BR Number */}
@@ -1609,71 +1784,131 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
 
-  /* TRUST SCORE CARD */
-  trustCard: {
-    backgroundColor: '#FFFFFF',
+  /* DEEP FOREST GREEN LOCATION CARD */
+  locationCard: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#1B3220', // Forest dark matching Buyer profile
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#ECE6DC',
-    padding: 16,
     marginBottom: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    justifyContent: 'space-between',
+    shadowColor: '#0E2413',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  trustCardDark: {
-    backgroundColor: '#16271A',
-    borderColor: '#263D2B',
+  locationCardDark: {
+    backgroundColor: '#152518',
+    borderColor: '#243C28',
+    borderWidth: 0.5,
   },
-  scoreRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 3.5,
-    borderColor: '#436340', // Deep olive green ring
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  scoreNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: serifFont,
-    color: '#1C3723',
-  },
-  scoreNumberDark: {
-    color: '#E5EFE7',
-  },
-  trustDetailsColumn: {
+  locationContent: {
     flex: 1,
+    zIndex: 2,
   },
-  trustTagText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#9C7752', // Amber brown from Figma
+  locPin: {
+    marginRight: 3,
+  },
+  locationTag: {
+    fontSize: 12,
+    color: '#A6C5A8',
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
-  trustTitleText: {
-    fontSize: 18,
+  locationTitle: {
+    fontSize: 20,
     fontWeight: '700',
+    color: '#FFFFFF',
     fontFamily: serifFont,
-    color: '#1C3723',
-    marginTop: 1,
+    letterSpacing: -0.3,
+    marginBottom: 2,
   },
-  trustTitleTextDark: {
-    color: '#F0F5F1',
+  locationSubtitle: {
+    fontSize: 12.5,
+    color: '#D0DFD2',
+    fontWeight: '400',
+    marginBottom: 6,
   },
-  trustSubtitleText: {
+  coordinates: {
+    fontSize: 11,
+    color: '#9AB89D',
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
+    letterSpacing: 0.3,
+  },
+  openMapActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  openMapActionText: {
     fontSize: 12,
-    color: '#718573',
-    marginTop: 2,
+    fontWeight: '600',
+    color: '#A6C5A8',
+    marginRight: 2,
   },
-  trustSubtitleTextDark: {
-    color: '#8EA491',
+  miniMapContainer: {
+    width: 106,
+    height: 94,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#0F2314',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  miniMapImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  miniMapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 35, 20, 0.15)',
+  },
+  miniMapPinWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniMapPinPulse: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(249, 115, 22, 0.25)',
+  },
+  miniMapBadge: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: 'rgba(21, 46, 27, 0.85)',
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  miniMapBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
   },
 
   /* TABS ROW */
@@ -1786,83 +2021,107 @@ const styles = StyleSheet.create({
     backgroundColor: '#223826',
   },
 
-  /* LOCATION RADAR CARD */
-  locationRadarCard: {
-    backgroundColor: '#1C3723',
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 20,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#1C3723',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  radarOuterRing: {
-    position: 'absolute',
-    right: -20,
-    top: -20,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  radarInnerRing: {
-    position: 'absolute',
-    right: 5,
-    top: 5,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-  },
-  radarBeaconDot: {
-    position: 'absolute',
-    right: 42,
-    top: 42,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#C06E35', // Warm terracotta orange dot
-    shadowColor: '#C06E35',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  radarContentColumn: {
-    zIndex: 2,
-  },
-  radarTagRow: {
+  /* MODAL LOCATION CONTROLS */
+  modalSectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-  },
-  radarTagText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.75)',
-  },
-  radarDistrictText: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: serifFont,
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  radarProvinceText: {
-    fontSize: 12.5,
-    color: 'rgba(255, 255, 255, 0.85)',
+    justifyContent: 'space-between',
+    marginTop: 8,
     marginBottom: 8,
   },
-  radarCoordinatesText: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.65)',
-    letterSpacing: 0.3,
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1C3723',
+    fontFamily: serifFont,
+  },
+  modalSectionTitleDark: {
+    color: '#F0F5F1',
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF3EE',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D4E2D6',
+  },
+  gpsButtonDark: {
+    backgroundColor: '#1C3122',
+    borderColor: '#2D4B34',
+  },
+  gpsButtonText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#1B3220',
+  },
+  gpsButtonTextDark: {
+    color: '#4ADE80',
+  },
+  rowTwoCols: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalMapPreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3EFE6',
+    borderRadius: 14,
+    padding: 10,
+    marginTop: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E6E0D2',
+  },
+  modalMapPreviewBoxDark: {
+    backgroundColor: '#16271A',
+    borderColor: '#263D2B',
+  },
+  modalMapThumbnailContainer: {
+    width: 60,
+    height: 50,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#102214',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  modalMapThumbnail: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  modalMapMarkerIcon: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+  },
+  modalMapPreviewTextCol: {
+    flex: 1,
+  },
+  modalMapCoordsLabel: {
+    fontSize: 10.5,
+    color: '#556E58',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  modalMapCoordsLabelDark: {
+    color: '#8EA491',
+  },
+  modalMapCoordsVal: {
+    fontSize: 12,
+    color: '#1C3723',
+    fontWeight: '600',
+    marginTop: 1,
+    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
+  },
+  modalMapCoordsValDark: {
+    color: '#F0F5F1',
   },
 
   /* SETTINGS SECTION */

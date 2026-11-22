@@ -325,8 +325,12 @@ class ProfilesService {
       const store = supplierProfile?.address?.trim() || ' ';
       const licence = supplierProfile?.br_number?.trim() || ' ';
       const bio = supplierProfile?.description?.trim() || profile?.bio?.trim() || ' ';
-      const district = supplierProfile?.district?.trim() || store;
-      const province = supplierProfile?.province?.trim() || ' ';
+      const district = supplierProfile?.district?.trim() || profile?.district?.trim() || 'Colombo';
+      const province = supplierProfile?.province?.trim() || profile?.province?.trim() || 'Western Province';
+      const coordinates = supplierProfile?.coordinates?.trim() || profile?.coordinates?.trim() || ' ';
+      const latitude = supplierProfile?.latitude ? Number(supplierProfile.latitude) : undefined;
+      const longitude = supplierProfile?.longitude ? Number(supplierProfile.longitude) : undefined;
+      const address = supplierProfile?.address?.trim() || store;
       const category = supplierProfile?.category || 'Buy-back partner';
       const rating = supplierProfile?.rating ? Number(supplierProfile.rating) : 5.0;
 
@@ -342,7 +346,10 @@ class ProfilesService {
         isVerified: profile?.is_verified ?? false,
         district,
         province,
-        coordinates: ' ',
+        coordinates,
+        latitude,
+        longitude,
+        address,
         partnerTag: category,
         bio,
         productsCount: productsRes.count || 0,
@@ -412,6 +419,12 @@ class ProfilesService {
       if (data.bio !== undefined) {
         profileUpdates.bio = data.bio.trim();
       }
+      if (data.district !== undefined) {
+        profileUpdates.district = data.district.trim();
+      }
+      if (data.province !== undefined) {
+        profileUpdates.province = data.province.trim();
+      }
       if (finalAvatarUrl !== undefined) {
         profileUpdates.avatar_url = finalAvatarUrl;
       }
@@ -441,8 +454,8 @@ class ProfilesService {
       if (data.name !== undefined) {
         supplierUpdates.company_name = data.name.trim();
       }
-      if (data.store !== undefined) {
-        supplierUpdates.address = data.store.trim();
+      if (data.store !== undefined || data.address !== undefined) {
+        supplierUpdates.address = (data.store || data.address || '').trim();
       }
       if (data.licence !== undefined) {
         supplierUpdates.br_number = data.licence.trim();
@@ -453,10 +466,31 @@ class ProfilesService {
       if (data.district !== undefined) {
         supplierUpdates.district = data.district.trim();
       }
+      if (data.province !== undefined) {
+        supplierUpdates.province = data.province.trim();
+      }
+      if (data.coordinates !== undefined) {
+        supplierUpdates.coordinates = data.coordinates.trim();
+      }
+      if (data.latitude !== undefined) {
+        supplierUpdates.latitude = data.latitude;
+      }
+      if (data.longitude !== undefined) {
+        supplierUpdates.longitude = data.longitude;
+      }
 
-      const { error: sErr } = await supabase
+      let { error: sErr } = await supabase
         .from('supplier_profiles')
         .upsert(supplierUpdates);
+
+      if (sErr && (sErr.message?.includes('coordinates') || sErr.message?.includes('latitude') || sErr.message?.includes('longitude'))) {
+        // Fallback without coordinates columns if table hasn't run migration 019
+        delete supplierUpdates.coordinates;
+        delete supplierUpdates.latitude;
+        delete supplierUpdates.longitude;
+        const retry = await supabase.from('supplier_profiles').upsert(supplierUpdates);
+        sErr = retry.error;
+      }
 
       if (sErr) {
         console.error('Error updating supplier_profiles table:', sErr.message);
