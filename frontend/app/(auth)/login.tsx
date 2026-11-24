@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   Animated,
   Easing,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
@@ -20,20 +21,46 @@ import { authService } from '../../src/services/auth.service';
 
 type Role = 'farmer' | 'buyer' | 'supplier';
 
+interface RoleCardProps {
+  type: Role;
+  title: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  isSelected: boolean;
+  onSelect: (type: Role) => void;
+}
+
+function RoleCard({ type, title, icon, isSelected, onSelect }: RoleCardProps) {
+  return (
+    <TouchableOpacity
+      style={[styles.roleCard, isSelected && styles.roleCardSelected]}
+      onPress={() => onSelect(type)}
+      activeOpacity={0.75}
+    >
+      <MaterialCommunityIcons
+        name={icon}
+        size={24}
+        color={isSelected ? colors.button.accent : colors.text.inverse}
+      />
+      <Text style={[styles.roleText, isSelected && styles.roleTextSelected]}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function LoginScreen() {
   const [role, setRole] = useState<Role>('buyer'); // Default to buyer as requested
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
-  const bgScale = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-  const titleAnim = useRef(new Animated.Value(0)).current;
-  const rolesAnim = useRef(new Animated.Value(0)).current;
-  const formAnim = useRef(new Animated.Value(0)).current;
+  const [bgScale] = useState(() => new Animated.Value(1));
+  const [slideAnim] = useState(() => new Animated.Value(20));
+  const [titleAnim] = useState(() => new Animated.Value(0));
+  const [rolesAnim] = useState(() => new Animated.Value(0));
+  const [formAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(bgScale, {
@@ -56,7 +83,7 @@ export default function LoginScreen() {
         }),
       ]),
     ]).start();
-  }, []);
+  }, [bgScale, formAnim, rolesAnim, slideAnim, titleAnim]);
 
   const validate = () => {
     let valid = true;
@@ -115,9 +142,31 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleAuth = () => {
-    // If logged in via Google, navigate directly to role's dashboard
-    navigateToRoleHome(role);
+  const handleGoogleAuth = async () => {
+    setIsGoogleLoading(true);
+    setAuthError(null);
+
+    const result = await authService.signInWithGoogle({ selectedRole: role });
+    setIsGoogleLoading(false);
+
+    if (result.error) {
+      if (
+        result.error.toLowerCase().includes('cancelled') ||
+        result.error.toLowerCase().includes('dismiss')
+      ) {
+        return;
+      }
+      setAuthError(result.error);
+      return;
+    }
+
+    if (result.actualRole === 'admin' || result.profile?.role === 'admin') {
+      router.replace('/(admin)');
+      return;
+    }
+
+    const targetRole = (result.actualRole || result.profile?.role || role) as Role;
+    navigateToRoleHome(targetRole);
   };
 
   const handleSignUp = () => {
@@ -128,33 +177,9 @@ export default function LoginScreen() {
     router.push('/(auth)/forgot-password');
   };
 
-  const RoleCard = ({
-    type,
-    title,
-    icon,
-  }: {
-    type: Role;
-    title: string;
-    icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  }) => {
-    const isSelected = role === type;
-    return (
-      <TouchableOpacity
-        style={[styles.roleCard, isSelected && styles.roleCardSelected]}
-        onPress={() => {
-          setRole(type);
-          setAuthError(null);
-        }}
-        activeOpacity={0.75}
-      >
-        <MaterialCommunityIcons
-          name={icon}
-          size={24}
-          color={isSelected ? colors.button.accent : colors.text.inverse}
-        />
-        <Text style={[styles.roleText, isSelected && styles.roleTextSelected]}>{title}</Text>
-      </TouchableOpacity>
-    );
+  const handleRoleSelect = (selected: Role) => {
+    setRole(selected);
+    setAuthError(null);
   };
 
   return (
@@ -186,9 +211,27 @@ export default function LoginScreen() {
           <Animated.View style={[{ opacity: rolesAnim }, styles.rolesSection]}>
             <Text style={styles.label}>SIGN IN AS</Text>
             <View style={styles.rolesRow}>
-              <RoleCard type="buyer" title="Buyer" icon="cart-outline" />
-              <RoleCard type="farmer" title="Farmer" icon="tractor" />
-              <RoleCard type="supplier" title="Supplier" icon="storefront-outline" />
+              <RoleCard
+                type="buyer"
+                title="Buyer"
+                icon="cart-outline"
+                isSelected={role === 'buyer'}
+                onSelect={handleRoleSelect}
+              />
+              <RoleCard
+                type="farmer"
+                title="Farmer"
+                icon="tractor"
+                isSelected={role === 'farmer'}
+                onSelect={handleRoleSelect}
+              />
+              <RoleCard
+                type="supplier"
+                title="Supplier"
+                icon="storefront-outline"
+                isSelected={role === 'supplier'}
+                onSelect={handleRoleSelect}
+              />
             </View>
           </Animated.View>
 
@@ -247,16 +290,34 @@ export default function LoginScreen() {
             </View>
 
             {/* Google Authentication */}
-            <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleAuth}>
-              <View style={styles.googleIconCircle}>
-                <Text style={{ fontWeight: 'bold', color: colors.primary }}>G</Text>
-              </View>
-              <Text style={styles.googleText}>Continue with Google</Text>
+            <TouchableOpacity
+              style={[
+                styles.googleBtn,
+                (isLoading || isGoogleLoading) && styles.googleBtnDisabled,
+              ]}
+              onPress={handleGoogleAuth}
+              disabled={isLoading || isGoogleLoading}
+              activeOpacity={0.8}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginRight: spacing.sm }}
+                />
+              ) : (
+                <View style={styles.googleIconCircle}>
+                  <Text style={{ fontWeight: 'bold', color: colors.primary }}>G</Text>
+                </View>
+              )}
+              <Text style={styles.googleText}>
+                {isGoogleLoading ? 'Connecting to Google...' : 'Continue with Google'}
+              </Text>
             </TouchableOpacity>
 
             {/* Link to Sign Up */}
             <View style={styles.signUpRow}>
-              <Text style={styles.signUpText}>Don't have an account? </Text>
+              <Text style={styles.signUpText}>{"Don't have an account? "}</Text>
               <TouchableOpacity onPress={handleSignUp}>
                 <Text style={styles.signUpLink}>Sign up</Text>
               </TouchableOpacity>
@@ -385,6 +446,9 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: radius.full,
     marginBottom: spacing.lg,
+  },
+  googleBtnDisabled: {
+    opacity: 0.65,
   },
   googleIconCircle: {
     width: 26,

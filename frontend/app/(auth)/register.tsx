@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, 
-  KeyboardAvoidingView, ScrollView, Platform, Animated, Easing 
+  KeyboardAvoidingView, ScrollView, Platform, Animated, Easing, ActivityIndicator 
 } from 'react-native';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +12,31 @@ import { authService } from '../../src/services/auth.service';
 
 type Role = 'farmer' | 'buyer' | 'supplier' | null;
 
+interface RoleCardProps {
+  type: Role;
+  title: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  isSelected: boolean;
+  onSelect: (type: Role) => void;
+}
+
+function RoleCard({ type, title, icon, isSelected, onSelect }: RoleCardProps) {
+  return (
+    <TouchableOpacity 
+      style={[styles.roleCard, isSelected && styles.roleCardSelected]}
+      onPress={() => onSelect(type)}
+      activeOpacity={0.7}
+    >
+      <MaterialCommunityIcons 
+        name={icon} 
+        size={24} 
+        color={isSelected ? colors.button.accent : colors.text.inverse} 
+      />
+      <Text style={[styles.roleText, isSelected && styles.roleTextSelected]}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function RegisterScreen() {
   const [role, setRole] = useState<Role>(null);
   const [name, setName] = useState('');
@@ -19,16 +44,17 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
-  const bgScale = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const [bgScale] = useState(() => new Animated.Value(1));
+  const [slideAnim] = useState(() => new Animated.Value(20));
 
   // Staggered items
-  const titleAnim = useRef(new Animated.Value(0)).current;
-  const rolesAnim = useRef(new Animated.Value(0)).current;
-  const formAnim = useRef(new Animated.Value(0)).current;
+  const [titleAnim] = useState(() => new Animated.Value(0));
+  const [rolesAnim] = useState(() => new Animated.Value(0));
+  const [formAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     // Slow background zoom
@@ -48,7 +74,7 @@ export default function RegisterScreen() {
         Animated.timing(slideAnim, { toValue: 0, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true })
       ])
     ]).start();
-  }, []);
+  }, [bgScale, formAnim, rolesAnim, slideAnim, titleAnim]);
 
   const validate = () => {
     let valid = true;
@@ -116,32 +142,58 @@ export default function RegisterScreen() {
     router.push('/(auth)/login');
   };
 
-  const handleGoogleAuth = () => {
-    if (role === 'farmer') {
-      router.replace('/(farmer)');
-    } else if (role === 'supplier') {
-      router.replace('/(supplier)');
-    } else {
+  const handleGoogleAuth = async () => {
+    if (!role) {
+      setErrors((prev) => ({
+        ...prev,
+        role: 'Please select a role (Farmer, Buyer, or Supplier) to continue with Google.',
+      }));
+      return;
+    }
+
+    setIsGoogleLoading(true);
+    setAuthError(null);
+
+    const result = await authService.signInWithGoogle({ selectedRole: role });
+    setIsGoogleLoading(false);
+
+    if (result.error) {
+      if (
+        result.error.toLowerCase().includes('cancelled') ||
+        result.error.toLowerCase().includes('dismiss')
+      ) {
+        return;
+      }
+      setAuthError(result.error);
+      return;
+    }
+
+    const targetRole = result.actualRole || result.profile?.role || role;
+
+    if (targetRole === 'farmer') {
+      router.replace({
+        pathname: '/(auth)/register-farmer',
+        params: {
+          userId: result.user?.id,
+          name: result.profile?.full_name || '',
+          email: result.user?.email || '',
+          role: 'farmer',
+        },
+      });
+    } else if (targetRole === 'buyer') {
       router.replace('/(buyer)');
+    } else if (targetRole === 'supplier') {
+      router.replace('/(supplier)');
+    } else if (targetRole === 'admin') {
+      router.replace('/(admin)');
+    } else {
+      router.replace('/(auth)/login');
     }
   };
 
-  const RoleCard = ({ type, title, icon }: { type: Role, title: string, icon: keyof typeof MaterialCommunityIcons.glyphMap }) => {
-    const isSelected = role === type;
-    return (
-      <TouchableOpacity 
-        style={[styles.roleCard, isSelected && styles.roleCardSelected]}
-        onPress={() => setRole(type)}
-        activeOpacity={0.7}
-      >
-        <MaterialCommunityIcons 
-          name={icon} 
-          size={24} 
-          color={isSelected ? colors.button.accent : colors.text.inverse} 
-        />
-        <Text style={[styles.roleText, isSelected && styles.roleTextSelected]}>{title}</Text>
-      </TouchableOpacity>
-    );
+  const handleRoleSelect = (selected: Role) => {
+    setRole(selected);
+    setErrors((prev) => ({ ...prev, role: '' }));
   };
 
   return (
@@ -167,9 +219,27 @@ export default function RegisterScreen() {
           <Animated.View style={[{ opacity: rolesAnim }, styles.rolesSection]}>
             <Text style={styles.label}>JOIN AS</Text>
             <View style={styles.rolesRow}>
-              <RoleCard type="farmer" title="Farmer" icon="tractor" />
-              <RoleCard type="buyer" title="Buyer" icon="cart-outline" />
-              <RoleCard type="supplier" title="Supplier" icon="storefront-outline" />
+              <RoleCard
+                type="farmer"
+                title="Farmer"
+                icon="tractor"
+                isSelected={role === 'farmer'}
+                onSelect={handleRoleSelect}
+              />
+              <RoleCard
+                type="buyer"
+                title="Buyer"
+                icon="cart-outline"
+                isSelected={role === 'buyer'}
+                onSelect={handleRoleSelect}
+              />
+              <RoleCard
+                type="supplier"
+                title="Supplier"
+                icon="storefront-outline"
+                isSelected={role === 'supplier'}
+                onSelect={handleRoleSelect}
+              />
             </View>
             {errors.role && <Text style={styles.errorText}>{errors.role}</Text>}
           </Animated.View>
@@ -221,11 +291,29 @@ export default function RegisterScreen() {
               <View style={styles.divider} />
             </View>
 
-            <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleAuth}>
-              <View style={styles.googleIconCircle}>
-                <Text style={{fontWeight: 'bold', color: colors.primary}}>G</Text>
-              </View>
-              <Text style={styles.googleText}>Sign up with Google</Text>
+            <TouchableOpacity
+              style={[
+                styles.googleBtn,
+                (isLoading || isGoogleLoading) && styles.googleBtnDisabled,
+              ]}
+              onPress={handleGoogleAuth}
+              disabled={isLoading || isGoogleLoading}
+              activeOpacity={0.8}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#fff"
+                  style={{ marginRight: spacing.sm }}
+                />
+              ) : (
+                <View style={styles.googleIconCircle}>
+                  <Text style={{ fontWeight: 'bold', color: colors.primary }}>G</Text>
+                </View>
+              )}
+              <Text style={styles.googleText}>
+                {isGoogleLoading ? 'Connecting to Google...' : 'Sign up with Google'}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.loginRow}>
@@ -354,6 +442,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
     backgroundColor: 'transparent',
     marginBottom: spacing.xl,
+  },
+  googleBtnDisabled: {
+    opacity: 0.65,
   },
   googleIconCircle: {
     width: 24,

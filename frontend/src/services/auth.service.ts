@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import {
   UserProfile,
@@ -12,6 +15,9 @@ import {
   isAdminIdentifier,
   getAdminProfile,
 } from '../constants/adminConfig';
+
+// Complete any pending browser auth sessions on startup
+WebBrowser.maybeCompleteAuthSession();
 
 export interface SignUpParams {
   email: string;
@@ -482,6 +488,231 @@ class AuthService {
       return JSON.parse(jsonPayload);
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Sign in / Sign up with Google OAuth via Supabase and Expo WebBrowser with PKCE
+   */
+  async signInWithGoogle(params?: { selectedRole?: UserRole }): Promise<AuthResponse> {
+    try {
+      const selectedRole = params?.selectedRole || 'buyer';
+      // In Expo, Linking.createURL('auth/callback') produces "traceroot://auth/callback" in native builds
+      // or "http://localhost:8081/auth/callback" in web/Expo Go.
+      const redirectTo = Linking.createURL('auth/callback');
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: Platform.OS !== 'web',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: error.message || 'Failed to initiate Google sign in.',
+        };
+      }
+
+      if (Platform.OS === 'web') {
+        // On web, browser redirect is handled automatically
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: null,
+        };
+      }
+
+      const authUrl = data?.url;
+      if (!authUrl) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: 'No authorization URL received from Google auth provider.',
+        };
+      }
+
+      const res = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo);
+
+      if (res.type !== 'success' || !res.url) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error:
+            res.type === 'cancel' || res.type === 'dismiss'
+              ? 'Sign in was cancelled.'
+              : 'Authentication did not complete.',
+        };
+      }
+
+      // Handle the deep link callback
+      return await this.handleAuthCallbackUrl(res.url, selectedRole);
+    } catch (err: any) {
+      console.error('[AuthService] signInWithGoogle error:', err);
+      return {
+        user: null,
+        profile: null,
+        session: null,
+        token: null,
+        error: err.message || 'An unexpected error occurred during Google sign in.',
+      };
+    }
+  }
+
+  /**
+   * Handle the redirect callback URL containing the auth code or tokens
+   */
+  async handleAuthCallbackUrl(callbackUrl: string, selectedRole: UserRole = 'buyer'): Promise<AuthResponse> {
+    try {
+      const parsed = Linking.parse(callbackUrl);
+      const code = parsed.queryParams?.code;
+      const errorDescription = parsed.queryParams?.error_description || parsed.queryParams?.error;
+
+      if (errorDescription) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: String(errorDescription),
+        };
+      }
+
+      let session = null;
+      let user = null;
+
+      if (typeof code === 'string') {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          return {
+            user: null,
+            profile: null,
+            session: null,
+            token: null,
+            error: error.message || 'Failed to exchange authorization code for session.',
+          };
+        }
+        session = data.session;
+        user = data.user;
+      } else {
+        // Fallback: Check if session is already active in Supabase client
+        const currentSession = await this.getSession();
+        if (currentSession?.user) {
+          session = currentSession;
+          user = currentSession.user;
+        } else {
+          return {
+            user: null,
+            profile: null,
+            session: null,
+            token: null,
+            error: 'No authorization code or session found in callback.',
+          };
+        }
+      }
+
+      if (!user) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: 'Unable to retrieve authenticated user information.',
+        };
+      }
+
+      // Check existing profile
+      let profile = await this.getProfile(user.id);
+
+      const googleName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split('@')[0] ||
+        'TraceRoot User';
+
+      const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+      if (!profile) {
+        // Create initial profile with the selected role
+        profile = {
+          id: user.id,
+          email: user.email || '',
+          full_name: googleName,
+          role: selectedRole,
+          avatar_url: avatarUrl,
+          is_verified: true,
+        };
+
+        const { error: insertErr } = await supabase.from('profiles').upsert(profile);
+        if (insertErr) {
+          console.warn('[AuthService] Profile upsert error in Google callback:', insertErr.message);
+        }
+
+        // Initialize role table
+        try {
+          if (selectedRole === 'farmer') {
+            await supabase.from('farmer_profiles').upsert({
+              id: user.id,
+              farming_type: 'open_field',
+              farmer_name: googleName,
+            });
+          } else if (selectedRole === 'buyer') {
+            await supabase.from('buyer_profiles').upsert({
+              id: user.id,
+              buyer_type: 'supermarket',
+              buyer_name: googleName,
+              company_name: '',
+            });
+          } else if (selectedRole === 'supplier') {
+            await supabase.from('supplier_profiles').upsert({
+              id: user.id,
+              supplier_name: googleName,
+              company_name: '',
+            });
+          }
+        } catch (roleErr) {
+          console.warn('[AuthService] Role profile initialization error:', roleErr);
+        }
+      } else if (!profile.avatar_url && avatarUrl) {
+        // Update avatar if missing
+        await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
+        profile.avatar_url = avatarUrl;
+      }
+
+      const actualRole = profile.role || selectedRole;
+
+      return {
+        user,
+        profile,
+        session,
+        token: session?.access_token || null,
+        actualRole,
+        error: null,
+      };
+    } catch (err: any) {
+      console.error('[AuthService] handleAuthCallbackUrl error:', err);
+      return {
+        user: null,
+        profile: null,
+        session: null,
+        token: null,
+        error: err.message || 'Failed to complete Google authentication callback.',
+      };
     }
   }
 
