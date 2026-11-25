@@ -6,10 +6,11 @@ import {
   ScrollView,
   ImageBackground,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDarkMode } from '@/store/uiStore';
 import { colors, darkColors, spacing, radius } from '@/lib/theme';
@@ -36,6 +37,22 @@ export default function AdminReportsScreen() {
   const theme = isDark ? darkColors : colors;
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilterOption>('This month');
+
+  const handleExport = (reportName: string) => {
+    Alert.alert(
+      'Export Report',
+      `Design preview: report export for "${reportName}" is not connected yet. Real exports will be enabled once backend generation is configured.`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleGenerateCustomReport = () => {
+    Alert.alert(
+      'Generate Custom Report',
+      'Design preview: custom report generation is not connected yet. Filtering and export options will appear here once reporting services are configured.',
+      [{ text: 'OK' }]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0E1710' : '#F8F5F0' }]}>
@@ -258,19 +275,15 @@ export default function AdminReportsScreen() {
                 <View style={styles.stackedBarTrack}>
                   {/* Tomato: 34% (Orange) */}
                   <View style={[styles.stackedSegment, { flex: 34, backgroundColor: '#D96528' }]} />
-                  {/* Gap */}
                   <View style={styles.segmentGap} />
                   {/* Cabbage: 26% (Olive Green) */}
                   <View style={[styles.stackedSegment, { flex: 26, backgroundColor: '#52734D' }]} />
-                  {/* Gap */}
                   <View style={styles.segmentGap} />
                   {/* Broccoli: 18% (Light Sage Green) */}
                   <View style={[styles.stackedSegment, { flex: 18, backgroundColor: '#9BB796' }]} />
-                  {/* Gap */}
                   <View style={styles.segmentGap} />
                   {/* Carrot: 13% (Brown) */}
                   <View style={[styles.stackedSegment, { flex: 13, backgroundColor: '#8D6238' }]} />
-                  {/* Gap */}
                   <View style={styles.segmentGap} />
                   {/* Other: 9% (Dark Green) */}
                   <View style={[styles.stackedSegment, { flex: 9, backgroundColor: '#1E3523' }]} />
@@ -366,12 +379,10 @@ export default function AdminReportsScreen() {
                     { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
                   ]}
                 >
-                  {/* Left Location Icon */}
                   <View style={[styles.regionIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
                     <MaterialCommunityIcons name="map-marker-outline" size={18} color="#2E7D32" />
                   </View>
 
-                  {/* Middle & Right Content */}
                   <View style={styles.regionInfoCol}>
                     <View style={styles.regionHeaderRow}>
                       <Text style={[styles.regionNameText, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
@@ -382,31 +393,27 @@ export default function AdminReportsScreen() {
                       </Text>
                     </View>
 
-                    {/* Progress Bar (0 to 100% scale) */}
                     <View style={[styles.progressTrack, { backgroundColor: isDark ? '#283D2C' : '#E5EAE3' }]}>
                       <View style={[styles.progressFill, { width: '98%', backgroundColor: '#5D7C49' }]} />
                     </View>
 
-                    {/* Subtext */}
                     <Text style={[styles.regionFarmsText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
                       18 farms
                     </Text>
                   </View>
                 </View>
 
-                {/* Region Card 2: Nuwara Eliya (95%, no invented farm count) */}
+                {/* Region Card 2: Nuwara Eliya (95%, 14 farms) */}
                 <View
                   style={[
                     styles.regionCard,
                     { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
                   ]}
                 >
-                  {/* Left Location Icon */}
                   <View style={[styles.regionIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
                     <MaterialCommunityIcons name="map-marker-outline" size={18} color="#2E7D32" />
                   </View>
 
-                  {/* Middle & Right Content */}
                   <View style={styles.regionInfoCol}>
                     <View style={styles.regionHeaderRow}>
                       <Text style={[styles.regionNameText, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
@@ -417,14 +424,215 @@ export default function AdminReportsScreen() {
                       </Text>
                     </View>
 
-                    {/* Progress Bar (0 to 100% scale) */}
                     <View style={[styles.progressTrack, { backgroundColor: isDark ? '#283D2C' : '#E5EAE3' }]}>
                       <View style={[styles.progressFill, { width: '95%', backgroundColor: '#5D7C49' }]} />
+                    </View>
+
+                    <Text style={[styles.regionFarmsText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                      14 farms
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Region Card 3: Matale (91%, 9 farms) */}
+                <View
+                  style={[
+                    styles.regionCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  <View style={[styles.regionIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={18} color="#2E7D32" />
+                  </View>
+
+                  <View style={styles.regionInfoCol}>
+                    <View style={styles.regionHeaderRow}>
+                      <Text style={[styles.regionNameText, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                        Matale
+                      </Text>
+                      <Text style={[styles.regionPercentageText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        91%
+                      </Text>
+                    </View>
+
+                    <View style={[styles.progressTrack, { backgroundColor: isDark ? '#283D2C' : '#E5EAE3' }]}>
+                      <View style={[styles.progressFill, { width: '91%', backgroundColor: '#5D7C49' }]} />
+                    </View>
+
+                    <Text style={[styles.regionFarmsText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                      9 farms
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Region Card 4: Polonnaruwa (84%, 7 farms, needs follow-up) */}
+                <View
+                  style={[
+                    styles.regionCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  <View style={[styles.regionIconCircle, { backgroundColor: isDark ? '#233827' : '#E8F5E9' }]}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={18} color="#2E7D32" />
+                  </View>
+
+                  <View style={styles.regionInfoCol}>
+                    <View style={styles.regionHeaderRow}>
+                      <Text style={[styles.regionNameText, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                        Polonnaruwa
+                      </Text>
+                      {/* Orange percentage */}
+                      <Text style={[styles.regionPercentageText, { color: '#E66926' }]}>
+                        84%
+                      </Text>
+                    </View>
+
+                    {/* Orange progress bar */}
+                    <View style={[styles.progressTrack, { backgroundColor: isDark ? '#283D2C' : '#E5EAE3' }]}>
+                      <View style={[styles.progressFill, { width: '84%', backgroundColor: '#E66926' }]} />
+                    </View>
+
+                    {/* Subtext with orange 'needs follow-up' */}
+                    <View style={styles.regionFollowUpRow}>
+                      <Text style={[styles.regionFarmsText, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                        7 farms
+                      </Text>
+                      <Text style={styles.needsFollowUpText}>
+                        needs follow-up
+                      </Text>
                     </View>
                   </View>
                 </View>
               </View>
             </View>
+
+            {/* 5. "Ready to export" Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#F0F5F1' : '#16301A' }]}>
+                Ready to export
+              </Text>
+
+              <View style={styles.exportCardsList}>
+                {/* Export Card 1: Traceability compliance */}
+                <View
+                  style={[
+                    styles.exportCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  <View style={styles.exportIconSquare}>
+                    <MaterialCommunityIcons name="shield-check-outline" size={20} color="#FFFFFF" />
+                  </View>
+
+                  <View style={styles.exportInfoCol}>
+                    <Text
+                      style={[styles.exportTitleText, { color: isDark ? '#F0F5F1' : '#16301A' }]}
+                      numberOfLines={1}
+                    >
+                      Traceability compliance
+                    </Text>
+                    <Text style={[styles.exportSubtext, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                      PDF • Sep 2026
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.exportButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleExport('Traceability compliance (PDF)')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Export Traceability compliance report"
+                  >
+                    <Feather name="arrow-down-left" size={13} color="#FFFFFF" />
+                    <Text style={styles.exportButtonText}>Export</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Export Card 2: Harvest & trade summary */}
+                <View
+                  style={[
+                    styles.exportCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  <View style={styles.exportIconSquare}>
+                    <MaterialCommunityIcons name="basket-outline" size={20} color="#FFFFFF" />
+                  </View>
+
+                  <View style={styles.exportInfoCol}>
+                    <Text
+                      style={[styles.exportTitleText, { color: isDark ? '#F0F5F1' : '#16301A' }]}
+                      numberOfLines={1}
+                    >
+                      Harvest & trade summary
+                    </Text>
+                    <Text style={[styles.exportSubtext, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                      CSV • Q3 2026
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.exportButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleExport('Harvest & trade summary (CSV)')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Export Harvest & trade summary report"
+                  >
+                    <Feather name="arrow-down-left" size={13} color="#FFFFFF" />
+                    <Text style={styles.exportButtonText}>Export</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Export Card 3: User growth report */}
+                <View
+                  style={[
+                    styles.exportCard,
+                    { backgroundColor: isDark ? '#18271C' : '#FFFFFF' },
+                  ]}
+                >
+                  <View style={styles.exportIconSquare}>
+                    <MaterialCommunityIcons name="account-group-outline" size={20} color="#FFFFFF" />
+                  </View>
+
+                  <View style={styles.exportInfoCol}>
+                    <Text
+                      style={[styles.exportTitleText, { color: isDark ? '#F0F5F1' : '#16301A' }]}
+                      numberOfLines={1}
+                    >
+                      User growth report
+                    </Text>
+                    <Text style={[styles.exportSubtext, { color: isDark ? '#A2BBA6' : '#738275' }]}>
+                      PDF • Sep 2026
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.exportButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleExport('User growth report (PDF)')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Export User growth report"
+                  >
+                    <Feather name="arrow-down-left" size={13} color="#FFFFFF" />
+                    <Text style={styles.exportButtonText}>Export</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* 6. "Generate custom report" Full-Width Action Button */}
+            <TouchableOpacity
+              style={styles.customReportButton}
+              activeOpacity={0.85}
+              onPress={handleGenerateCustomReport}
+              accessibilityRole="button"
+              accessibilityLabel="Generate custom report"
+            >
+              <MaterialCommunityIcons name="file-document-edit-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.customReportButtonText}>
+                Generate custom report
+              </Text>
+            </TouchableOpacity>
           </>
         ) : (
           /* Honest Unavailable Preview State when another period is selected */
@@ -837,6 +1045,99 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     marginTop: 2,
+  },
+  regionFollowUpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  needsFollowUpText: {
+    color: '#E66926',
+    fontSize: 11,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+
+  // Ready to Export Section
+  exportCardsList: {
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  exportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  exportIconSquare: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#1E3523',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  exportInfoCol: {
+    flex: 1,
+  },
+  exportTitleText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  exportSubtext: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1E3523',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: radius.full,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  exportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Custom Report Action Button
+  customReportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1E3523',
+    height: 52,
+    borderRadius: radius.full,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  customReportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 
   unavailablePeriodCard: {
