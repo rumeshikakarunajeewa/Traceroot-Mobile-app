@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import {
@@ -18,6 +19,97 @@ import {
 
 // Complete any pending browser auth sessions on startup
 WebBrowser.maybeCompleteAuthSession();
+
+let authStateUpdater: ((updates: any) => void) | null = null;
+
+export function registerAuthStateUpdater(updater: (updates: any) => void) {
+  authStateUpdater = updater;
+}
+
+export function getAuthRedirectUri(): string {
+  // 1. Web browser environment
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return `${window.location.origin}/auth/callback`;
+    }
+    return 'http://localhost:8081/auth/callback';
+  }
+
+  // 2. Mobile Expo Go environment (runs inside Expo Go client app)
+  // In Expo Go, custom schemes like traceroot:// do not work because Expo Go
+  // only registers intent filters for exp://.
+  const isExpoGo =
+    Constants.appOwnership === 'expo' ||
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+    Boolean(
+      Constants.expoConfig?.hostUri &&
+      Constants.executionEnvironment !== ExecutionEnvironment.Standalone
+    );
+
+  if (isExpoGo && Constants.expoConfig?.hostUri) {
+    return `exp://${Constants.expoConfig.hostUri}/--/auth/callback`;
+  }
+
+  if (isExpoGo) {
+    return Linking.createURL('auth/callback', { scheme: 'exp' });
+  }
+
+  // 3. Standalone / Development Build (native Android/iOS)
+  return 'traceroot://auth/callback';
+}
+
+export function parseAuthUrl(url: string): {
+  code?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  error?: string;
+  errorDescription?: string;
+} {
+  try {
+    const params: Record<string, string> = {};
+    const queryIndex = url.indexOf('?');
+    const hashIndex = url.indexOf('#');
+
+    let queryString = '';
+    let hashString = '';
+
+    if (queryIndex !== -1) {
+      queryString =
+        hashIndex !== -1 && hashIndex > queryIndex
+          ? url.substring(queryIndex + 1, hashIndex)
+          : url.substring(queryIndex + 1);
+    }
+
+    if (hashIndex !== -1) {
+      hashString = url.substring(hashIndex + 1);
+    }
+
+    if (queryString) {
+      const qParams = new URLSearchParams(queryString);
+      for (const [key, val] of qParams.entries()) {
+        params[key] = val;
+      }
+    }
+
+    if (hashString) {
+      const hParams = new URLSearchParams(hashString);
+      for (const [key, val] of hParams.entries()) {
+        params[key] = val;
+      }
+    }
+
+    return {
+      code: params.code,
+      accessToken: params.access_token,
+      refreshToken: params.refresh_token,
+      error: params.error,
+      errorDescription: params.error_description || params.error,
+    };
+  } catch (err) {
+    console.warn('[parseAuthUrl] Error parsing URL:', err);
+    return {};
+  }
+}
 
 export interface SignUpParams {
   email: string;
@@ -497,9 +589,8 @@ class AuthService {
   async signInWithGoogle(params?: { selectedRole?: UserRole }): Promise<AuthResponse> {
     try {
       const selectedRole = params?.selectedRole || 'buyer';
-      // In Expo, Linking.createURL('auth/callback') produces "traceroot://auth/callback" in native builds
-      // or "http://localhost:8081/auth/callback" in web/Expo Go.
-      const redirectTo = Linking.createURL('auth/callback');
+      const redirectTo = getAuthRedirectUri();
+      console.log('🔗 [AuthService] Google OAuth redirectTo:', redirectTo);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -548,6 +639,12 @@ class AuthService {
       const res = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo);
 
       if (res.type !== 'success' || !res.url) {
+        // Fallback: Check if session was already established (e.g. Android Custom Tabs dismissed on deep link)
+        const activeSession = await this.getSession();
+        if (activeSession?.user) {
+          return await this.handleAuthCallbackUrl('', selectedRole);
+        }
+
         return {
           user: null,
           profile: null,
@@ -577,66 +674,71 @@ class AuthService {
   /**
    * Handle the redirect callback URL containing the auth code or tokens
    */
-  async handleAuthCallbackUrl(callbackUrl: string, selectedRole: UserRole = 'buyer'): Promise<AuthResponse> {
+  async handleAuthCallbackUrl(
+    callbackUrl: string,
+    selectedRole: UserRole = 'buyer'
+  ): Promise<AuthResponse> {
     try {
-      const parsed = Linking.parse(callbackUrl);
-      const code = parsed.queryParams?.code;
-      const errorDescription = parsed.queryParams?.error_description || parsed.queryParams?.error;
+      const parsed = parseAuthUrl(callbackUrl);
 
-      if (errorDescription) {
+      if (parsed.errorDescription || parsed.error) {
         return {
           user: null,
           profile: null,
           session: null,
           token: null,
-          error: String(errorDescription),
+          error: parsed.errorDescription || parsed.error || 'Authentication error from provider.',
         };
       }
 
       let session = null;
       let user = null;
 
-      if (typeof code === 'string') {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          return {
-            user: null,
-            profile: null,
-            session: null,
-            token: null,
-            error: error.message || 'Failed to exchange authorization code for session.',
-          };
+      // 1. Try PKCE code exchange if code is present
+      if (parsed.code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(parsed.code);
+        if (!error && data?.session) {
+          session = data.session;
+          user = data.user;
+        } else if (error) {
+          console.warn('[AuthService] exchangeCodeForSession failed, checking fallback:', error.message);
         }
-        session = data.session;
-        user = data.user;
-      } else {
-        // Fallback: Check if session is already active in Supabase client
+      }
+
+      // 2. Try Implicit flow (access_token & refresh_token from hash fragment)
+      if (!session && parsed.accessToken && parsed.refreshToken) {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: parsed.accessToken,
+          refresh_token: parsed.refreshToken,
+        });
+        if (!error && data?.session) {
+          session = data.session;
+          user = data.user;
+        } else if (error) {
+          console.warn('[AuthService] setSession failed, checking fallback:', error.message);
+        }
+      }
+
+      // 3. Fallback: check if session is already active in Supabase client
+      if (!session) {
         const currentSession = await this.getSession();
         if (currentSession?.user) {
           session = currentSession;
           user = currentSession.user;
-        } else {
-          return {
-            user: null,
-            profile: null,
-            session: null,
-            token: null,
-            error: 'No authorization code or session found in callback.',
-          };
         }
       }
 
-      if (!user) {
+      if (!session || !user) {
         return {
           user: null,
           profile: null,
           session: null,
           token: null,
-          error: 'Unable to retrieve authenticated user information.',
+          error: 'No valid authentication session or tokens found in callback.',
         };
       }
 
-      // Check existing profile
+      // 4. Retrieve or create profile
       let profile = await this.getProfile(user.id);
 
       const googleName =
@@ -695,6 +797,15 @@ class AuthService {
       }
 
       const actualRole = profile.role || selectedRole;
+
+      // 5. Update global authStore state immediately!
+      authStateUpdater?.({
+        user,
+        profile,
+        session,
+        token: session?.access_token || null,
+        isLoading: false,
+      });
 
       return {
         user,

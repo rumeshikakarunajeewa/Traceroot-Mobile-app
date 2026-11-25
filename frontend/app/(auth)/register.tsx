@@ -168,6 +168,11 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (Platform.OS === 'web') {
+      // On web, signInWithOAuth initiates full-page redirect to Google consent screen
+      return;
+    }
+
     const targetRole = result.actualRole || result.profile?.role || role;
 
     if (targetRole === 'farmer') {

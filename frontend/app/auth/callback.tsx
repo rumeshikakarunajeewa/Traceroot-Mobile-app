@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { authService } from '../../src/services/auth.service';
@@ -29,12 +29,20 @@ export default function AuthCallbackScreen() {
           return;
         }
 
-        // Reconstruct the deep link URL with current query parameters
-        const currentUrl = Linking.createURL('auth/callback', {
-          queryParams: params as Record<string, string>,
-        });
+        // On web, read window.location.href to capture hash fragments (#access_token=...)
+        let callbackUrl = '';
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.href) {
+          callbackUrl = window.location.href;
+        } else {
+          const initialUrl = await Linking.getInitialURL();
+          callbackUrl =
+            initialUrl ||
+            Linking.createURL('auth/callback', {
+              queryParams: params as Record<string, string>,
+            });
+        }
 
-        const result = await authService.handleAuthCallbackUrl(currentUrl);
+        const result = await authService.handleAuthCallbackUrl(callbackUrl);
 
         if (!isMounted) return;
 

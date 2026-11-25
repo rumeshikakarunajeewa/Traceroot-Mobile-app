@@ -160,6 +160,11 @@ export default function LoginScreen() {
       return;
     }
 
+    if (Platform.OS === 'web') {
+      // On web, signInWithOAuth initiates full-page redirect to Google consent screen
+      return;
+    }
+
     if (result.actualRole === 'admin' || result.profile?.role === 'admin') {
       router.replace('/(admin)');
       return;

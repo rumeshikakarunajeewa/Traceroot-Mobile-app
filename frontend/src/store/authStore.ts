@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types/auth.types';
-import { authService } from '../services/auth.service';
+import { authService, registerAuthStateUpdater } from '../services/auth.service';
 
 interface AuthStoreState {
   user: any | null;
@@ -30,6 +30,9 @@ export function setAuthState(updates: Partial<AuthStoreState>) {
   currentState = { ...currentState, ...updates };
   notify();
 }
+
+// Connect authService callback to update global auth store
+registerAuthStateUpdater(setAuthState);
 
 /**
  * Initialize auth listener on app startup

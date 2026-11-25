@@ -2,8 +2,12 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useDarkMode, loadDarkModeFromStorage } from '../src/store/uiStore';
 import { initializeAuth } from '../src/store/authStore';
+
+// Ensure pending auth sessions are completed properly when app handles deep link
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RootLayout() {
   const [isDark] = useDarkMode();
