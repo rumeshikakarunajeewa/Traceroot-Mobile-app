@@ -9,6 +9,7 @@ import { AppButton } from '../../src/components/common/AppButton';
 import { AppInput } from '../../src/components/common/AppInput';
 import { colors, spacing, typography, radius } from '../../src/lib/theme';
 import { authService } from '../../src/services/auth.service';
+import { GoogleRoleConfirmModal } from '../../src/components/auth/GoogleRoleConfirmModal';
 
 type Role = 'farmer' | 'buyer' | 'supplier' | null;
 
@@ -45,6 +46,7 @@ export default function RegisterScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isRoleModalVisible, setIsRoleModalVisible] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
@@ -142,20 +144,18 @@ export default function RegisterScreen() {
     router.push('/(auth)/login');
   };
 
-  const handleGoogleAuth = async () => {
-    if (!role) {
-      setErrors((prev) => ({
-        ...prev,
-        role: 'Please select a role (Farmer, Buyer, or Supplier) to continue with Google.',
-      }));
-      return;
-    }
+  const handleGoogleAuth = () => {
+    setAuthError(null);
+    setIsRoleModalVisible(true);
+  };
 
+  const handleConfirmGoogleAuth = async (confirmedRole: 'buyer' | 'farmer' | 'supplier') => {
     setIsGoogleLoading(true);
     setAuthError(null);
 
-    const result = await authService.signInWithGoogle({ selectedRole: role });
+    const result = await authService.signInWithGoogle({ selectedRole: confirmedRole });
     setIsGoogleLoading(false);
+    setIsRoleModalVisible(false);
 
     if (result.error) {
       if (
@@ -173,18 +173,22 @@ export default function RegisterScreen() {
       return;
     }
 
-    const targetRole = result.actualRole || result.profile?.role || role;
+    const targetRole = result.actualRole || result.profile?.role || confirmedRole;
 
     if (targetRole === 'farmer') {
-      router.replace({
-        pathname: '/(auth)/register-farmer',
-        params: {
-          userId: result.user?.id,
-          name: result.profile?.full_name || '',
-          email: result.user?.email || '',
-          role: 'farmer',
-        },
-      });
+      if (result.profile?.farm_name) {
+        router.replace('/(farmer)');
+      } else {
+        router.replace({
+          pathname: '/(auth)/register-farmer',
+          params: {
+            userId: result.user?.id,
+            name: result.profile?.full_name || '',
+            email: result.user?.email || '',
+            role: 'farmer',
+          },
+        });
+      }
     } else if (targetRole === 'buyer') {
       router.replace('/(buyer)');
     } else if (targetRole === 'supplier') {
@@ -331,6 +335,14 @@ export default function RegisterScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <GoogleRoleConfirmModal
+        visible={isRoleModalVisible}
+        initialRole={role}
+        isLoading={isGoogleLoading}
+        onConfirm={handleConfirmGoogleAuth}
+        onClose={() => setIsRoleModalVisible(false)}
+      />
     </View>
   );
 }

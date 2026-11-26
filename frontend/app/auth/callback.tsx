@@ -57,6 +57,8 @@ export default function AuthCallbackScreen() {
           router.replace('/(farmer)');
         } else if (role === 'supplier') {
           router.replace('/(supplier)');
+        } else if (role === 'admin') {
+          router.replace('/(admin)');
         } else {
           router.replace('/(buyer)');
         }

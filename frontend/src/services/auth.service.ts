@@ -21,6 +21,12 @@ import {
 WebBrowser.maybeCompleteAuthSession();
 
 let authStateUpdater: ((updates: any) => void) | null = null;
+let activeCallbackPromise: Promise<AuthResponse> | null = null;
+let lastProcessedCallback: {
+  userId: string;
+  timestamp: number;
+  result: AuthResponse;
+} | null = null;
 
 export function registerAuthStateUpdater(updater: (updates: any) => void) {
   authStateUpdater = updater;
@@ -525,11 +531,80 @@ class AuthService {
   }
 
   /**
+   * Intelligently inspect the database to determine an existing user account's authentic role.
+   * Checks public.profiles, farmer_profiles, supplier_profiles, and buyer_profiles.
+   */
+  async detectUserAccountRole(userId: string): Promise<UserRole | null> {
+    try {
+      if (userId === 'admin-fixed-id') return 'admin';
+
+      // 1. Query public.profiles
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile?.role === 'admin') return 'admin';
+
+      // 2. Check if user has an established farmer profile
+      const { data: farmer } = await supabase
+        .from('farmer_profiles')
+        .select('id, farm_name, farming_type')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (farmer && (farmer.farm_name || farmer.farming_type)) {
+        return 'farmer';
+      }
+
+      // 3. Check if user has an established supplier profile
+      const { data: supplier } = await supabase
+        .from('supplier_profiles')
+        .select('id, supplier_name, company_name')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (supplier && (supplier.company_name || supplier.supplier_name)) {
+        return 'supplier';
+      }
+
+      // 4. If profile.role in public.profiles is explicitly farmer or supplier, trust it
+      if (profile?.role === 'farmer' || profile?.role === 'supplier') {
+        return profile.role as UserRole;
+      }
+
+      // 5. Check if user has an established buyer profile
+      const { data: buyer } = await supabase
+        .from('buyer_profiles')
+        .select('id, company_name, buyer_name')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (buyer && (buyer.company_name || buyer.buyer_name)) {
+        return 'buyer';
+      }
+
+      // 6. If profile exists in public.profiles, return its role
+      if (profile?.role === 'buyer') {
+        return 'buyer';
+      }
+
+      return null;
+    } catch (err) {
+      console.warn('[detectUserAccountRole] error:', err);
+      return null;
+    }
+  }
+
+  /**
    * Sign out current user
    */
   async signOut(): Promise<{ error: string | null }> {
     try {
       await AsyncStorage.removeItem('@traceroot_admin_session');
+      await AsyncStorage.removeItem('@traceroot_pending_google_role').catch(() => {});
+      lastProcessedCallback = null;
       const { error } = await supabase.auth.signOut();
       if (error) return { error: error.message };
       return { error: null };
@@ -588,9 +663,15 @@ class AuthService {
    */
   async signInWithGoogle(params?: { selectedRole?: UserRole }): Promise<AuthResponse> {
     try {
+      // Clear previous callback cache so new login starts clean
+      lastProcessedCallback = null;
+
       const selectedRole = params?.selectedRole || 'buyer';
+      // Persist the confirmed role to storage so it survives external browser redirect
+      await AsyncStorage.setItem('@traceroot_pending_google_role', selectedRole).catch(() => {});
+
       const redirectTo = getAuthRedirectUri();
-      console.log('🔗 [AuthService] Google OAuth redirectTo:', redirectTo);
+      console.log('🔗 [AuthService] Google OAuth redirectTo:', redirectTo, '| confirmedRole:', selectedRole);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -599,7 +680,7 @@ class AuthService {
           skipBrowserRedirect: Platform.OS !== 'web',
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account',
           },
         },
       });
@@ -676,155 +757,237 @@ class AuthService {
    */
   async handleAuthCallbackUrl(
     callbackUrl: string,
-    selectedRole: UserRole = 'buyer'
+    selectedRole?: UserRole
   ): Promise<AuthResponse> {
-    try {
-      const parsed = parseAuthUrl(callbackUrl);
+    // 1. Mutex lock: if a callback handler is already running, await it to prevent duplicate execution
+    if (activeCallbackPromise) {
+      return await activeCallbackPromise;
+    }
 
-      if (parsed.errorDescription || parsed.error) {
-        return {
-          user: null,
-          profile: null,
-          session: null,
-          token: null,
-          error: parsed.errorDescription || parsed.error || 'Authentication error from provider.',
-        };
-      }
+    // 2. Cache check: if callback was processed within the last 4 seconds, return the cached result
+    if (
+      lastProcessedCallback &&
+      Date.now() - lastProcessedCallback.timestamp < 4000 &&
+      lastProcessedCallback.result.session
+    ) {
+      console.log('🔗 [AuthService] Returning recently processed callback result');
+      return lastProcessedCallback.result;
+    }
 
-      let session = null;
-      let user = null;
-
-      // 1. Try PKCE code exchange if code is present
-      if (parsed.code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(parsed.code);
-        if (!error && data?.session) {
-          session = data.session;
-          user = data.user;
-        } else if (error) {
-          console.warn('[AuthService] exchangeCodeForSession failed, checking fallback:', error.message);
-        }
-      }
-
-      // 2. Try Implicit flow (access_token & refresh_token from hash fragment)
-      if (!session && parsed.accessToken && parsed.refreshToken) {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: parsed.accessToken,
-          refresh_token: parsed.refreshToken,
-        });
-        if (!error && data?.session) {
-          session = data.session;
-          user = data.user;
-        } else if (error) {
-          console.warn('[AuthService] setSession failed, checking fallback:', error.message);
-        }
-      }
-
-      // 3. Fallback: check if session is already active in Supabase client
-      if (!session) {
-        const currentSession = await this.getSession();
-        if (currentSession?.user) {
-          session = currentSession;
-          user = currentSession.user;
-        }
-      }
-
-      if (!session || !user) {
-        return {
-          user: null,
-          profile: null,
-          session: null,
-          token: null,
-          error: 'No valid authentication session or tokens found in callback.',
-        };
-      }
-
-      // 4. Retrieve or create profile
-      let profile = await this.getProfile(user.id);
-
-      const googleName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email?.split('@')[0] ||
-        'TraceRoot User';
-
-      const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
-
-      if (!profile) {
-        // Create initial profile with the selected role
-        profile = {
-          id: user.id,
-          email: user.email || '',
-          full_name: googleName,
-          role: selectedRole,
-          avatar_url: avatarUrl,
-          is_verified: true,
-        };
-
-        const { error: insertErr } = await supabase.from('profiles').upsert(profile);
-        if (insertErr) {
-          console.warn('[AuthService] Profile upsert error in Google callback:', insertErr.message);
+    activeCallbackPromise = (async (): Promise<AuthResponse> => {
+      try {
+        // Read pending role from parameter or storage
+        let confirmedRole: UserRole | null = selectedRole || null;
+        if (!confirmedRole) {
+          try {
+            const storedRole = await AsyncStorage.getItem('@traceroot_pending_google_role');
+            if (storedRole === 'farmer' || storedRole === 'buyer' || storedRole === 'supplier') {
+              confirmedRole = storedRole as UserRole;
+            }
+          } catch (storageErr) {
+            console.warn('[AuthService] Could not read pending role from storage:', storageErr);
+          }
         }
 
-        // Initialize role table
+        console.log('🔗 [AuthService] handleAuthCallbackUrl confirmedRole:', confirmedRole);
+
+        const parsed = parseAuthUrl(callbackUrl);
+
+        if (parsed.errorDescription || parsed.error) {
+          return {
+            user: null,
+            profile: null,
+            session: null,
+            token: null,
+            error: parsed.errorDescription || parsed.error || 'Authentication error from provider.',
+          };
+        }
+
+        let session = null;
+        let user = null;
+
+        // 1. Try PKCE code exchange if code is present
+        if (parsed.code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(parsed.code);
+          if (!error && data?.session) {
+            session = data.session;
+            user = data.user;
+          } else if (error) {
+            console.warn('[AuthService] exchangeCodeForSession failed, checking fallback:', error.message);
+          }
+        }
+
+        // 2. Try Implicit flow (access_token & refresh_token from hash fragment)
+        if (!session && parsed.accessToken && parsed.refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: parsed.accessToken,
+            refresh_token: parsed.refreshToken,
+          });
+          if (!error && data?.session) {
+            session = data.session;
+            user = data.user;
+          } else if (error) {
+            console.warn('[AuthService] setSession failed, checking fallback:', error.message);
+          }
+        }
+
+        // 3. Fallback: check if session is already active in Supabase client
+        if (!session) {
+          const currentSession = await this.getSession();
+          if (currentSession?.user) {
+            session = currentSession;
+            user = currentSession.user;
+          }
+        }
+
+        if (!session || !user) {
+          return {
+            user: null,
+            profile: null,
+            session: null,
+            token: null,
+            error: 'No valid authentication session or tokens found in callback.',
+          };
+        }
+
+        // 4. Determine user's authentic effective role:
+        // Priority 1: User explicitly confirmed their role in the modal (e.g. 'supplier' or 'farmer').
+        // That explicit user choice is the primary source of truth and must never be overridden by an old database default.
+        // Priority 2: If no role was confirmed or passed, detect existing account role in the database.
+        // Priority 3: Default to 'buyer'.
+        let effectiveRole: UserRole;
+        if (confirmedRole) {
+          effectiveRole = confirmedRole;
+        } else {
+          const existingAccountRole = await this.detectUserAccountRole(user.id);
+          effectiveRole = existingAccountRole || 'buyer';
+        }
+        console.log(
+          `🔗 [AuthService] User ${user.id} -> confirmedRole: ${confirmedRole} | effectiveRole: ${effectiveRole}`
+        );
+
+        let profile = await this.getProfile(user.id);
+
+        const googleName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split('@')[0] ||
+          'TraceRoot User';
+
+        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+        if (!profile) {
+          // Brand new user: Create initial profile with the effective role
+          profile = {
+            id: user.id,
+            email: user.email || '',
+            full_name: googleName,
+            role: effectiveRole,
+            avatar_url: avatarUrl,
+            is_verified: true,
+          };
+
+          const { error: insertErr } = await supabase.from('profiles').upsert(profile);
+          if (insertErr) {
+            console.warn('[AuthService] Profile upsert error in Google callback:', insertErr.message);
+          }
+        } else if (profile.role !== effectiveRole) {
+          // Sync profile.role in public.profiles with the user's authentic account role
+          await supabase
+            .from('profiles')
+            .update({
+              role: effectiveRole,
+              updated_at: new Date().toISOString(),
+              ...(avatarUrl && !profile.avatar_url ? { avatar_url: avatarUrl } : {}),
+            })
+            .eq('id', user.id);
+
+          profile.role = effectiveRole;
+        }
+
+        // Ensure the corresponding role-specific profile row exists for this effective role
         try {
-          if (selectedRole === 'farmer') {
+          if (effectiveRole === 'farmer') {
             await supabase.from('farmer_profiles').upsert({
               id: user.id,
               farming_type: 'open_field',
-              farmer_name: googleName,
+              farmer_name: profile?.full_name || googleName,
             });
-          } else if (selectedRole === 'buyer') {
+          } else if (effectiveRole === 'buyer') {
             await supabase.from('buyer_profiles').upsert({
               id: user.id,
               buyer_type: 'supermarket',
-              buyer_name: googleName,
+              buyer_name: profile?.full_name || googleName,
               company_name: '',
             });
-          } else if (selectedRole === 'supplier') {
+          } else if (effectiveRole === 'supplier') {
             await supabase.from('supplier_profiles').upsert({
               id: user.id,
-              supplier_name: googleName,
+              supplier_name: profile?.full_name || googleName,
               company_name: '',
             });
           }
         } catch (roleErr) {
-          console.warn('[AuthService] Role profile initialization error:', roleErr);
+          console.warn('[AuthService] Role profile sync error:', roleErr);
         }
-      } else if (!profile.avatar_url && avatarUrl) {
-        // Update avatar if missing
-        await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
-        profile.avatar_url = avatarUrl;
+
+        // Sync Supabase Auth User metadata with the effective role
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              role: effectiveRole,
+              full_name: profile?.full_name || googleName,
+            },
+          });
+        } catch (metaErr) {
+          console.warn('[AuthService] updateUser metadata sync error:', metaErr);
+        }
+
+        // Note: Keep @traceroot_pending_google_role in storage to guard against parallel deep-link re-renders;
+        // it gets refreshed on next signInWithGoogle or cleared on signOut.
+
+        const authResponse: AuthResponse = {
+          user,
+          profile: { ...profile, role: effectiveRole },
+          session,
+          token: session?.access_token || null,
+          actualRole: effectiveRole,
+          roleMismatch: false,
+          error: null,
+        };
+
+        // Cache this result to prevent duplicate execution across app components
+        lastProcessedCallback = {
+          userId: user.id,
+          timestamp: Date.now(),
+          result: authResponse,
+        };
+
+        // 5. Update global authStore state immediately!
+        authStateUpdater?.({
+          user,
+          profile: { ...profile, role: effectiveRole },
+          session,
+          token: session?.access_token || null,
+          isLoading: false,
+        });
+
+        return authResponse;
+      } catch (err: any) {
+        console.error('[AuthService] handleAuthCallbackUrl error:', err);
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error: err.message || 'Failed to complete Google authentication callback.',
+        };
+      } finally {
+        activeCallbackPromise = null;
       }
+    })();
 
-      const actualRole = profile.role || selectedRole;
-
-      // 5. Update global authStore state immediately!
-      authStateUpdater?.({
-        user,
-        profile,
-        session,
-        token: session?.access_token || null,
-        isLoading: false,
-      });
-
-      return {
-        user,
-        profile,
-        session,
-        token: session?.access_token || null,
-        actualRole,
-        error: null,
-      };
-    } catch (err: any) {
-      console.error('[AuthService] handleAuthCallbackUrl error:', err);
-      return {
-        user: null,
-        profile: null,
-        session: null,
-        token: null,
-        error: err.message || 'Failed to complete Google authentication callback.',
-      };
-    }
+    return await activeCallbackPromise;
   }
 
   /**

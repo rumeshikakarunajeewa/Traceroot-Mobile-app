@@ -18,6 +18,7 @@ import { AppButton } from '../../src/components/common/AppButton';
 import { AppInput } from '../../src/components/common/AppInput';
 import { colors, spacing, typography, radius } from '../../src/lib/theme';
 import { authService } from '../../src/services/auth.service';
+import { GoogleRoleConfirmModal } from '../../src/components/auth/GoogleRoleConfirmModal';
 
 type Role = 'farmer' | 'buyer' | 'supplier';
 
@@ -53,6 +54,7 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isRoleModalVisible, setIsRoleModalVisible] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Animations
@@ -142,12 +144,18 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleAuth = async () => {
+  const handleGoogleAuth = () => {
+    setAuthError(null);
+    setIsRoleModalVisible(true);
+  };
+
+  const handleConfirmGoogleAuth = async (confirmedRole: Role) => {
     setIsGoogleLoading(true);
     setAuthError(null);
 
-    const result = await authService.signInWithGoogle({ selectedRole: role });
+    const result = await authService.signInWithGoogle({ selectedRole: confirmedRole });
     setIsGoogleLoading(false);
+    setIsRoleModalVisible(false);
 
     if (result.error) {
       if (
@@ -170,7 +178,7 @@ export default function LoginScreen() {
       return;
     }
 
-    const targetRole = (result.actualRole || result.profile?.role || role) as Role;
+    const targetRole = (result.actualRole || result.profile?.role || confirmedRole) as Role;
     navigateToRoleHome(targetRole);
   };
 
@@ -330,6 +338,14 @@ export default function LoginScreen() {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <GoogleRoleConfirmModal
+        visible={isRoleModalVisible}
+        initialRole={role}
+        isLoading={isGoogleLoading}
+        onConfirm={handleConfirmGoogleAuth}
+        onClose={() => setIsRoleModalVisible(false)}
+      />
     </View>
   );
 }
