@@ -47,6 +47,15 @@ export function getSupplierProfile(): SupplierProfileData {
   return { ...profileState };
 }
 
+export async function resetSupplierProfileStore() {
+  profileState = { ...DEFAULT_EMPTY_SUPPLIER_PROFILE };
+  isLoaded = false;
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch {}
+  notify();
+}
+
 export async function loadSupplierProfile(forceRefresh = false) {
   if (isLoaded && !forceRefresh) return;
   isLoaded = true;

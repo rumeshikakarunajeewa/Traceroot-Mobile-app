@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
-import { mockFarmerProfile } from '../constants/farmerMockData';
 
 export interface FarmerProfileData {
   id: string;
@@ -39,29 +38,29 @@ const STORAGE_KEY_PROFILE = '@traceroot_farmer_profile_v1';
 const STORAGE_KEY_SETTINGS = '@traceroot_farmer_settings_v1';
 
 export const INITIAL_FARMER_PROFILE: FarmerProfileData = {
-  id: 'farmer-001',
-  fullName: 'Priya Kumari',
-  farmerType: 'Greenhouse farmer',
-  farmName: 'Green Valley Greenhouse',
-  farmSize: '2 acres',
-  location: 'Kandy District',
-  district: 'Kandy District',
-  province: 'Central Province',
+  id: '',
+  fullName: '',
+  farmerType: 'Open field farmer',
+  farmName: '',
+  farmSize: '0 acres',
+  location: '',
+  district: '',
+  province: '',
   country: 'Sri Lanka',
-  coordinates: '7.2906° N, 80.6337° E',
-  avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-  bio: 'Family-owned greenhouse since 2021. Tomatoes, cucumbers and bell peppers grown with smart-drip irrigation to save water.',
-  phone: '+94 77 123 4567',
-  email: 'priya.greenhouse@email.com',
-  registrationNo: 'TR-4092',
-  isVerified: true,
-  trustScore: 92,
+  coordinates: '',
+  avatarUrl: '',
+  bio: '',
+  phone: '',
+  email: '',
+  registrationNo: '',
+  isVerified: false,
+  trustScore: 85,
   deliveryAvailable: true,
-  farmingExperience: '4 years',
-  farmingMethod: 'Organic',
-  rating: 4.8,
-  cropsCount: 12,
-  ordersCount: 47,
+  farmingExperience: '',
+  farmingMethod: 'Natural',
+  rating: 5.0,
+  cropsCount: 0,
+  ordersCount: 0,
 };
 
 export const INITIAL_FARMER_SETTINGS: FarmerSettingsData = {
@@ -74,7 +73,6 @@ export const INITIAL_FARMER_SETTINGS: FarmerSettingsData = {
 let currentProfile: FarmerProfileData = { ...INITIAL_FARMER_PROFILE };
 let currentSettings: FarmerSettingsData = { ...INITIAL_FARMER_SETTINGS };
 let isLoaded = false;
-let isSyncing = false;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -135,36 +133,36 @@ export async function refreshFarmerProfile(): Promise<FarmerProfileData> {
         ? dbProfile.farmer_profiles[0]
         : dbProfile.farmer_profiles;
 
-      const farmLocation = fp?.farm_location || dbProfile.district || currentProfile.location;
-      const farmSizeStr = fp?.total_acreage ? `${fp.total_acreage} acres` : currentProfile.farmSize;
-      const farmerTypeStr = fp?.farming_type === 'open_field' ? 'Open field farmer' : 'Greenhouse farmer';
+      const farmLocation = fp?.farm_location || dbProfile.district || '';
+      const farmSizeStr = fp?.total_acreage ? `${fp.total_acreage} acres` : '';
+      const farmerTypeStr = fp?.farming_type === 'greenhouse' ? 'Greenhouse farmer' : 'Open field farmer';
 
       currentProfile = {
         id: dbProfile.id,
-        fullName: dbProfile.full_name || currentProfile.fullName,
+        fullName: dbProfile.full_name || '',
         farmerType: farmerTypeStr,
-        farmName: fp?.farm_name || dbProfile.farm_name || currentProfile.farmName,
+        farmName: fp?.farm_name || dbProfile.farm_name || '',
         farmSize: farmSizeStr,
         location: farmLocation,
-        district: dbProfile.district || currentProfile.district,
-        province: dbProfile.province || currentProfile.province,
-        country: dbProfile.country || currentProfile.country || 'Sri Lanka',
+        district: dbProfile.district || '',
+        province: dbProfile.province || '',
+        country: dbProfile.country || 'Sri Lanka',
         coordinates: fp?.farm_lat && fp?.farm_lng
           ? `${Number(fp.farm_lat).toFixed(4)}° N, ${Number(fp.farm_lng).toFixed(4)}° E`
-          : currentProfile.coordinates,
-        avatarUrl: dbProfile.avatar_url || currentProfile.avatarUrl,
-        bio: dbProfile.bio ?? currentProfile.bio,
-        phone: dbProfile.phone || currentProfile.phone,
-        email: dbProfile.email || session.user.email || currentProfile.email,
+          : '',
+        avatarUrl: dbProfile.avatar_url || '',
+        bio: dbProfile.bio || '',
+        phone: dbProfile.phone || '',
+        email: dbProfile.email || session.user.email || '',
         registrationNo: fp?.nic_number || `TR-${dbProfile.id.slice(0, 4).toUpperCase()}`,
         isVerified: Boolean(dbProfile.is_verified),
-        trustScore: dbProfile.trust_score ?? currentProfile.trustScore,
+        trustScore: dbProfile.trust_score ?? 85,
         deliveryAvailable: currentProfile.deliveryAvailable ?? true,
-        farmingExperience: fp?.description?.match(/Experience:\s*([^,]+)/)?.[1] || currentProfile.farmingExperience,
-        farmingMethod: currentProfile.farmingMethod || 'Organic',
-        rating: currentProfile.rating || 4.9,
-        cropsCount: typeof liveCropsCount === 'number' ? liveCropsCount : currentProfile.cropsCount,
-        ordersCount: typeof liveOrdersCount === 'number' ? liveOrdersCount : currentProfile.ordersCount,
+        farmingExperience: fp?.description?.match(/Experience:\s*([^,]+)/)?.[1] || '',
+        farmingMethod: 'Natural',
+        rating: 5.0,
+        cropsCount: typeof liveCropsCount === 'number' ? liveCropsCount : 0,
+        ordersCount: typeof liveOrdersCount === 'number' ? liveOrdersCount : 0,
       };
 
       await persist();
@@ -175,6 +173,15 @@ export async function refreshFarmerProfile(): Promise<FarmerProfileData> {
   }
 
   return currentProfile;
+}
+
+export async function resetFarmerProfileStore() {
+  currentProfile = { ...INITIAL_FARMER_PROFILE };
+  isLoaded = false;
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY_PROFILE);
+  } catch {}
+  notify();
 }
 
 export async function loadFarmerProfileFromStorage() {

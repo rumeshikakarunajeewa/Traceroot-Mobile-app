@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, usePathname } from 'expo-router';
+import { router } from 'expo-router';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { FarmerWeatherCard } from '../../src/components/farmer/FarmerWeatherCard';
@@ -26,13 +26,11 @@ import { UpcomingCard } from '../../src/components/farmer/UpcomingCard';
 import { PhotoOptionsModal } from '../../src/components/farmer/PhotoOptionsModal';
 import { AddNewCropModal } from '../../src/components/farmer/AddNewCropModal';
 import {
-  mockFarmerProfile,
   mockWeatherMetrics,
   mockFarmerStats,
   mockQuickFeatures,
-  mockUpcomingItems,
 } from '../../src/constants/farmerMockData';
-import { FieldItem, RecentRecordItem, UpcomingItem } from '../../src/types/farmer.types';
+import { FieldItem, UpcomingItem } from '../../src/types/farmer.types';
 import {
   useCropsStore,
   updateFieldPhoto,
@@ -68,33 +66,53 @@ export default function FarmerHomeScreen() {
 
   const categories = ['All', 'Carrots', 'Vegetable', 'Fruit'];
 
+  // Dynamic upcoming tasks derived from active fields
+  const upcomingTasks: UpcomingItem[] = useMemo(() => {
+    return fields
+      .filter((f) => f.daysToHarvest <= 14)
+      .map((f) => ({
+        id: `up-${f.id}`,
+        title:
+          f.daysToHarvest <= 0
+            ? `${f.cropName} is ready to harvest`
+            : `${f.cropName} approaching harvest`,
+        subtitle:
+          f.daysToHarvest <= 0 ? 'Ready today' : `Est. in ${f.daysToHarvest} days`,
+        iconType: 'stage' as const,
+        iconColor: f.daysToHarvest <= 0 ? '#166534' : '#9C6339',
+        iconBg: f.daysToHarvest <= 0 ? '#DCFCE7' : '#F9EDE3',
+        cropId: f.id,
+        route: `/harvests/${f.id}`,
+      }));
+  }, [fields]);
+
   // Staggered Entrance Animations
-  const headerFade = useRef(new Animated.Value(0)).current;
-  const headerSlide = useRef(new Animated.Value(-15)).current;
-  const weatherFade = useRef(new Animated.Value(0)).current;
-  const weatherSlide = useRef(new Animated.Value(20)).current;
-  const statsFade = useRef(new Animated.Value(0)).current;
-  const statsSlide = useRef(new Animated.Value(20)).current;
-  const actionsFade = useRef(new Animated.Value(0)).current;
-  const actionsSlide = useRef(new Animated.Value(25)).current;
-  const journeyFade = useRef(new Animated.Value(0)).current;
-  const journeySlide = useRef(new Animated.Value(30)).current;
-  const recordsFade = useRef(new Animated.Value(0)).current;
-  const recordsSlide = useRef(new Animated.Value(30)).current;
-  const upcomingFade = useRef(new Animated.Value(0)).current;
-  const upcomingSlide = useRef(new Animated.Value(30)).current;
+  const [headerFade] = useState(() => new Animated.Value(0));
+  const [headerSlide] = useState(() => new Animated.Value(-15));
+  const [weatherFade] = useState(() => new Animated.Value(0));
+  const [weatherSlide] = useState(() => new Animated.Value(20));
+  const [statsFade] = useState(() => new Animated.Value(0));
+  const [statsSlide] = useState(() => new Animated.Value(20));
+  const [actionsFade] = useState(() => new Animated.Value(0));
+  const [actionsSlide] = useState(() => new Animated.Value(25));
+  const [journeyFade] = useState(() => new Animated.Value(0));
+  const [journeySlide] = useState(() => new Animated.Value(30));
+  const [recordsFade] = useState(() => new Animated.Value(0));
+  const [recordsSlide] = useState(() => new Animated.Value(30));
+  const [upcomingFade] = useState(() => new Animated.Value(0));
+  const [upcomingSlide] = useState(() => new Animated.Value(30));
 
   // Summary numbers count-up animated values
-  const countCropsAnim = useRef(new Animated.Value(0)).current;
-  const countRecordsAnim = useRef(new Animated.Value(0)).current;
-  const countHarvestAnim = useRef(new Animated.Value(0)).current;
+  const [countCropsAnim] = useState(() => new Animated.Value(0));
+  const [countRecordsAnim] = useState(() => new Animated.Value(0));
+  const [countHarvestAnim] = useState(() => new Animated.Value(0));
 
   const [displayCrops, setDisplayCrops] = useState(0);
   const [displayRecords, setDisplayRecords] = useState(0);
   const [displayHarvest, setDisplayHarvest] = useState(0);
 
   // Button Press Feedback Animations
-  const recordBtnScale = useRef(new Animated.Value(1)).current;
+  const [recordBtnScale] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     // 1. Staggered section entrances
@@ -362,15 +380,34 @@ export default function FarmerHomeScreen() {
               activeOpacity={0.8}
               onPress={() => router.push('/(farmer)/profile' as any)}
             >
-              <Image
-                source={{ uri: farmerProfile.avatarUrl || mockFarmerProfile.avatarUrl }}
-                style={styles.avatarImg}
-              />
+              {farmerProfile.avatarUrl ? (
+                <Image
+                  source={{ uri: farmerProfile.avatarUrl }}
+                  style={styles.avatarImg}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.avatarImg,
+                    {
+                      backgroundColor: isDark ? '#1C3B24' : '#1E3C25',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                  ]}
+                >
+                  <Text style={{ color: '#E5EFE7', fontWeight: '700', fontSize: 16 }}>
+                    {(farmerProfile.fullName || 'F').charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <View style={styles.greetingTextGroup}>
               <Text style={[styles.welcomeSub, isDark && styles.welcomeSubDark]}>Welcome back! 🍃</Text>
-              <Text style={[styles.farmerName, isDark && styles.farmerNameDark]}>{farmerProfile.fullName || mockFarmerProfile.fullName}</Text>
+              <Text style={[styles.farmerName, isDark && styles.farmerNameDark]}>
+                {farmerProfile.fullName || 'Farmer'}
+              </Text>
             </View>
           </View>
 
@@ -463,7 +500,7 @@ export default function FarmerHomeScreen() {
               <View style={styles.addRecordTextGroup}>
                 <Text style={styles.addRecordTitle}>Add a record</Text>
                 <Text style={styles.addRecordSubtitle}>
-                  Capture live photo evidence of today's work
+                  Capture live photo evidence of today&apos;s work
                 </Text>
               </View>
 
@@ -814,9 +851,9 @@ export default function FarmerHomeScreen() {
           <Text style={[styles.upcomingSectionTitle, isDark && styles.upcomingSectionTitleDark]}>Upcoming</Text>
 
           {/* Upcoming stacked card */}
-          {mockUpcomingItems.length > 0 ? (
+          {upcomingTasks.length > 0 ? (
             <UpcomingCard
-              items={mockUpcomingItems}
+              items={upcomingTasks}
               onItemPress={(item) => {
                 if (item.route) {
                   router.push(item.route as any);
@@ -829,13 +866,13 @@ export default function FarmerHomeScreen() {
               }}
             />
           ) : (
-            <View style={styles.emptyJourneyCard}>
-              <View style={styles.emptyIconCircle}>
-                <Ionicons name="time-outline" size={24} color="#52785B" />
+            <View style={[styles.emptyJourneyCard, isDark && styles.emptyJourneyCardDark]}>
+              <View style={[styles.emptyIconCircle, isDark && styles.emptyIconCircleDark]}>
+                <Ionicons name="time-outline" size={24} color={isDark ? '#4ADE80' : '#52785B'} />
               </View>
-              <Text style={styles.emptyJourneyTitle}>No upcoming tasks</Text>
-              <Text style={styles.emptyJourneySub}>
-                Projected crop stage changes and buyer notifications will appear here.
+              <Text style={[styles.emptyJourneyTitle, isDark && styles.emptyJourneyTitleDark]}>No upcoming tasks</Text>
+              <Text style={[styles.emptyJourneySub, isDark && styles.emptyJourneySubDark]}>
+                Projected crop stage changes and harvest dates will appear here.
               </Text>
             </View>
           )}

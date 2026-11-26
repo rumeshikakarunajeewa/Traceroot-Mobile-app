@@ -53,7 +53,32 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Horizontal Carousel */}
+      {/* Horizontal Carousel / Empty State */}
+      {products.length === 0 ? (
+        <View style={[styles.emptyContainer, isDark && styles.emptyContainerDark]}>
+          <MaterialCommunityIcons
+            name="package-variant-closed"
+            size={36}
+            color={isDark ? '#4ADE80' : '#2D6B3C'}
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
+            No products in catalogue yet
+          </Text>
+          <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+            List seeds, fertilizers, compost, or equipment to supply farmers.
+          </Text>
+          {onManagePress && (
+            <TouchableOpacity
+              style={styles.emptyButton}
+              activeOpacity={0.85}
+              onPress={onManagePress}
+            >
+              <Text style={styles.emptyButtonText}>Add Products</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -155,6 +180,7 @@ export const SupplierTopProducts: React.FC<SupplierTopProductsProps> = ({
           );
         })}
       </ScrollView>
+      )}
     </View>
   );
 };
@@ -304,5 +330,51 @@ const styles = StyleSheet.create({
   },
   stockTextDark: {
     color: '#95A997',
+  },
+  emptyContainer: {
+    marginHorizontal: 16,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E8E3D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainerDark: {
+    backgroundColor: '#152419',
+    borderColor: '#243A29',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#162E1D',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  emptyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#657868',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  emptySubtitleDark: {
+    color: '#95A997',
+  },
+  emptyButton: {
+    backgroundColor: '#2D6B3C',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

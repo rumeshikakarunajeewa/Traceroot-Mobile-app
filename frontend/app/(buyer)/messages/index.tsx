@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
-import { mockBuyerMessages } from '../../../src/constants/buyerMockData';
 import { BuyerMessageItem } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
 
@@ -25,15 +24,16 @@ export default function BuyerMessagesScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [messages] = useState<BuyerMessageItem[]>([]);
 
   // Unread messages count
   const unreadCount = useMemo(() => {
-    return mockBuyerMessages.filter((m) => m.isUnread).length;
-  }, []);
+    return messages.filter((m) => m.isUnread).length;
+  }, [messages]);
 
   // Filtered messages list
   const filteredMessages = useMemo(() => {
-    return mockBuyerMessages.filter((item) => {
+    return messages.filter((item) => {
       // 1. Category tab filter
       if (selectedFilter === 'Requests' && item.tag !== 'Request') {
         return false;
@@ -53,7 +53,7 @@ export default function BuyerMessagesScreen() {
         item.snippet.toLowerCase().includes(q)
       );
     });
-  }, [selectedFilter, searchQuery]);
+  }, [messages, selectedFilter, searchQuery]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -254,11 +254,13 @@ export default function BuyerMessagesScreen() {
         ) : (
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons name="chat-outline" size={44} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No messages found</Text>
+            <Text style={styles.emptyTitle}>
+              {selectedFilter !== 'All' ? 'No messages found' : 'No messages yet'}
+            </Text>
             <Text style={styles.emptySubtitle}>
               {selectedFilter !== 'All'
                 ? `No conversations under "${selectedFilter}" category`
-                : 'Your message inbox is currently clear.'}
+                : 'Direct inquiries and updates from producers will appear here.'}
             </Text>
             {selectedFilter !== 'All' && (
               <TouchableOpacity

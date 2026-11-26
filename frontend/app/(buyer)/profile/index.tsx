@@ -17,7 +17,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
-import { mockBuyerProfile } from '../../../src/constants/buyerMockData';
 import { BuyerProfile } from '../../../src/types/buyer.types';
 import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
 import { profilesService } from '../../../src/services/profiles.service';
@@ -32,8 +31,42 @@ import {
 type ProfileTab = 'About' | 'Orders' | 'Saved' | 'Documents';
 
 export default function BuyerProfileScreen() {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<BuyerProfile>(mockBuyerProfile);
+  const { user, profile: authProfile } = useAuth();
+  const userName = authProfile?.full_name || user?.user_metadata?.full_name || 'Buyer';
+  const userInitials =
+    userName
+      .split(' ')
+      .filter(Boolean)
+      .map((p: string) => p[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'B';
+
+  const [profile, setProfile] = useState<BuyerProfile>({
+    id: user?.id || '',
+    fullName: userName,
+    initials: userInitials,
+    isVerified: false,
+    roleTitle: 'Wholesale Buyer',
+    company: '',
+    district: '',
+    province: '',
+    country: 'Sri Lanka',
+    address: '',
+    bio: '',
+    ordersCount: 0,
+    contractsCount: 0,
+    kgSourced: '0 kg',
+    trustScore: 85,
+    trustScoreLabel: 'Verified Buyer',
+    trustRating: '4.8',
+    trustScoreDetail: 'Active account on TraceRoot',
+    trustDescription: 'New active buyer account',
+    phone: authProfile?.phone || user?.phone || '',
+    email: user?.email || '',
+    businessType: 'Retailer / Wholesaler',
+    registrationId: '',
+  });
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

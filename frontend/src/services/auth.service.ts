@@ -604,6 +604,16 @@ class AuthService {
     try {
       await AsyncStorage.removeItem('@traceroot_admin_session');
       await AsyncStorage.removeItem('@traceroot_pending_google_role').catch(() => {});
+      await AsyncStorage.multiRemove([
+        '@traceroot_records_v1',
+        '@traceroot_fields_v1',
+        '@traceroot_custom_activities_v1',
+        '@traceroot_activity_applicabilities_v1',
+        '@traceroot_stage_applicabilities_v1',
+        '@traceroot_farmer_profile_v1',
+        '@traceroot_farmer_settings_v1',
+        '@traceroot_supplier_profile_v1',
+      ]).catch(() => {});
       lastProcessedCallback = null;
       const { error } = await supabase.auth.signOut();
       if (error) return { error: error.message };

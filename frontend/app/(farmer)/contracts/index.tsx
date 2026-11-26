@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,14 +27,7 @@ export default function TraceabilityTimelineScreen() {
   const [isDark] = useDarkMode();
 
   // Selected crop ID (defaults to passed id or first crop)
-  const initialCropId = params.id || fields[0]?.id || '';
-  const [selectedCropId, setSelectedCropId] = useState<string>(initialCropId);
-
-  useEffect(() => {
-    if (!selectedCropId && fields.length > 0) {
-      setSelectedCropId(fields[0].id);
-    }
-  }, [fields, selectedCropId]);
+  const [selectedCropId, setSelectedCropId] = useState<string>(params.id || '');
 
   // QR Modal and Record Detail Modal state
   const [qrModalVisible, setQrModalVisible] = useState(false);
@@ -57,19 +50,21 @@ export default function TraceabilityTimelineScreen() {
   };
 
   // Find currently active crop
-  const crop: FieldItem = useMemo(() => {
-    return fields.find((f) => f.id === selectedCropId) || getFieldById(selectedCropId) || fields[0];
-  }, [fields, selectedCropId, getFieldById]);
+  const crop: FieldItem | undefined = useMemo(() => {
+    const targetId = selectedCropId || params.id || fields[0]?.id;
+    return fields.find((f) => f.id === targetId) || getFieldById(targetId) || fields[0];
+  }, [fields, selectedCropId, params.id, getFieldById]);
 
   // Current stage index (1..5, default 3 for Flowering)
-  const currentStageIndex = crop.currentStageIndex ?? 3;
+  const currentStageIndex = crop?.currentStageIndex ?? 3;
 
   // Filter records belonging to this crop
   const cropRecords = useMemo(() => {
+    if (!crop?.id) return [];
     return records
       .filter((rec) => rec.cropId === crop.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [records, crop.id]);
+  }, [records, crop]);
 
   // Count photos
   const photoRecordsCount = useMemo(() => {
@@ -190,8 +185,62 @@ export default function TraceabilityTimelineScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Hero Crop Card (Screenshot Match) ─── */}
-        <View style={styles.heroCardContainer}>
+        {!crop ? (
+          <View style={{ alignItems: 'center', justifyContent: 'center', padding: 32, marginTop: 40 }}>
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: isDark ? '#1C3B24' : '#E8F5E9',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <Ionicons name="time-outline" size={32} color={isDark ? '#4ADE80' : '#2D6B3C'} />
+            </View>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: isDark ? '#E5EFE7' : '#15321B',
+                marginBottom: 8,
+                textAlign: 'center',
+              }}
+            >
+              No Crop Journeys to Trace
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: isDark ? '#9CB3A0' : '#4E6B54',
+                textAlign: 'center',
+                lineHeight: 20,
+                marginBottom: 24,
+              }}
+            >
+              Start planting in My Crops to view your farm&apos;s immutable cultivation timeline and evidence.
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#2D6B3C',
+                paddingVertical: 12,
+                paddingHorizontal: 20,
+                borderRadius: 24,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+              onPress={() => router.push('/(farmer)/crops')}
+            >
+              <Feather name="plus" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>Go to My Crops</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* ─── Hero Crop Card (Screenshot Match) ─── */}
+            <View style={styles.heroCardContainer}>
           <Image
             source={{
               uri:
@@ -446,102 +495,108 @@ export default function TraceabilityTimelineScreen() {
             );
           })}
         </View>
+        </>
+      )}
       </ScrollView>
 
       {/* ─── Bottom Floating Button: Generate QR Traceability Card (Photo 3) ─── */}
-      <View style={[styles.bottomBarWrapper, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-        <TouchableOpacity
-          style={styles.generateQrBtn}
-          activeOpacity={0.88}
-          onPress={() => setQrModalVisible(true)}
-        >
-          <Feather name="camera" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.generateQrBtnText}>Generate QR Traceability Card</Text>
-        </TouchableOpacity>
-      </View>
+      {crop && (
+        <View style={[styles.bottomBarWrapper, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+          <TouchableOpacity
+            style={styles.generateQrBtn}
+            activeOpacity={0.88}
+            onPress={() => setQrModalVisible(true)}
+          >
+            <Feather name="camera" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.generateQrBtnText}>Generate QR Traceability Card</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ─── QR Traceability Card Modal ─── */}
-      <Modal
-        visible={qrModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setQrModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.qrModalCard}>
-            {/* Header */}
-            <View style={styles.qrModalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.qrModalTitle}>TraceRoot Traceability Card</Text>
-                <Text style={styles.qrModalSubtitle}>Public Tamper-Proof Audit Certificate</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.qrModalCloseBtn}
-                onPress={() => setQrModalVisible(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Feather name="x" size={20} color="#556F5C" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Certificate Card Content */}
-            <View style={styles.certCardBody}>
-              {/* Organic Badge */}
-              <View style={styles.certBadgePill}>
-                <Ionicons name="leaf" size={13} color="#184223" style={{ marginRight: 4 }} />
-                <Text style={styles.certBadgeText}>100% Certified Organic · TraceRoot Verified</Text>
-              </View>
-
-              {/* Crop & Batch Info */}
-              <Text style={styles.certCropTitle}>{crop.cropName}</Text>
-              <Text style={styles.certBatchText}>Batch: {crop.batchId || 'BATCH-TOM-2026-09'}</Text>
-              <Text style={styles.certFarmText}>Farm: {crop.name || 'Kandy Farm · Greenhouse Plot 1'}</Text>
-
-              {/* Visual QR Code Display */}
-              <View style={styles.qrGraphicContainer}>
-                {/* Clean QR Graphic Representation */}
-                <View style={styles.qrBox}>
-                  <MaterialCommunityIcons name="qrcode-scan" size={130} color="#163820" />
-                  <View style={styles.qrCenterPill}>
-                    <Text style={styles.qrCenterPillText}>TRACEROOT</Text>
-                  </View>
+      {crop && (
+        <Modal
+          visible={qrModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setQrModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.qrModalCard}>
+              {/* Header */}
+              <View style={styles.qrModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.qrModalTitle}>TraceRoot Traceability Card</Text>
+                  <Text style={styles.qrModalSubtitle}>Public Tamper-Proof Audit Certificate</Text>
                 </View>
-                <Text style={styles.qrScanPrompt}>Scan to verify full immutable audit history</Text>
+                <TouchableOpacity
+                  style={styles.qrModalCloseBtn}
+                  onPress={() => setQrModalVisible(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather name="x" size={20} color="#556F5C" />
+                </TouchableOpacity>
               </View>
 
-              {/* Cryptographic Hash Verification */}
-              <View style={styles.certHashBox}>
-                <Ionicons name="shield-checkmark" size={15} color="#2A5C37" style={{ marginRight: 6 }} />
-                <Text style={styles.certHashText}>
-                  Hash: 0x8F4A...B219 · {cropRecords.length} records verified
-                </Text>
+              {/* Certificate Card Content */}
+              <View style={styles.certCardBody}>
+                {/* Organic Badge */}
+                <View style={styles.certBadgePill}>
+                  <Ionicons name="leaf" size={13} color="#184223" style={{ marginRight: 4 }} />
+                  <Text style={styles.certBadgeText}>100% Certified Organic · TraceRoot Verified</Text>
+                </View>
+
+                {/* Crop & Batch Info */}
+                <Text style={styles.certCropTitle}>{crop.cropName}</Text>
+                <Text style={styles.certBatchText}>Batch: {crop.batchId || 'BATCH-TOM-2026-09'}</Text>
+                <Text style={styles.certFarmText}>Farm: {crop.name || 'Kandy Farm · Greenhouse Plot 1'}</Text>
+
+                {/* Visual QR Code Display */}
+                <View style={styles.qrGraphicContainer}>
+                  {/* Clean QR Graphic Representation */}
+                  <View style={styles.qrBox}>
+                    <MaterialCommunityIcons name="qrcode-scan" size={130} color="#163820" />
+                    <View style={styles.qrCenterPill}>
+                      <Text style={styles.qrCenterPillText}>TRACEROOT</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.qrScanPrompt}>Scan to verify full immutable audit history</Text>
+                </View>
+
+                {/* Cryptographic Hash Verification */}
+                <View style={styles.certHashBox}>
+                  <Ionicons name="shield-checkmark" size={15} color="#2A5C37" style={{ marginRight: 6 }} />
+                  <Text style={styles.certHashText}>
+                    Hash: 0x8F4A...B219 · {cropRecords.length} records verified
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            {/* Modal Buttons */}
-            <View style={styles.qrModalActionsRow}>
-              <TouchableOpacity
-                style={styles.shareBtn}
-                activeOpacity={0.85}
-                onPress={() => {
-                  Alert.alert('Link Copied', 'Public traceability certificate link copied to clipboard.');
-                }}
-              >
-                <Feather name="share-2" size={16} color="#1E3E26" style={{ marginRight: 6 }} />
-                <Text style={styles.shareBtnText}>Share Certificate</Text>
-              </TouchableOpacity>
+              {/* Modal Buttons */}
+              <View style={styles.qrModalActionsRow}>
+                <TouchableOpacity
+                  style={styles.shareBtn}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    Alert.alert('Link Copied', 'Public traceability certificate link copied to clipboard.');
+                  }}
+                >
+                  <Feather name="share-2" size={16} color="#1E3E26" style={{ marginRight: 6 }} />
+                  <Text style={styles.shareBtnText}>Share Certificate</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.doneBtn}
-                activeOpacity={0.88}
-                onPress={() => setQrModalVisible(false)}
-              >
-                <Text style={styles.doneBtnText}>Close</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.doneBtn}
+                  activeOpacity={0.88}
+                  onPress={() => setQrModalVisible(false)}
+                >
+                  <Text style={styles.doneBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
 
       {/* ─── Single Record Detail Modal ─── */}
       {selectedRecordForDetail && (

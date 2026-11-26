@@ -143,6 +143,27 @@ async function loadFromStorage() {
 // Initial load attempt
 loadFromStorage();
 
+export async function resetCropsStore() {
+  currentFields = [];
+  currentRecords = [];
+  currentCustomActivities = [];
+  currentActivityApplicabilities = [];
+  currentStageApplicabilities = [];
+  isLoadedFromStorage = false;
+  try {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEY_RECORDS,
+      STORAGE_KEY_FIELDS,
+      STORAGE_KEY_CUSTOM_ACTIVITIES,
+      STORAGE_KEY_ACTIVITY_APPLICABILITY,
+      STORAGE_KEY_STAGE_APPLICABILITY,
+    ]);
+  } catch (err) {
+    console.warn('Failed to clear crops storage:', err);
+  }
+  notify();
+}
+
 export interface CreateCropPayload {
   cropName: string;
   cropVariety?: string;

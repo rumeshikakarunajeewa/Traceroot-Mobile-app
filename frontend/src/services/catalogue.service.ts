@@ -4,7 +4,6 @@
 import { supabase } from '../lib/supabase';
 import { CatalogueProduct, CatalogueCategory } from '../types/supplier.types';
 import { uploadCatalogueImage } from './storage.service';
-import { mockCatalogueProducts } from '../constants/supplierCatalogueData';
 
 export interface CreateCatalogueItemParams {
   supplierId: string;
@@ -98,12 +97,11 @@ class CatalogueService {
 
       if (error) {
         console.warn('[CatalogueService] Error fetching items:', error.message);
-        return mockCatalogueProducts;
+        return [];
       }
 
       if (!Array.isArray(data) || data.length === 0) {
-        // Fallback to sample catalogue products if database is brand new and has 0 rows
-        return mockCatalogueProducts;
+        return [];
       }
 
       // Filter out duplicate entries (e.g. identical name + category from same supplier created simultaneously)
@@ -127,7 +125,7 @@ class CatalogueService {
       return deduplicatedRows.map((row: any) => this.mapDbRowToProduct(row));
     } catch (err) {
       console.warn('[CatalogueService] getCatalogueProducts exception:', err);
-      return mockCatalogueProducts;
+      return [];
     }
   }
 
@@ -161,9 +159,7 @@ class CatalogueService {
         .single();
 
       if (error || !data) {
-        // Check mock fallback
-        const mock = mockCatalogueProducts.find((p) => p.id === id);
-        return mock || null;
+        return null;
       }
 
       return this.mapDbRowToProduct(data);

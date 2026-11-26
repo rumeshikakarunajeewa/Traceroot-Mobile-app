@@ -123,8 +123,8 @@ export default function SupplierDashboardScreen() {
   }), [pendingCount]);
 
   const supplierHeaderProfile: SupplierProfile = useMemo(() => ({
-    id: profile.id || 'supplier-1',
-    name: profile.name?.trim() || profile.contactName?.trim() || 'AgriSupply Co.',
+    id: profile.id || '',
+    name: profile.name?.trim() || profile.contactName?.trim() || 'Supplier',
     category: profile.store?.trim() || profile.district?.trim() || 'Agricultural Supplier',
     role: 'Verified Wholesale Supplier',
     avatarUrl: profile.avatarUrl?.uri || undefined,
@@ -269,10 +269,12 @@ export default function SupplierDashboardScreen() {
         />
 
         {/* 4. Alert Callout: "X farmers are waiting" with Orange Basket */}
-        <SupplierWaitingAlert
-          alert={waitingAlertData}
-          onPress={handleViewAllRequests}
-        />
+        {pendingCount > 0 && (
+          <SupplierWaitingAlert
+            alert={waitingAlertData}
+            onPress={handleViewAllRequests}
+          />
+        )}
 
         {/* 5. Farmer Requests Section */}
         <SupplierFarmerRequests

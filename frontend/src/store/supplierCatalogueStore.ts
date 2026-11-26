@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
 import { CatalogueProduct } from '../types/supplier.types';
-import { mockCatalogueProducts } from '../constants/supplierCatalogueData';
 import { catalogueService } from '../services/catalogue.service';
 import { authService } from '../services/auth.service';
 
-let catalogueProducts: CatalogueProduct[] = [...mockCatalogueProducts];
+let catalogueProducts: CatalogueProduct[] = [];
 const listeners = new Set<(products: CatalogueProduct[]) => void>();
 let isInitialized = false;
 
 function notify() {
   listeners.forEach((listener) => listener([...catalogueProducts]));
+}
+
+export function resetSupplierCatalogueStore() {
+  catalogueProducts = [];
+  isInitialized = false;
+  notify();
 }
 
 export function getCatalogueProducts(): CatalogueProduct[] {
@@ -33,9 +38,12 @@ export async function loadCatalogueProducts(supplierId?: string, force = false):
     if (data && data.length > 0) {
       const unique = Array.from(new Map(data.map((item) => [item.id, item])).values());
       catalogueProducts = unique;
+    } else {
+      catalogueProducts = [];
     }
   } catch (err) {
     console.warn('[supplierCatalogueStore] Error loading products:', err);
+    catalogueProducts = [];
   }
 
   notify();
