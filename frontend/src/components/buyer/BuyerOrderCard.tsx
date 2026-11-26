@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BuyerOrderItem } from '../../types/buyer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerOrderCardProps {
   order: BuyerOrderItem;
@@ -23,6 +24,7 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
   onCropJourneyPress,
   onScanPress,
 }) => {
+  const [isDark] = useDarkMode();
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
 
   // Status badge styling
@@ -31,9 +33,9 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
   const isPending = order.status === 'Pending';
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isDark && styles.cardDark]}>
       {/* 1. Header Crop Image Banner */}
-      <View style={styles.imageContainer}>
+      <View style={[styles.imageContainer, isDark && styles.imageContainerDark]}>
         <Image
           source={{ uri: order.imageUrl }}
           style={styles.cropImage}
@@ -103,24 +105,25 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
             <MaterialCommunityIcons
               name="account-cowboy-hat-outline"
               size={15}
-              color="#647666"
+              color={isDark ? '#98B39B' : '#647666'}
             />
-            <Text style={styles.farmerText}>
+            <Text style={[styles.farmerText, isDark && styles.farmerTextDark]}>
               {order.farmerName} · {order.location}
             </Text>
           </View>
           <MaterialCommunityIcons
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={20}
-            color="#6B7C6E"
+            color={isDark ? '#98B39B' : '#6B7C6E'}
           />
         </TouchableOpacity>
 
         {/* Progress Bar */}
-        <View style={styles.progressBarTrack}>
+        <View style={[styles.progressBarTrack, isDark && styles.progressBarTrackDark]}>
           <View
             style={[
               styles.progressBarFill,
+              isDark && styles.progressBarFillDark,
               { width: `${Math.min(Math.max(order.progressPercentage, 5), 100)}%` },
             ]}
           />
@@ -132,38 +135,38 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
             {/* Delivery & Farming Info Tiles */}
             <View style={styles.tilesRow}>
               {/* Delivery Tile */}
-              <View style={styles.infoTile}>
+              <View style={[styles.infoTile, isDark && styles.infoTileDark]}>
                 <View style={styles.tileHeader}>
                   <MaterialCommunityIcons
                     name="truck-delivery-outline"
                     size={13}
-                    color="#7A8B7D"
+                    color={isDark ? '#98B39B' : '#7A8B7D'}
                   />
-                  <Text style={styles.tileLabel}>Delivery</Text>
+                  <Text style={[styles.tileLabel, isDark && styles.tileLabelDark]}>Delivery</Text>
                 </View>
-                <Text style={styles.tileValue} numberOfLines={1}>
+                <Text style={[styles.tileValue, isDark && styles.tileValueDark]} numberOfLines={1}>
                   {order.deliveryDateEst}
                 </Text>
               </View>
 
               {/* Farming Tile */}
-              <View style={styles.infoTile}>
+              <View style={[styles.infoTile, isDark && styles.infoTileDark]}>
                 <View style={styles.tileHeader}>
                   <MaterialCommunityIcons
                     name="weather-sunny"
                     size={13}
-                    color="#7A8B7D"
+                    color={isDark ? '#98B39B' : '#7A8B7D'}
                   />
-                  <Text style={styles.tileLabel}>Farming</Text>
+                  <Text style={[styles.tileLabel, isDark && styles.tileLabelDark]}>Farming</Text>
                 </View>
-                <Text style={styles.tileValue} numberOfLines={1}>
+                <Text style={[styles.tileValue, isDark && styles.tileValueDark]} numberOfLines={1}>
                   {order.farmingType === 'greenhouse' ? 'Greenhouse' : 'Open-field'}
                 </Text>
               </View>
             </View>
 
             {/* Traceability Verified Box */}
-            <View style={styles.traceBox}>
+            <View style={[styles.traceBox, isDark && styles.traceBoxDark]}>
               <View style={styles.shieldIconWrapper}>
                 <MaterialCommunityIcons
                   name="shield-check"
@@ -171,7 +174,7 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
                   color="#FFFFFF"
                 />
               </View>
-              <Text style={styles.traceText}>
+              <Text style={[styles.traceText, isDark && styles.traceTextDark]}>
                 Traceability verified — {order.lockedRecordsCount} locked records across{' '}
                 {order.completedStages} stages
               </Text>
@@ -183,7 +186,7 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => onCropJourneyPress(order)}
-                style={styles.cropJourneyBtn}
+                style={[styles.cropJourneyBtn, isDark && styles.cropJourneyBtnDark]}
               >
                 <MaterialCommunityIcons name="leaf" size={16} color="#FFFFFF" />
                 <Text style={styles.cropJourneyBtnText}>Crop Journey</Text>
@@ -193,12 +196,12 @@ export const BuyerOrderCard: React.FC<BuyerOrderCardProps> = ({
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => onScanPress(order)}
-                style={styles.scanBtn}
+                style={[styles.scanBtn, isDark && styles.scanBtnDark]}
               >
                 <MaterialCommunityIcons
                   name="camera-outline"
                   size={19}
-                  color="#263E2B"
+                  color={isDark ? '#4ADE80' : '#263E2B'}
                 />
               </TouchableOpacity>
             </View>
@@ -461,5 +464,46 @@ const styles = StyleSheet.create({
     borderColor: '#E2DBD0',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  /* Dark Mode Overrides */
+  cardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  imageContainerDark: {
+    backgroundColor: '#112215',
+  },
+  farmerTextDark: {
+    color: '#F0F5F1',
+  },
+  progressBarTrackDark: {
+    backgroundColor: '#263B2B',
+  },
+  progressBarFillDark: {
+    backgroundColor: '#4ADE80',
+  },
+  infoTileDark: {
+    backgroundColor: '#132016',
+    borderColor: '#243928',
+  },
+  tileLabelDark: {
+    color: '#98B39B',
+  },
+  tileValueDark: {
+    color: '#F0F5F1',
+  },
+  traceBoxDark: {
+    backgroundColor: '#132016',
+  },
+  traceTextDark: {
+    color: '#98B39B',
+  },
+  cropJourneyBtnDark: {
+    backgroundColor: '#2E6930',
+  },
+  scanBtnDark: {
+    backgroundColor: '#132016',
+    borderColor: '#263B2B',
   },
 });

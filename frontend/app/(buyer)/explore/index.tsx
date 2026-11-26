@@ -21,10 +21,12 @@ import { BuyerMarketCard } from '../../../src/components/buyer/BuyerMarketCard';
 import { ordersService } from '../../../src/services/orders.service';
 import { useAuth } from '../../../src/store/authStore';
 import { authService } from '../../../src/services/auth.service';
+import { useDarkMode } from '../../../src/store/uiStore';
 
 type FilterType = 'all' | FarmingType;
 
 export default function BuyerExploreScreen() {
+  const [isDark] = useDarkMode();
   const { user } = useAuth();
   const params = useLocalSearchParams<{ search?: string; crop?: string }>();
   const [searchQuery, setSearchQuery] = useState(params.search || params.crop || '');
@@ -169,8 +171,8 @@ export default function BuyerExploreScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <ScrollView
         style={styles.scrollView}
@@ -180,7 +182,7 @@ export default function BuyerExploreScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#3E6142"
+            tintColor={isDark ? '#4ADE80' : '#3E6142'}
           />
         }
       >
@@ -190,31 +192,38 @@ export default function BuyerExploreScreen() {
         <View style={styles.header}>
           {/* Subtitle with leaf icon */}
           <View style={styles.subtitleRow}>
-            <Ionicons name="leaf-outline" size={14} color="#4A654F" />
-            <Text style={styles.subtitleText}>Verified produce from traced farms</Text>
+            <Ionicons name="leaf-outline" size={14} color={isDark ? '#4ADE80' : '#4A654F'} />
+            <Text style={[styles.subtitleText, isDark && styles.subtitleTextDark]}>
+              Verified produce from traced farms
+            </Text>
           </View>
 
           {/* Main Title */}
-          <Text style={styles.titleText}>Marketplace</Text>
+          <Text style={[styles.titleText, isDark && styles.titleTextDark]}>Marketplace</Text>
         </View>
 
         {/* ========================================================
             2. SEARCH BAR
            ======================================================== */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={18} color="#859787" style={styles.searchIcon} />
+        <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={isDark ? '#8EA790' : '#859787'}
+            style={styles.searchIcon}
+          />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search crops, farmers..."
-            placeholderTextColor="#859787"
-            style={styles.searchInput}
+            placeholderTextColor={isDark ? '#8EA790' : '#859787'}
+            style={[styles.searchInput, isDark && styles.searchInputDark]}
             returnKeyType="search"
             clearButtonMode="while-editing"
           />
           {searchQuery.length > 0 && Platform.OS !== 'ios' && (
             <TouchableOpacity onPress={handleClearSearch} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close-circle" size={18} color="#859787" />
+              <Ionicons name="close-circle" size={18} color={isDark ? '#8EA790' : '#859787'} />
             </TouchableOpacity>
           )}
         </View>
@@ -229,13 +238,17 @@ export default function BuyerExploreScreen() {
             onPress={() => setSelectedFilter('all')}
             style={[
               styles.filterPill,
-              selectedFilter === 'all' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'all'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'all' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'all'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               All Types
@@ -248,13 +261,17 @@ export default function BuyerExploreScreen() {
             onPress={() => setSelectedFilter('greenhouse')}
             style={[
               styles.filterPill,
-              selectedFilter === 'greenhouse' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'greenhouse'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'greenhouse' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'greenhouse'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               🏡 Greenhouse
@@ -267,13 +284,17 @@ export default function BuyerExploreScreen() {
             onPress={() => setSelectedFilter('open-field')}
             style={[
               styles.filterPill,
-              selectedFilter === 'open-field' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'open-field'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'open-field' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'open-field'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               🌽 Open-field
@@ -292,15 +313,19 @@ export default function BuyerExploreScreen() {
               setSearchQuery('');
             }}
           >
-            <Text style={styles.countText}>
+            <Text style={[styles.countText, isDark && styles.countTextDark]}>
               {filteredListings.length}{' '}
               {filteredListings.length === 1 ? 'verified listing' : 'verified listings'}
             </Text>
           </TouchableOpacity>
 
           <View style={styles.tracedBadge}>
-            <MaterialCommunityIcons name="shield-check-outline" size={15} color="#5D7060" />
-            <Text style={styles.tracedText}>All traced</Text>
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={15}
+              color={isDark ? '#4ADE80' : '#5D7060'}
+            />
+            <Text style={[styles.tracedText, isDark && styles.tracedTextDark]}>All traced</Text>
           </View>
         </View>
 
@@ -309,8 +334,10 @@ export default function BuyerExploreScreen() {
            ======================================================== */}
         {isLoading && listings.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3E6142" />
-            <Text style={styles.loadingText}>Loading farmer produce...</Text>
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#3E6142'} />
+            <Text style={[styles.loadingText, isDark && styles.loadingTextDark]}>
+              Loading farmer produce...
+            </Text>
           </View>
         ) : filteredListings.length > 0 ? (
           filteredListings.map((listing) => (
@@ -324,13 +351,19 @@ export default function BuyerExploreScreen() {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="sprout-outline" size={48} color="#9BAAA0" />
-            <Text style={styles.emptyTitle}>No matching listings found</Text>
-            <Text style={styles.emptySubtitle}>
+            <MaterialCommunityIcons
+              name="sprout-outline"
+              size={48}
+              color={isDark ? '#4ADE80' : '#9BAAA0'}
+            />
+            <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
+              No matching listings found
+            </Text>
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
               Try adjusting your search query or selecting &quot;All Types&quot;
             </Text>
             <TouchableOpacity
-              style={styles.resetButton}
+              style={[styles.resetButton, isDark && styles.resetButtonDark]}
               onPress={() => {
                 setSearchQuery('');
                 setSelectedFilter('all');
@@ -519,5 +552,48 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  /* Dark Mode Overrides */
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  subtitleTextDark: {
+    color: '#98B39B',
+  },
+  titleTextDark: {
+    color: '#F0F5F1',
+  },
+  searchContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  searchInputDark: {
+    color: '#F0F5F1',
+  },
+  filterPillInactiveDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  filterTextInactiveDark: {
+    color: '#98B39B',
+  },
+  countTextDark: {
+    color: '#F0F5F1',
+  },
+  tracedTextDark: {
+    color: '#98B39B',
+  },
+  loadingTextDark: {
+    color: '#98B39B',
+  },
+  emptyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptySubtitleDark: {
+    color: '#98B39B',
+  },
+  resetButtonDark: {
+    backgroundColor: '#2E6930',
   },
 });

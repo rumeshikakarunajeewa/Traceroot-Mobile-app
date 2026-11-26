@@ -16,10 +16,12 @@ import { router } from 'expo-router';
 
 import { BuyerMessageItem } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
+import { useDarkMode } from '../../../src/store/uiStore';
 
 type FilterType = 'All' | 'Requests' | 'Notes' | 'Unread';
 
 export default function BuyerMessagesScreen() {
+  const [isDark] = useDarkMode();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('All');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -79,13 +81,13 @@ export default function BuyerMessagesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* ========================================================
-          1. TOP WHITE HEADER CONTAINER WITH ROUNDED BOTTOM
+          1. TOP HEADER CONTAINER WITH ROUNDED BOTTOM
          ======================================================== */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, isDark && styles.headerContainerDark]}>
         {/* Header Top Bar */}
         <View style={styles.headerTopRow}>
           {/* Back Button */}
@@ -95,11 +97,11 @@ export default function BuyerMessagesScreen() {
             style={styles.backButton}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="arrow-back" size={22} color="#1F2937" />
+            <Ionicons name="arrow-back" size={22} color={isDark ? '#F0F5F1' : '#1F2937'} />
           </TouchableOpacity>
 
           {/* Title */}
-          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>Messages</Text>
 
           {/* Right Action Buttons */}
           <View style={styles.headerRightButtons}>
@@ -107,37 +109,46 @@ export default function BuyerMessagesScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setSearchVisible(!searchVisible)}
-              style={styles.iconCircleButton}
+              style={[styles.iconCircleButton, isDark && styles.iconCircleButtonDark]}
             >
-              <Ionicons name="search-outline" size={18} color="#374151" />
+              <Ionicons name="search-outline" size={18} color={isDark ? '#A6C5A8' : '#374151'} />
             </TouchableOpacity>
 
             {/* Grid/Options Icon Button */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setSelectedFilter('All')}
-              style={styles.iconCircleButton}
+              style={[styles.iconCircleButton, isDark && styles.iconCircleButtonDark]}
             >
-              <MaterialCommunityIcons name="dots-grid" size={18} color="#374151" />
+              <MaterialCommunityIcons
+                name="dots-grid"
+                size={18}
+                color={isDark ? '#A6C5A8' : '#374151'}
+              />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Optional Search Input Field (when search is toggled) */}
         {searchVisible && (
-          <View style={styles.searchBarWrapper}>
-            <Ionicons name="search-outline" size={16} color="#6B7280" style={styles.searchIcon} />
+          <View style={[styles.searchBarWrapper, isDark && styles.searchBarWrapperDark]}>
+            <Ionicons
+              name="search-outline"
+              size={16}
+              color={isDark ? '#8EA790' : '#6B7280'}
+              style={styles.searchIcon}
+            />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search conversations..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.searchInput}
+              placeholderTextColor={isDark ? '#8EA790' : '#9CA3AF'}
+              style={[styles.searchInput, isDark && styles.searchInputDark]}
               autoFocus
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={16} color={isDark ? '#8EA790' : '#9CA3AF'} />
               </TouchableOpacity>
             )}
           </View>
@@ -151,13 +162,17 @@ export default function BuyerMessagesScreen() {
             onPress={() => setSelectedFilter('All')}
             style={[
               styles.filterPill,
-              selectedFilter === 'All' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'All'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'All' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'All'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               All
@@ -170,13 +185,17 @@ export default function BuyerMessagesScreen() {
             onPress={() => setSelectedFilter('Requests')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Requests' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'Requests'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'Requests' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'Requests'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Requests
@@ -189,32 +208,40 @@ export default function BuyerMessagesScreen() {
             onPress={() => setSelectedFilter('Notes')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Notes' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'Notes'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'Notes' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'Notes'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Notes
             </Text>
           </TouchableOpacity>
 
-          {/* Unread 1 */}
+          {/* Unread */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setSelectedFilter('Unread')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Unread' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'Unread'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'Unread' ? styles.filterTextActive : styles.filterTextInactive,
+                selectedFilter === 'Unread'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Unread
@@ -239,7 +266,7 @@ export default function BuyerMessagesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#1E4D2B"
+            tintColor={isDark ? '#4ADE80' : '#1E4D2B'}
           />
         }
       >
@@ -253,18 +280,22 @@ export default function BuyerMessagesScreen() {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="chat-outline" size={44} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>
+            <MaterialCommunityIcons
+              name="chat-outline"
+              size={44}
+              color={isDark ? '#4ADE80' : '#9CA3AF'}
+            />
+            <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
               {selectedFilter !== 'All' ? 'No messages found' : 'No messages yet'}
             </Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
               {selectedFilter !== 'All'
                 ? `No conversations under "${selectedFilter}" category`
                 : 'Direct inquiries and updates from producers will appear here.'}
             </Text>
             {selectedFilter !== 'All' && (
               <TouchableOpacity
-                style={styles.resetButton}
+                style={[styles.resetButton, isDark && styles.resetButtonDark]}
                 onPress={() => {
                   setSelectedFilter('All');
                   setSearchQuery('');
@@ -437,5 +468,46 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '700',
+  },
+
+  /* Dark Mode Overrides */
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  headerContainerDark: {
+    backgroundColor: '#18271C',
+    borderBottomWidth: 1,
+    borderColor: '#263B2B',
+  },
+  headerTitleDark: {
+    color: '#F0F5F1',
+  },
+  iconCircleButtonDark: {
+    backgroundColor: '#203924',
+  },
+  searchBarWrapperDark: {
+    backgroundColor: '#122015',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  searchInputDark: {
+    color: '#F0F5F1',
+  },
+  filterPillInactiveDark: {
+    backgroundColor: '#122015',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  filterTextInactiveDark: {
+    color: '#98B39B',
+  },
+  emptyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptySubtitleDark: {
+    color: '#98B39B',
+  },
+  resetButtonDark: {
+    backgroundColor: '#2E6930',
   },
 });

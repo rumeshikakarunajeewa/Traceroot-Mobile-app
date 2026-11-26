@@ -20,6 +20,7 @@ import { BuyerOrderCard } from '../../../src/components/buyer/BuyerOrderCard';
 import { ordersService } from '../../../src/services/orders.service';
 import { useAuth } from '../../../src/store/authStore';
 import { authService } from '../../../src/services/auth.service';
+import { useDarkMode } from '../../../src/store/uiStore';
 
 type FilterTab = 'All' | 'Growing' | 'Pending' | 'Delivered';
 
@@ -46,6 +47,7 @@ function toBuyerOrderItem(order: BuyerOrder): BuyerOrderItem {
 }
 
 export default function BuyerOrdersScreen() {
+  const [isDark] = useDarkMode();
   const { user } = useAuth();
   const [orders, setOrders] = useState<BuyerOrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,8 +157,8 @@ export default function BuyerOrdersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <ScrollView
         style={styles.scrollView}
@@ -166,7 +168,7 @@ export default function BuyerOrdersScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#3E6142"
+            tintColor={isDark ? '#4ADE80' : '#3E6142'}
           />
         }
       >
@@ -175,17 +177,17 @@ export default function BuyerOrdersScreen() {
            ======================================================== */}
         <View style={styles.headerRow}>
           {/* Left: Basket Icon Button */}
-          <View style={styles.headerLeftBtn}>
+          <View style={[styles.headerLeftBtn, isDark && styles.headerLeftBtnDark]}>
             <MaterialCommunityIcons name="basket-outline" size={22} color="#FFFFFF" />
           </View>
 
           {/* Center: Title & Subtitle */}
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.subtitleText}>Purchase history</Text>
+            <Text style={[styles.subtitleText, isDark && styles.subtitleTextDark]}>Purchase history</Text>
             <View style={styles.titleRow}>
-              <Text style={styles.titleText}>My </Text>
-              <View style={styles.highlightWrapper}>
-                <Text style={styles.titleHighlightText}>Orders</Text>
+              <Text style={[styles.titleText, isDark && styles.titleTextDark]}>My </Text>
+              <View style={[styles.highlightWrapper, isDark && styles.highlightWrapperDark]}>
+                <Text style={[styles.titleHighlightText, isDark && styles.titleHighlightTextDark]}>Orders</Text>
               </View>
             </View>
           </View>
@@ -194,7 +196,7 @@ export default function BuyerOrdersScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => handleScanPress()}
-            style={styles.headerRightBtn}
+            style={[styles.headerRightBtn, isDark && styles.headerRightBtnDark]}
           >
             <MaterialCommunityIcons name="camera-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
@@ -203,7 +205,7 @@ export default function BuyerOrdersScreen() {
         {/* ========================================================
             2. DARK FOREST GREEN STATS SUMMARY CARD
            ======================================================== */}
-        <View style={styles.statsCard}>
+        <View style={[styles.statsCard, isDark && styles.statsCardDark]}>
           {/* Stat 1: Orders */}
           <View style={styles.statColumn}>
             <MaterialCommunityIcons
@@ -212,7 +214,7 @@ export default function BuyerOrdersScreen() {
               color="#97AFA0"
               style={styles.statIcon}
             />
-            <Text style={styles.statValue}>3</Text>
+            <Text style={styles.statValue}>{counts.all}</Text>
             <Text style={styles.statLabel}>Orders</Text>
           </View>
 
@@ -224,7 +226,7 @@ export default function BuyerOrdersScreen() {
               color="#97AFA0"
               style={styles.statIcon}
             />
-            <Text style={styles.statValue}>1</Text>
+            <Text style={styles.statValue}>{counts.growing}</Text>
             <Text style={styles.statLabel}>Growing</Text>
           </View>
 
@@ -236,7 +238,12 @@ export default function BuyerOrdersScreen() {
               color="#C0D7C9"
               style={styles.statIcon}
             />
-            <Text style={styles.statValue}>9k</Text>
+            <Text style={styles.statValue}>
+              {(() => {
+                const total = orders.reduce((acc, o) => acc + (o.totalPrice || 0), 0);
+                return total >= 1000 ? `${Math.round(total / 1000)}k` : `${total}`;
+              })()}
+            </Text>
             <Text style={styles.statLabel}>LKR spent</Text>
           </View>
         </View>
@@ -255,7 +262,9 @@ export default function BuyerOrdersScreen() {
             onPress={() => setSelectedFilter('All')}
             style={[
               styles.filterPill,
-              selectedFilter === 'All' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'All'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
@@ -263,20 +272,22 @@ export default function BuyerOrdersScreen() {
                 styles.filterPillText,
                 selectedFilter === 'All'
                   ? styles.filterTextActive
-                  : styles.filterTextInactive,
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               All
             </Text>
           </TouchableOpacity>
 
-          {/* Growing 1 */}
+          {/* Growing */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setSelectedFilter('Growing')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Growing' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'Growing'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
@@ -284,20 +295,22 @@ export default function BuyerOrdersScreen() {
                 styles.filterPillText,
                 selectedFilter === 'Growing'
                   ? styles.filterTextActive
-                  : styles.filterTextInactive,
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Growing {counts.growing}
             </Text>
           </TouchableOpacity>
 
-          {/* Pending 1 */}
+          {/* Pending */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setSelectedFilter('Pending')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Pending' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'Pending'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
@@ -305,20 +318,22 @@ export default function BuyerOrdersScreen() {
                 styles.filterPillText,
                 selectedFilter === 'Pending'
                   ? styles.filterTextActive
-                  : styles.filterTextInactive,
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Pending {counts.pending}
             </Text>
           </TouchableOpacity>
 
-          {/* Delivered 1 */}
+          {/* Delivered */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setSelectedFilter('Delivered')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Delivered' ? styles.filterPillActive : styles.filterPillInactive,
+              selectedFilter === 'Delivered'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
           >
             <Text
@@ -326,7 +341,7 @@ export default function BuyerOrdersScreen() {
                 styles.filterPillText,
                 selectedFilter === 'Delivered'
                   ? styles.filterTextActive
-                  : styles.filterTextInactive,
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Delivered {counts.delivered}
@@ -338,15 +353,15 @@ export default function BuyerOrdersScreen() {
             4. ORANGE AWAITING CONFIRMATION ALERT BANNER
            ======================================================== */}
         {(selectedFilter === 'All' || selectedFilter === 'Pending') && counts.pending > 0 && (
-          <View style={styles.alertBanner}>
+          <View style={[styles.alertBanner, isDark && styles.alertBannerDark]}>
             <View style={styles.alertIconCircle}>
               <MaterialCommunityIcons name="bell-outline" size={17} color="#FFFFFF" />
             </View>
             <View style={styles.alertTextContainer}>
-              <Text style={styles.alertTitle}>
+              <Text style={[styles.alertTitle, isDark && styles.alertTitleDark]}>
                 {counts.pending} {counts.pending === 1 ? 'order' : 'orders'} awaiting confirmation
               </Text>
-              <Text style={styles.alertSubtitle}>
+              <Text style={[styles.alertSubtitle, isDark && styles.alertSubtitleDark]}>
                 Farmers usually confirm within 24 hours
               </Text>
             </View>
@@ -359,8 +374,10 @@ export default function BuyerOrdersScreen() {
         <View style={styles.ordersList}>
           {isLoading && orders.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#436647" />
-              <Text style={styles.loadingText}>Loading your orders...</Text>
+              <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#436647'} />
+              <Text style={[styles.loadingText, isDark && styles.loadingTextDark]}>
+                Loading your orders...
+              </Text>
             </View>
           ) : filteredOrders.length > 0 ? (
             filteredOrders.map((order, idx) => (
@@ -374,13 +391,17 @@ export default function BuyerOrdersScreen() {
             ))
           ) : orders.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="clipboard-text-outline" size={52} color="#8A9E8E" />
-              <Text style={styles.emptyTitle}>No Orders Yet</Text>
-              <Text style={styles.emptySubtitle}>
+              <MaterialCommunityIcons
+                name="clipboard-text-outline"
+                size={52}
+                color={isDark ? '#4ADE80' : '#8A9E8E'}
+              />
+              <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>No Orders Yet</Text>
+              <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
                 You haven&apos;t placed any produce orders with farmers yet. Explore our verified marketplace to source fresh harvest!
               </Text>
               <TouchableOpacity
-                style={styles.browseButton}
+                style={[styles.browseButton, isDark && styles.browseButtonDark]}
                 activeOpacity={0.85}
                 onPress={() => router.push('/(buyer)/explore')}
               >
@@ -390,10 +411,16 @@ export default function BuyerOrdersScreen() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="basket-off-outline" size={44} color="#9BAAA0" />
-              <Text style={styles.emptyTitle}>No orders in this category</Text>
+              <MaterialCommunityIcons
+                name="basket-off-outline"
+                size={44}
+                color={isDark ? '#4ADE80' : '#9BAAA0'}
+              />
+              <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
+                No orders in this category
+              </Text>
               <TouchableOpacity
-                style={styles.resetButton}
+                style={[styles.resetButton, isDark && styles.resetButtonDark]}
                 onPress={() => setSelectedFilter('All')}
               >
                 <Text style={styles.resetButtonText}>View All Orders</Text>
@@ -675,5 +702,67 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  /* Dark Mode Overrides */
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  headerLeftBtnDark: {
+    backgroundColor: '#2E6930',
+  },
+  subtitleTextDark: {
+    color: '#98B39B',
+  },
+  titleTextDark: {
+    color: '#F0F5F1',
+  },
+  highlightWrapperDark: {
+    backgroundColor: '#203924',
+  },
+  titleHighlightTextDark: {
+    color: '#4ADE80',
+  },
+  headerRightBtnDark: {
+    backgroundColor: '#18271C',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  statsCardDark: {
+    backgroundColor: '#142517',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  filterPillInactiveDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  filterTextInactiveDark: {
+    color: '#98B39B',
+  },
+  alertBannerDark: {
+    backgroundColor: '#2B1F16',
+    borderColor: '#4A311D',
+  },
+  alertTitleDark: {
+    color: '#FDE8D7',
+  },
+  alertSubtitleDark: {
+    color: '#FDBA74',
+  },
+  loadingTextDark: {
+    color: '#98B39B',
+  },
+  emptyTitleDark: {
+    color: '#F0F5F1',
+  },
+  emptySubtitleDark: {
+    color: '#98B39B',
+  },
+  browseButtonDark: {
+    backgroundColor: '#2E6930',
+  },
+  resetButtonDark: {
+    backgroundColor: '#2E6930',
   },
 });

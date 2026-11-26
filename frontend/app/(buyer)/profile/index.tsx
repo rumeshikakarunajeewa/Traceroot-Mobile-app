@@ -21,6 +21,7 @@ import { BuyerProfile } from '../../../src/types/buyer.types';
 import { BuyerEditProfileModal } from '../../../src/components/buyer/BuyerEditProfileModal';
 import { profilesService } from '../../../src/services/profiles.service';
 import { useAuth } from '../../../src/store/authStore';
+import { useDarkMode } from '../../../src/store/uiStore';
 import {
   parseCoordinates,
   getStaticMapUrl,
@@ -71,7 +72,7 @@ export default function BuyerProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('About');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useDarkMode();
   const [notifications, setNotifications] = useState(true);
 
   useEffect(() => {
@@ -203,8 +204,8 @@ export default function BuyerProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, darkMode && styles.safeAreaDark]} edges={['top']}>
+      <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} />
 
       <ScrollView
         style={styles.scrollView}
@@ -214,7 +215,7 @@ export default function BuyerProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#436647"
+            tintColor={darkMode ? '#4ADE80' : '#436647'}
             colors={['#436647']}
           />
         }
@@ -227,19 +228,19 @@ export default function BuyerProfileScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
-            style={styles.backButton}
+            style={[styles.backButton, darkMode && styles.backButtonDark]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="chevron-back" size={20} color="#1F2937" />
+            <Ionicons name="chevron-back" size={20} color={darkMode ? '#F0F5F1' : '#1F2937'} />
           </TouchableOpacity>
 
           {/* Title & Subtitle */}
           <View style={styles.titleContainer}>
-            <Text style={styles.subtitleText}>Your account 🌿</Text>
+            <Text style={[styles.subtitleText, darkMode && styles.subtitleTextDark]}>Your account 🌿</Text>
             <View style={styles.titleRow}>
-              <Text style={styles.titleText}>My </Text>
-              <View style={styles.highlightWrapper}>
-                <Text style={styles.titleHighlightText}>Profile</Text>
+              <Text style={[styles.titleText, darkMode && styles.titleTextDark]}>My </Text>
+              <View style={[styles.highlightWrapper, darkMode && styles.highlightWrapperDark]}>
+                <Text style={[styles.titleHighlightText, darkMode && styles.titleHighlightTextDark]}>Profile</Text>
               </View>
             </View>
           </View>
@@ -407,13 +408,17 @@ export default function BuyerProfileScreen() {
                 onPress={() => handleTabChange(tab)}
                 style={[
                   styles.tabPill,
-                  isActive ? styles.tabPillActive : styles.tabPillInactive,
+                  isActive
+                    ? styles.tabPillActive
+                    : [styles.tabPillInactive, darkMode && styles.tabPillInactiveDark],
                 ]}
               >
                 <Text
                   style={[
                     styles.tabPillText,
-                    isActive ? styles.tabTextActive : styles.tabTextInactive,
+                    isActive
+                      ? styles.tabTextActive
+                      : [styles.tabTextInactive, darkMode && styles.tabTextInactiveDark],
                   ]}
                 >
                   {tab}
@@ -426,91 +431,91 @@ export default function BuyerProfileScreen() {
         {/* ========================================================
             5. CONTACT & BUSINESS DETAILS CARD
            ======================================================== */}
-        <View style={styles.detailsCard}>
+        <View style={[styles.detailsCard, darkMode && styles.detailsCardDark]}>
           {/* Phone */}
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, darkMode && styles.detailRowDark]}>
             <View style={styles.detailLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="chat-outline" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="chat-outline" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
-              <Text style={styles.detailLabel}>Phone</Text>
+              <Text style={[styles.detailLabel, darkMode && styles.detailLabelDark]}>Phone</Text>
             </View>
-            <Text style={styles.detailValue}>{profile.phone}</Text>
+            <Text style={[styles.detailValue, darkMode && styles.detailValueDark]}>{profile.phone}</Text>
           </View>
 
           {/* Email */}
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, darkMode && styles.detailRowDark]}>
             <View style={styles.detailLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="email-outline" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="email-outline" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
-              <Text style={styles.detailLabel}>Email</Text>
+              <Text style={[styles.detailLabel, darkMode && styles.detailLabelDark]}>Email</Text>
             </View>
-            <Text style={styles.detailValue}>{profile.email}</Text>
+            <Text style={[styles.detailValue, darkMode && styles.detailValueDark]}>{profile.email}</Text>
           </View>
 
           {/* Business */}
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, darkMode && styles.detailRowDark]}>
             <View style={styles.detailLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="storefront-outline" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="storefront-outline" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
-              <Text style={styles.detailLabel}>Business</Text>
+              <Text style={[styles.detailLabel, darkMode && styles.detailLabelDark]}>Business</Text>
             </View>
-            <Text style={styles.detailValue}>{profile.businessType}</Text>
+            <Text style={[styles.detailValue, darkMode && styles.detailValueDark]}>{profile.businessType}</Text>
           </View>
 
           {/* Reg. ID */}
           <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
             <View style={styles.detailLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="shield-check-outline" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="shield-check-outline" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
-              <Text style={styles.detailLabel}>Reg. ID</Text>
+              <Text style={[styles.detailLabel, darkMode && styles.detailLabelDark]}>Reg. ID</Text>
             </View>
-            <Text style={styles.detailValue}>{profile.registrationId || profile.regId || ' '}</Text>
+            <Text style={[styles.detailValue, darkMode && styles.detailValueDark]}>{profile.registrationId || profile.regId || ' '}</Text>
           </View>
         </View>
 
         {/* ========================================================
             6. SETTINGS SECTION
            ======================================================== */}
-        <Text style={styles.sectionHeader}>Settings</Text>
-        <View style={styles.settingsCard}>
+        <Text style={[styles.sectionHeader, darkMode && styles.sectionHeaderDark]}>Settings</Text>
+        <View style={[styles.settingsCard, darkMode && styles.settingsCardDark]}>
           {/* Dark Mode */}
-          <View style={styles.settingRow}>
+          <View style={[styles.settingRow, darkMode && styles.settingRowDark]}>
             <View style={styles.settingLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="weather-sunny" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="weather-sunny" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
               <View>
-                <Text style={styles.settingTitle}>Dark mode</Text>
-                <Text style={styles.settingSubtitle}>{darkMode ? 'On' : 'Off'}</Text>
+                <Text style={[styles.settingTitle, darkMode && styles.settingTitleDark]}>Dark mode</Text>
+                <Text style={[styles.settingSubtitle, darkMode && styles.settingSubtitleDark]}>{darkMode ? 'On' : 'Off'}</Text>
               </View>
             </View>
             <Switch
               value={darkMode}
               onValueChange={setDarkMode}
-              trackColor={{ false: '#E5E7EB', true: '#436647' }}
+              trackColor={{ false: darkMode ? '#2E4032' : '#E5E7EB', true: '#436647' }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
           </View>
 
           {/* Notifications */}
-          <View style={styles.settingRow}>
+          <View style={[styles.settingRow, darkMode && styles.settingRowDark]}>
             <View style={styles.settingLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="bell-outline" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="bell-outline" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
               <View>
-                <Text style={styles.settingTitle}>Notifications</Text>
-                <Text style={styles.settingSubtitle}>Orders, contracts & alerts</Text>
+                <Text style={[styles.settingTitle, darkMode && styles.settingTitleDark]}>Notifications</Text>
+                <Text style={[styles.settingSubtitle, darkMode && styles.settingSubtitleDark]}>Orders, contracts & alerts</Text>
               </View>
             </View>
             <Switch
               value={notifications}
               onValueChange={setNotifications}
-              trackColor={{ false: '#E5E7EB', true: '#436647' }}
+              trackColor={{ false: darkMode ? '#2E4032' : '#E5E7EB', true: '#436647' }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
           </View>
@@ -518,17 +523,17 @@ export default function BuyerProfileScreen() {
           {/* Language */}
           <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.detailIconCircle}>
-                <MaterialCommunityIcons name="chat-processing-outline" size={16} color="#556D5B" />
+              <View style={[styles.detailIconCircle, darkMode && styles.detailIconCircleDark]}>
+                <MaterialCommunityIcons name="chat-processing-outline" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
               </View>
               <View>
-                <Text style={styles.settingTitle}>Language</Text>
-                <Text style={styles.settingSubtitle}>English</Text>
+                <Text style={[styles.settingTitle, darkMode && styles.settingTitleDark]}>Language</Text>
+                <Text style={[styles.settingSubtitle, darkMode && styles.settingSubtitleDark]}>English</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.languagePill} activeOpacity={0.8}>
-              <Text style={styles.languagePillText}>English</Text>
-              <MaterialCommunityIcons name="chevron-down" size={16} color="#556D5B" />
+            <TouchableOpacity style={[styles.languagePill, darkMode && styles.languagePillDark]} activeOpacity={0.8}>
+              <Text style={[styles.languagePillText, darkMode && styles.languagePillTextDark]}>English</Text>
+              <MaterialCommunityIcons name="chevron-down" size={16} color={darkMode ? '#A6C5A8' : '#556D5B'} />
             </TouchableOpacity>
           </View>
         </View>
@@ -539,10 +544,10 @@ export default function BuyerProfileScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleLogout}
-          style={styles.logoutButton}
+          style={[styles.logoutButton, darkMode && styles.logoutButtonDark]}
         >
-          <MaterialCommunityIcons name="chevron-left" size={17} color="#C06637" />
-          <Text style={styles.logoutButtonText}>Log out</Text>
+          <MaterialCommunityIcons name="chevron-left" size={17} color={darkMode ? '#F87171' : '#C06637'} />
+          <Text style={[styles.logoutButtonText, darkMode && styles.logoutButtonTextDark]}>Log out</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -1073,5 +1078,79 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#C06637',
+  },
+
+  /* Dark Mode Overrides */
+  safeAreaDark: {
+    backgroundColor: '#0E1710',
+  },
+  backButtonDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  subtitleTextDark: {
+    color: '#98B39B',
+  },
+  titleTextDark: {
+    color: '#F0F5F1',
+  },
+  highlightWrapperDark: {
+    backgroundColor: '#203924',
+  },
+  titleHighlightTextDark: {
+    color: '#4ADE80',
+  },
+  tabPillInactiveDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  tabTextInactiveDark: {
+    color: '#98B39B',
+  },
+  detailsCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  detailRowDark: {
+    borderColor: '#243928',
+  },
+  detailIconCircleDark: {
+    backgroundColor: '#203924',
+  },
+  detailLabelDark: {
+    color: '#98B39B',
+  },
+  detailValueDark: {
+    color: '#F0F5F1',
+  },
+  sectionHeaderDark: {
+    color: '#98B39B',
+  },
+  settingsCardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  settingRowDark: {
+    borderColor: '#243928',
+  },
+  settingTitleDark: {
+    color: '#F0F5F1',
+  },
+  settingSubtitleDark: {
+    color: '#98B39B',
+  },
+  languagePillDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  languagePillTextDark: {
+    color: '#98B39B',
+  },
+  logoutButtonDark: {
+    borderColor: '#4A2B20',
+    backgroundColor: '#1F1714',
+  },
+  logoutButtonTextDark: {
+    color: '#F87171',
   },
 });

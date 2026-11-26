@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Image,
 } from 'react-native';
 import { BuyerMessageItem } from '../../types/buyer.types';
+import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerMessageCardProps {
   message: BuyerMessageItem;
@@ -17,32 +18,35 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({
   message,
   onPress,
 }) => {
+  const [isDark] = useDarkMode();
   const isRequest = message.tag === 'Request';
 
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={() => onPress(message)}
-      style={styles.card}
+      style={[styles.card, isDark && styles.cardDark]}
     >
       {/* Left: Avatar with Unread Dot Indicator */}
       <View style={styles.avatarWrapper}>
         <Image
           source={{ uri: message.avatarUrl }}
-          style={styles.avatarImage}
+          style={[styles.avatarImage, isDark && styles.avatarImageDark]}
           resizeMode="cover"
         />
-        {message.isUnread && <View style={styles.unreadDot} />}
+        {message.isUnread && <View style={[styles.unreadDot, isDark && styles.unreadDotDark]} />}
       </View>
 
       {/* Right: Message Details */}
       <View style={styles.contentContainer}>
         {/* Row 1: Sender Name & Timestamp */}
         <View style={styles.topRow}>
-          <Text style={styles.senderName} numberOfLines={1}>
+          <Text style={[styles.senderName, isDark && styles.senderNameDark]} numberOfLines={1}>
             {message.senderName}
           </Text>
-          <Text style={styles.timestampText}>{message.timestamp}</Text>
+          <Text style={[styles.timestampText, isDark && styles.timestampTextDark]}>
+            {message.timestamp}
+          </Text>
         </View>
 
         {/* Row 2: Tag & Status Pill Badges */}
@@ -51,7 +55,7 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({
           <View
             style={[
               styles.tagPill,
-              isRequest ? styles.requestTag : styles.noteTag,
+              isRequest ? styles.requestTag : [styles.noteTag, isDark && styles.noteTagDark],
             ]}
           >
             <Text style={styles.tagText}>{message.tag}</Text>
@@ -63,16 +67,20 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({
               <Text style={styles.newStatusText}>✨ New</Text>
             )}
             {message.status === 'Replied' && (
-              <Text style={styles.repliedStatusText}>✓ Replied</Text>
+              <Text style={[styles.repliedStatusText, isDark && styles.repliedStatusTextDark]}>
+                ✓ Replied
+              </Text>
             )}
             {message.status === 'Pending' && (
-              <Text style={styles.pendingStatusText}>⏳ Pending</Text>
+              <Text style={[styles.pendingStatusText, isDark && styles.pendingStatusTextDark]}>
+                ⏳ Pending
+              </Text>
             )}
           </View>
         </View>
 
         {/* Row 3: Message Snippet */}
-        <Text style={styles.snippetText} numberOfLines={2}>
+        <Text style={[styles.snippetText, isDark && styles.snippetTextDark]} numberOfLines={2}>
           {message.snippet}
         </Text>
       </View>
@@ -188,5 +196,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#4B5563',
     lineHeight: 18,
+  },
+
+  /* Dark Mode Overrides */
+  cardDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  avatarImageDark: {
+    backgroundColor: '#203924',
+  },
+  unreadDotDark: {
+    borderColor: '#18271C',
+  },
+  senderNameDark: {
+    color: '#F0F5F1',
+  },
+  timestampTextDark: {
+    color: '#98B39B',
+  },
+  noteTagDark: {
+    backgroundColor: '#2E6930',
+  },
+  repliedStatusTextDark: {
+    color: '#4ADE80',
+  },
+  pendingStatusTextDark: {
+    color: '#93C5FD',
+  },
+  snippetTextDark: {
+    color: '#98B39B',
   },
 });
