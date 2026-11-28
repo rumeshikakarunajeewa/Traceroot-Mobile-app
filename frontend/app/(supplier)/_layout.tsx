@@ -71,6 +71,12 @@ export default function SupplierLayout() {
       <Tabs.Screen name="buyback/index" />
       <Tabs.Screen name="buyback/[id]" />
       <Tabs.Screen name="farmers/index" />
+      <Tabs.Screen
+        name="messages/[userId]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

@@ -33,6 +33,7 @@ export default function BuyerMessageDetailScreen() {
     userId?: string;
     name?: string;
     category?: string;
+    role?: string;
     avatar?: string;
   }>();
 
@@ -40,11 +41,15 @@ export default function BuyerMessageDetailScreen() {
     id: string;
     name: string;
     avatar: string;
+    role?: string;
   } | null>(null);
+  const partnerRole =
+    params.role ||
+    (fetchedPartner && fetchedPartner.id === params.userId ? fetchedPartner.role : '');
   const recipientName =
     params.name ||
     (fetchedPartner && fetchedPartner.id === params.userId ? fetchedPartner.name : '') ||
-    'TraceRoot Farmer';
+    (partnerRole === 'supplier' ? 'TraceRoot Supplier' : 'TraceRoot Farmer');
   const recipientAvatar =
     params.avatar ||
     (fetchedPartner && fetchedPartner.id === params.userId ? fetchedPartner.avatar : '') ||
@@ -62,7 +67,7 @@ export default function BuyerMessageDetailScreen() {
   const showLoading = isLoading && Boolean(userId && otherUserId);
 
   useEffect(() => {
-    if (!otherUserId || (params.name && params.avatar)) return;
+    if (!otherUserId || (params.name && params.avatar && params.role)) return;
     let active = true;
     messagesService.fetchPartnerProfile(otherUserId).then((partner) => {
       if (active && partner) {
@@ -70,13 +75,14 @@ export default function BuyerMessageDetailScreen() {
           id: partner.id,
           name: partner.fullName,
           avatar: partner.avatarUrl || '',
+          role: partner.role,
         });
       }
     });
     return () => {
       active = false;
     };
-  }, [otherUserId, params.name, params.avatar]);
+  }, [otherUserId, params.name, params.avatar, params.role]);
 
   // Load chat history from Supabase and mark incoming messages read
   const loadHistory = useCallback(async () => {
@@ -236,7 +242,9 @@ export default function BuyerMessageDetailScreen() {
                 isRequest ? styles.categoryTagRequest : styles.categoryTagNote,
               ]}
             >
-              <Text style={styles.categoryTagText}>{params.category || 'Request'}</Text>
+              <Text style={styles.categoryTagText}>
+                {partnerRole === 'supplier' ? 'Supplier' : params.category || 'Request'}
+              </Text>
             </View>
             <Text
               style={[

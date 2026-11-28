@@ -163,10 +163,19 @@ export default function SupplierOrdersScreen() {
   };
 
   const handleMessageFarmer = (order: SupplierOrderRequest) => {
-    router.push({
-      pathname: '/messages',
-      params: { farmerName: order.farmerName, requestId: order.id },
-    } as any);
+    if (order.farmerId) {
+      router.push({
+        pathname: '/(supplier)/messages/[userId]',
+        params: {
+          userId: order.farmerId,
+          name: order.farmerName,
+          category: 'Farmer',
+          role: 'farmer',
+        },
+      } as any);
+    } else {
+      router.push('/(supplier)/messages' as any);
+    }
   };
 
   return (
@@ -237,7 +246,7 @@ export default function SupplierOrdersScreen() {
           {/* Right Chat Action Button */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push('/messages')}
+            onPress={() => router.push('/(supplier)/messages' as any)}
             style={[styles.chatButton, isDark && styles.chatButtonDark]}
             accessibilityRole="button"
             accessibilityLabel="Open messages"

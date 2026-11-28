@@ -7,7 +7,6 @@ import {
   Alert,
   Image,
   Linking,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -20,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../../src/lib/supabase';
 import { supplierOrdersService } from '../../../../src/services/supplierOrders.service';
 import { useDarkMode } from '../../../../src/store/uiStore';
-import { SupplierOrderRequest, SupplierOrderStatus } from '../../../../src/types/supplier.types';
+import { SupplierOrderRequest } from '../../../../src/types/supplier.types';
 
 export default function FarmerSupplyOrderDetailScreen() {
   const [isDark] = useDarkMode();
@@ -30,6 +29,80 @@ export default function FarmerSupplyOrderDetailScreen() {
   const [supplierPhone, setSupplierPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const formatDate = (isoString?: string) => {
+    if (!isoString) return 'Recent';
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Recent';
+    }
+  };
+
+  const processOrderData = useCallback((row: any) => {
+    const profile = row.profiles as any;
+    if (profile?.phone) {
+      setSupplierPhone(profile.phone);
+    }
+
+    const { status, stepperStage } = supplierOrdersService.toUiStatus(row.status);
+
+    let parsedItems = [];
+    if (Array.isArray(row.items)) {
+      parsedItems = row.items.map((it: any) => {
+        let img: any = require('../../../../assets/images/supplier_fertilizer.jpg');
+        if (it.imageUrl) {
+          img = typeof it.imageUrl === 'string' ? { uri: it.imageUrl } : it.imageUrl;
+        } else if (it.title?.toLowerCase().includes('seed')) {
+          img = require('../../../../assets/images/supplier_tomato_seeds.jpg');
+        }
+        return {
+          title: it.title || 'Agri Input',
+          quantity: it.quantity || '1 pack',
+          price: Number(it.price) || 0,
+          imageUrl: img,
+          catalogueItemId: it.catalogueItemId,
+        };
+      });
+    }
+
+    const avatar = {
+      uri:
+        profile?.avatar_url ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    };
+
+    const shortId = `REQ-${row.id ? row.id.substring(0, 4).toUpperCase() : '0000'}`;
+
+    setOrder({
+      id: shortId,
+      dbId: row.id,
+      farmerName: 'You',
+      farmerAvatar: null,
+      supplierName: profile?.farm_name || profile?.full_name || 'Verified Supplier',
+      supplierAvatar: avatar,
+      district: profile?.district || profile?.province || 'Sri Lanka',
+      timeAgo: formatDate(row.created_at),
+      status,
+      stepperStage,
+      items: parsedItems,
+      totalAmount: Number(row.total_amount) || 0,
+      deliveryMethod: row.notes?.includes('[')
+        ? row.notes.split(']')[0].replace('[', '')
+        : 'Farm delivery',
+      notes: row.notes ? row.notes.replace(/\[.*?\]\s*/, '') : undefined,
+      farmerId: row.farmer_id,
+      supplierId: row.supplier_id,
+      createdAt: row.created_at,
+    });
+  }, []);
 
   const loadOrderDetail = useCallback(async () => {
     if (!id) return;
@@ -107,81 +180,7 @@ export default function FarmerSupplyOrderDetailScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [id]);
-
-  const processOrderData = (row: any) => {
-    const profile = row.profiles as any;
-    if (profile?.phone) {
-      setSupplierPhone(profile.phone);
-    }
-
-    const { status, stepperStage } = supplierOrdersService.toUiStatus(row.status);
-
-    let parsedItems = [];
-    if (Array.isArray(row.items)) {
-      parsedItems = row.items.map((it: any) => {
-        let img: any = require('../../../../assets/images/supplier_fertilizer.jpg');
-        if (it.imageUrl) {
-          img = typeof it.imageUrl === 'string' ? { uri: it.imageUrl } : it.imageUrl;
-        } else if (it.title?.toLowerCase().includes('seed')) {
-          img = require('../../../../assets/images/supplier_tomato_seeds.jpg');
-        }
-        return {
-          title: it.title || 'Agri Input',
-          quantity: it.quantity || '1 pack',
-          price: Number(it.price) || 0,
-          imageUrl: img,
-          catalogueItemId: it.catalogueItemId,
-        };
-      });
-    }
-
-    const avatar = {
-      uri:
-        profile?.avatar_url ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    };
-
-    const shortId = `REQ-${row.id ? row.id.substring(0, 4).toUpperCase() : '0000'}`;
-
-    setOrder({
-      id: shortId,
-      dbId: row.id,
-      farmerName: 'You',
-      farmerAvatar: null,
-      supplierName: profile?.farm_name || profile?.full_name || 'Verified Supplier',
-      supplierAvatar: avatar,
-      district: profile?.district || profile?.province || 'Sri Lanka',
-      timeAgo: formatDate(row.created_at),
-      status,
-      stepperStage,
-      items: parsedItems,
-      totalAmount: Number(row.total_amount) || 0,
-      deliveryMethod: row.notes?.includes('[')
-        ? row.notes.split(']')[0].replace('[', '')
-        : 'Farm delivery',
-      notes: row.notes ? row.notes.replace(/\[.*?\]\s*/, '') : undefined,
-      farmerId: row.farmer_id,
-      supplierId: row.supplier_id,
-      createdAt: row.created_at,
-    });
-  };
-
-  const formatDate = (isoString?: string) => {
-    if (!isoString) return 'Recent';
-    try {
-      const d = new Date(isoString);
-      return d.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return 'Recent';
-    }
-  };
+  }, [id, processOrderData]);
 
   useEffect(() => {
     loadOrderDetail();
@@ -406,10 +405,32 @@ export default function FarmerSupplyOrderDetailScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.callSupplierBtn} onPress={handleCallSupplier}>
-              <Feather name="phone" size={14} color="#FFFFFF" />
-              <Text style={styles.callSupplierBtnText}>Contact</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {!!order.supplierId && (
+                <TouchableOpacity
+                  style={styles.callSupplierBtn}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(farmer)/messages/[userId]',
+                      params: {
+                        userId: order.supplierId,
+                        name: order.supplierName,
+                        category: 'Request',
+                        role: 'supplier',
+                      },
+                    } as any)
+                  }
+                >
+                  <Feather name="message-circle" size={14} color="#FFFFFF" />
+                  <Text style={styles.callSupplierBtnText}>Message</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity style={styles.callSupplierBtn} onPress={handleCallSupplier}>
+                <Feather name="phone" size={14} color="#FFFFFF" />
+                {!order.supplierId && <Text style={styles.callSupplierBtnText}>Contact</Text>}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 

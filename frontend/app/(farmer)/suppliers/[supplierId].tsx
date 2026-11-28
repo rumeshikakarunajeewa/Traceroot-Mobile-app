@@ -1,7 +1,7 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,7 +9,6 @@ import {
   Image,
   Linking,
   Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -128,13 +127,19 @@ export default function SupplierStorefrontScreen() {
   }, [supplierId, selectedCategory]);
 
   useEffect(() => {
-    loadSupplierData();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        void loadSupplierData();
+      }
+    });
 
     const unsubscribe = catalogueService.subscribeToCatalogue(() => {
-      loadSupplierData();
+      void loadSupplierData();
     });
 
     return () => {
+      active = false;
       unsubscribe();
     };
   }, [loadSupplierData]);
@@ -316,7 +321,28 @@ export default function SupplierStorefrontScreen() {
             >
               <Feather name="phone" size={14} color={isDark ? '#4ADE80' : '#255D35'} />
               <Text style={[styles.contactButtonText, isDark && styles.contactButtonTextDark]}>
-                Call Supplier
+                Call
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.contactButton, isDark && styles.contactButtonDark]}
+              onPress={() =>
+                router.push({
+                  pathname: '/(farmer)/messages/[userId]',
+                  params: {
+                    userId: supplier.id,
+                    name: supplier.farmName || supplier.name,
+                    category: 'Request',
+                    role: 'supplier',
+                    avatar: supplier.avatarUrl || '',
+                  },
+                } as any)
+              }
+            >
+              <Feather name="message-circle" size={14} color={isDark ? '#4ADE80' : '#255D35'} />
+              <Text style={[styles.contactButtonText, isDark && styles.contactButtonTextDark]}>
+                Message
               </Text>
             </TouchableOpacity>
 
@@ -326,7 +352,7 @@ export default function SupplierStorefrontScreen() {
             >
               <Feather name="package" size={14} color={isDark ? '#4ADE80' : '#255D35'} />
               <Text style={[styles.contactButtonText, isDark && styles.contactButtonTextDark]}>
-                Past Orders
+                Orders
               </Text>
             </TouchableOpacity>
           </View>

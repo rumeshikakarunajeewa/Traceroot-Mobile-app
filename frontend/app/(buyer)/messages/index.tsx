@@ -23,7 +23,7 @@ import { useAuth } from '../../../src/store/authStore';
 import { authService } from '../../../src/services/auth.service';
 import { messagesService, MessagingContact } from '../../../src/services/messages.service';
 
-type FilterType = 'All' | 'Requests' | 'Notes' | 'Unread';
+type FilterType = 'All' | 'Farmers' | 'Suppliers' | 'Notes' | 'Unread';
 
 export default function BuyerMessagesScreen() {
   const [isDark] = useDarkMode();
@@ -101,7 +101,14 @@ export default function BuyerMessagesScreen() {
   // Filtered messages list
   const filteredMessages = useMemo(() => {
     return messages.filter((item) => {
-      if (selectedFilter === 'Requests' && item.tag !== 'Request') {
+      if (
+        selectedFilter === 'Farmers' &&
+        item.partnerRole !== 'farmer' &&
+        (item.partnerRole === 'supplier' || item.tag !== 'Request')
+      ) {
+        return false;
+      }
+      if (selectedFilter === 'Suppliers' && item.partnerRole !== 'supplier') {
         return false;
       }
       if (selectedFilter === 'Notes' && item.tag !== 'Note') {
@@ -134,6 +141,7 @@ export default function BuyerMessagesScreen() {
         userId: partnerId,
         name: message.senderName,
         category: message.tag,
+        role: message.partnerRole || '',
         avatar: message.avatarUrl || '',
       },
     } as any);
@@ -149,7 +157,7 @@ export default function BuyerMessagesScreen() {
         setContacts(list);
       }
     } catch (err) {
-      console.warn('[BuyerMessages] Failed to load farmer contacts:', err);
+      console.warn('[BuyerMessages] Failed to load contacts:', err);
     } finally {
       setLoadingContacts(false);
     }
@@ -164,6 +172,7 @@ export default function BuyerMessagesScreen() {
         userId: contact.id,
         name: contact.fullName,
         category: 'Request',
+        role: contact.role,
         avatar: contact.avatarUrl || '',
       },
     } as any);
@@ -254,7 +263,11 @@ export default function BuyerMessagesScreen() {
         )}
 
         {/* Filter Pills Row */}
-        <View style={styles.filterRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
           {/* All */}
           <TouchableOpacity
             activeOpacity={0.8}
@@ -278,13 +291,13 @@ export default function BuyerMessagesScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Requests */}
+          {/* Farmers */}
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setSelectedFilter('Requests')}
+            onPress={() => setSelectedFilter('Farmers')}
             style={[
               styles.filterPill,
-              selectedFilter === 'Requests'
+              selectedFilter === 'Farmers'
                 ? styles.filterPillActive
                 : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
             ]}
@@ -292,12 +305,35 @@ export default function BuyerMessagesScreen() {
             <Text
               style={[
                 styles.filterText,
-                selectedFilter === 'Requests'
+                selectedFilter === 'Farmers'
                   ? styles.filterTextActive
                   : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
               Farmers
+            </Text>
+          </TouchableOpacity>
+
+          {/* Suppliers */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSelectedFilter('Suppliers')}
+            style={[
+              styles.filterPill,
+              selectedFilter === 'Suppliers'
+                ? styles.filterPillActive
+                : [styles.filterPillInactive, isDark && styles.filterPillInactiveDark],
+            ]}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === 'Suppliers'
+                  ? styles.filterTextActive
+                  : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
+              ]}
+            >
+              Suppliers
             </Text>
           </TouchableOpacity>
 
@@ -351,7 +387,7 @@ export default function BuyerMessagesScreen() {
               </View>
             )}
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
 
       {/* ========================================================
@@ -397,7 +433,7 @@ export default function BuyerMessagesScreen() {
             <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
               {selectedFilter !== 'All'
                 ? `No conversations under "${selectedFilter}" category`
-                : 'Start a live feedback chat with a farmer about harvests, quality, or deliveries.'}
+                : 'Start a live feedback chat with a farmer or supplier about harvests, stock, or deliveries.'}
             </Text>
             {selectedFilter !== 'All' ? (
               <TouchableOpacity
@@ -414,7 +450,7 @@ export default function BuyerMessagesScreen() {
                 style={[styles.resetButton, isDark && styles.resetButtonDark]}
                 onPress={handleOpenContactsPicker}
               >
-                <Text style={styles.resetButtonText}>Message a Farmer</Text>
+                <Text style={styles.resetButtonText}>Message Farmer or Supplier</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -422,7 +458,7 @@ export default function BuyerMessagesScreen() {
       </ScrollView>
 
       {/* ========================================================
-          3. CONTACT FARMER MODAL
+          3. CONTACT FARMER OR SUPPLIER MODAL
          ======================================================== */}
       <Modal
         visible={contactsModalVisible}
@@ -434,7 +470,7 @@ export default function BuyerMessagesScreen() {
           <View style={[styles.modalSheet, isDark && styles.modalSheetDark]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>
-                Message a Farmer
+                Message Farmer or Supplier
               </Text>
               <TouchableOpacity
                 onPress={() => setContactsModalVisible(false)}
@@ -454,7 +490,7 @@ export default function BuyerMessagesScreen() {
               <TextInput
                 value={contactSearch}
                 onChangeText={setContactSearch}
-                placeholder="Search farmers..."
+                placeholder="Search farmers or suppliers..."
                 placeholderTextColor={isDark ? '#8EA790' : '#9CA3AF'}
                 style={[styles.searchInput, isDark && styles.searchInputDark]}
               />
@@ -469,7 +505,7 @@ export default function BuyerMessagesScreen() {
                 />
               ) : filteredContacts.length === 0 ? (
                 <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 24 }]}>
-                  No farmers found yet.
+                  No farmers or suppliers found yet.
                 </Text>
               ) : (
                 filteredContacts.map((contact) => (

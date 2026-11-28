@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDarkMode } from '../../store/uiStore';
 import { useLanguage } from '../../i18n/languageStore';
 import { TranslationKey } from '../../i18n/translations';
+import { useAuth } from '../../store/authStore';
+import { messagesService } from '../../services/messages.service';
 
 export interface SupplierBottomTabBarProps {
   state?: any;
@@ -78,10 +80,39 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
 }) => {
   const [isDark] = useDarkMode();
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
 
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid) return;
+
+    let mounted = true;
+    const refreshUnread = () => {
+      messagesService.getUnreadCount(uid).then((cnt) => {
+        if (mounted) setUnreadMessagesCount(cnt);
+      });
+    };
+
+    refreshUnread();
+    const unsubscribe = messagesService.subscribeToMessages(uid, () => {
+      refreshUnread();
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
+
   const currentRouteName = state?.routes?.[state?.index]?.name || 'index';
+
+  // Hide floating tab bar inside full-screen chat view
+  if (currentRouteName === 'messages/[userId]') {
+    return null;
+  }
 
   return (
     <View style={styles.outerWrapper} pointerEvents="box-none">
@@ -198,9 +229,11 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
                   color={color}
                 />
 
-                {tab.badge !== undefined && (
+                {(tab.name === 'messages' ? unreadMessagesCount > 0 : tab.badge !== undefined && tab.badge > 0) && (
                   <View style={styles.badgePill}>
-                    <Text style={styles.badgeNumber}>{tab.badge}</Text>
+                    <Text style={styles.badgeNumber}>
+                      {tab.name === 'messages' ? unreadMessagesCount : tab.badge}
+                    </Text>
                   </View>
                 )}
               </View>

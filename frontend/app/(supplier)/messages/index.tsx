@@ -1,12 +1,12 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,97 +16,163 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  useSupplierMessages,
-} from '../../../src/store/supplierMessagesStore';
+import { BuyerMessageItem } from '../../../src/types/buyer.types';
+import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useAuth } from '../../../src/store/authStore';
 import { useLanguage } from '../../../src/i18n/languageStore';
-import { SupplierMessageThread } from '../../../src/types/supplier.types';
+import { authService } from '../../../src/services/auth.service';
+import { messagesService, MessagingContact } from '../../../src/services/messages.service';
 
-type MessageFilterTab = 'All' | 'Requests' | 'Notes' | 'Unread';
+type MessageFilterTab = 'All' | 'Farmers' | 'Buyers' | 'Unread';
 
 export default function SupplierMessagesScreen() {
   const [isDark] = useDarkMode();
   const { t } = useLanguage();
-  const [threads, markAsRead, sendMessage] = useSupplierMessages();
+  const { user } = useAuth();
+  const userId = user?.id;
 
-  const getTypeLabel = (type: string) => {
-    if (type === 'Request') return t('badgeRequest');
-    if (type === 'Note') return t('badgeNote');
-    return type;
-  };
-
-  const getStatusTagLabel = (tag?: string) => {
-    if (tag === 'New') return t('tagNew');
-    if (tag === 'Replied') return t('tagReplied');
-    if (tag === 'Pending') return t('tagPending');
-    return tag || '';
-  };
-
-  // Active Filter Tab & Search State
   const [activeTab, setActiveTab] = useState<MessageFilterTab>('All');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [threads, setThreads] = useState<BuyerMessageItem[]>([]);
 
-  // Selected thread for conversation modal
-  const [activeThread, setActiveThread] = useState<SupplierMessageThread | null>(
-    null
+  // Contact Picker Modal state (Farmers & Buyers)
+  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [contacts, setContacts] = useState<MessagingContact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const uid = userId || (await authService.getSession())?.user?.id;
+      if (!uid) {
+        setThreads([]);
+        return;
+      }
+      const data = await messagesService.fetchConversations(uid);
+      const mapped: BuyerMessageItem[] = data.map((thread) => ({
+        id: thread.id,
+        senderId: thread.senderId,
+        senderName: thread.senderName,
+        partnerRole: thread.partnerRole,
+        avatarUrl: thread.avatarUrl || '',
+        timestamp: thread.timestamp,
+        tag: thread.category,
+        status: thread.status,
+        snippet: thread.messageSnippet,
+        isUnread: thread.isUnread,
+        unreadCount: thread.unreadCount,
+      }));
+      setThreads(mapped);
+    } catch (err) {
+      console.warn('[SupplierMessages] Failed to load conversations:', err);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+    }, [loadConversations])
   );
-  const [replyText, setReplyText] = useState('');
 
-  // Count unread threads
-  const unreadCount = threads.filter((t) => t.isUnread).length;
+  useEffect(() => {
+    if (!userId) return;
+    const unsubscribe = messagesService.subscribeToMessages(userId, () => {
+      loadConversations();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [userId, loadConversations]);
 
-  // Filtered threads list
+  const unreadCount = useMemo(() => {
+    return threads.filter((item) => item.isUnread).length;
+  }, [threads]);
+
   const filteredThreads = useMemo(() => {
     return threads.filter((thread) => {
-      // Filter by tab
-      if (activeTab === 'Requests' && thread.type !== 'Request') return false;
-      if (activeTab === 'Notes' && thread.type !== 'Note') return false;
+      if (activeTab === 'Farmers' && thread.partnerRole !== 'farmer') return false;
+      if (activeTab === 'Buyers' && thread.partnerRole !== 'buyer') return false;
       if (activeTab === 'Unread' && !thread.isUnread) return false;
 
-      // Filter by search query
       if (searchQuery.trim().length > 0) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = thread.senderName.toLowerCase().includes(q);
-        const matchesSnippet = thread.lastMessage.toLowerCase().includes(q);
-        return matchesName || matchesSnippet;
+        return (
+          thread.senderName.toLowerCase().includes(q) ||
+          thread.snippet.toLowerCase().includes(q)
+        );
       }
 
       return true;
     });
   }, [threads, activeTab, searchQuery]);
 
-  const handleOpenThread = (thread: SupplierMessageThread) => {
-    markAsRead(thread.id);
-    setActiveThread(thread);
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadConversations();
   };
 
-  const handleSendReply = () => {
-    if (!activeThread || !replyText.trim()) return;
-    sendMessage(activeThread.id, replyText.trim());
-    setReplyText('');
-
-    // Update activeThread messages in modal
-    setActiveThread((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        lastMessage: replyText.trim(),
-        timestamp: 'Just now',
-        statusTag: 'Replied',
-        messages: [
-          ...prev.messages,
-          {
-            id: `msg-${Date.now()}`,
-            sender: 'user',
-            text: replyText.trim(),
-            timestamp: 'Just now',
-          },
-        ],
-      };
-    });
+  const handleOpenThread = (thread: BuyerMessageItem) => {
+    if (!thread.senderId) return;
+    router.push({
+      pathname: '/(supplier)/messages/[userId]',
+      params: {
+        userId: thread.senderId,
+        name: thread.senderName,
+        category: thread.partnerRole === 'buyer' ? 'Buyer' : thread.partnerRole === 'farmer' ? 'Farmer' : thread.tag,
+        role: thread.partnerRole || '',
+        avatar: thread.avatarUrl || '',
+      },
+    } as any);
   };
+
+  const handleOpenContactsPicker = async () => {
+    setContactsModalVisible(true);
+    setLoadingContacts(true);
+    try {
+      const uid = userId || (await authService.getSession())?.user?.id;
+      if (uid) {
+        const list = await messagesService.fetchContactsForMessaging(uid, 'supplier');
+        setContacts(list);
+      }
+    } catch (err) {
+      console.warn('[SupplierMessages] Failed to load contacts:', err);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handleSelectContact = (contact: MessagingContact) => {
+    setContactsModalVisible(false);
+    setContactSearch('');
+    router.push({
+      pathname: '/(supplier)/messages/[userId]',
+      params: {
+        userId: contact.id,
+        name: contact.fullName,
+        category: contact.role === 'buyer' ? 'Buyer' : 'Farmer',
+        role: contact.role,
+        avatar: contact.avatarUrl || '',
+      },
+    } as any);
+  };
+
+  const filteredContacts = useMemo(() => {
+    if (!contactSearch.trim()) return contacts;
+    const q = contactSearch.toLowerCase().trim();
+    return contacts.filter(
+      (c) =>
+        c.fullName.toLowerCase().includes(q) ||
+        c.role.toLowerCase().includes(q) ||
+        (c.contextLabel && c.contextLabel.toLowerCase().includes(q))
+    );
+  }, [contacts, contactSearch]);
 
   return (
     <SafeAreaView
@@ -115,11 +181,9 @@ export default function SupplierMessagesScreen() {
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      {/* TOP HEADER CONTAINER (White/Cream Rounded Card matching Figma) */}
+      {/* TOP HEADER CARD */}
       <View style={[styles.topHeaderCard, isDark && styles.topHeaderCardDark]}>
-        {/* Header Bar Row */}
         <View style={styles.headerRow}>
-          {/* Left: Back Arrow + Screen Title */}
           <View style={styles.headerLeft}>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -141,9 +205,7 @@ export default function SupplierMessagesScreen() {
             </Text>
           </View>
 
-          {/* Right Action Buttons */}
           <View style={styles.headerRight}>
-            {/* Search Toggle Button */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setIsSearchVisible((prev) => !prev)}
@@ -151,9 +213,7 @@ export default function SupplierMessagesScreen() {
                 styles.iconCircleButton,
                 isDark && styles.iconCircleButtonDark,
                 isSearchVisible &&
-                  (isDark
-                    ? styles.iconCircleButtonActiveDark
-                    : styles.iconCircleButtonActive),
+                  (isDark ? styles.iconCircleButtonActiveDark : styles.iconCircleButtonActive),
               ]}
               accessibilityRole="button"
               accessibilityLabel="Search messages"
@@ -161,32 +221,19 @@ export default function SupplierMessagesScreen() {
               <MaterialCommunityIcons
                 name="magnify"
                 size={20}
-                color={
-                  isSearchVisible
-                    ? '#FFFFFF'
-                    : isDark
-                    ? '#E5EFE7'
-                    : '#2C402E'
-                }
+                color={isSearchVisible ? '#FFFFFF' : isDark ? '#E5EFE7' : '#2C402E'}
               />
             </TouchableOpacity>
 
-            {/* Grid / Menu Button */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => {
-                // Toggles between All and Unread filter quickly
-                setActiveTab((prev) => (prev === 'All' ? 'Unread' : 'All'));
-              }}
-              style={[
-                styles.iconCircleButton,
-                isDark && styles.iconCircleButtonDark,
-              ]}
+              onPress={handleOpenContactsPicker}
+              style={[styles.iconCircleButton, isDark && styles.iconCircleButtonDark]}
               accessibilityRole="button"
-              accessibilityLabel="Toggle view"
+              accessibilityLabel="New message"
             >
               <MaterialCommunityIcons
-                name="dots-grid"
+                name="square-edit-outline"
                 size={20}
                 color={isDark ? '#E5EFE7' : '#2C402E'}
               />
@@ -194,11 +241,8 @@ export default function SupplierMessagesScreen() {
           </View>
         </View>
 
-        {/* Expandable Search Input Bar */}
         {isSearchVisible && (
-          <View
-            style={[styles.searchBar, isDark && styles.searchBarDark]}
-          >
+          <View style={[styles.searchBar, isDark && styles.searchBarDark]}>
             <MaterialCommunityIcons
               name="magnify"
               size={18}
@@ -228,455 +272,217 @@ export default function SupplierMessagesScreen() {
           </View>
         )}
 
-        {/* Filter Pills / Chips Row */}
-        <View style={styles.filterPillsRow}>
-          {/* Tab: All */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setActiveTab('All')}
-            style={[
-              styles.filterPill,
-              activeTab === 'All'
-                ? isDark
-                  ? styles.filterPillActiveDark
-                  : styles.filterPillActive
-                : isDark
-                ? styles.filterPillInactiveDark
-                : styles.filterPillInactive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                activeTab === 'All'
-                  ? styles.filterPillTextActive
-                  : isDark
-                  ? styles.filterPillTextInactiveDark
-                  : styles.filterPillTextInactive,
-              ]}
-            >
-              {t('filterAll')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tab: Requests */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setActiveTab('Requests')}
-            style={[
-              styles.filterPill,
-              activeTab === 'Requests'
-                ? isDark
-                  ? styles.filterPillActiveDark
-                  : styles.filterPillActive
-                : isDark
-                ? styles.filterPillInactiveDark
-                : styles.filterPillInactive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                activeTab === 'Requests'
-                  ? styles.filterPillTextActive
-                  : isDark
-                  ? styles.filterPillTextInactiveDark
-                  : styles.filterPillTextInactive,
-              ]}
-            >
-              {t('tabRequests')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tab: Notes */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setActiveTab('Notes')}
-            style={[
-              styles.filterPill,
-              activeTab === 'Notes'
-                ? isDark
-                  ? styles.filterPillActiveDark
-                  : styles.filterPillActive
-                : isDark
-                ? styles.filterPillInactiveDark
-                : styles.filterPillInactive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                activeTab === 'Notes'
-                  ? styles.filterPillTextActive
-                  : isDark
-                  ? styles.filterPillTextInactiveDark
-                  : styles.filterPillTextInactive,
-              ]}
-            >
-              {t('tabNotes')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tab: Unread */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setActiveTab('Unread')}
-            style={[
-              styles.filterPill,
-              activeTab === 'Unread'
-                ? isDark
-                  ? styles.filterPillActiveDark
-                  : styles.filterPillActive
-                : isDark
-                ? styles.filterPillInactiveDark
-                : styles.filterPillInactive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                activeTab === 'Unread'
-                  ? styles.filterPillTextActive
-                  : isDark
-                  ? styles.filterPillTextInactiveDark
-                  : styles.filterPillTextInactive,
-              ]}
-            >
-              {t('tabUnread')}
-            </Text>
-            {unreadCount > 0 && (
-              <View
-                style={[
-                  styles.unreadBadgePill,
-                  activeTab === 'Unread' && styles.unreadBadgePillActive,
-                ]}
-              >
-                <Text style={styles.unreadBadgeNumber}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* CONVERSATION CARDS LIST */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredThreads.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons
-              name="chat-outline"
-              size={48}
-              color={isDark ? '#4A624E' : '#A4B5A5'}
-            />
-            <Text
-              style={[
-                styles.emptyTitle,
-                isDark && styles.emptyTitleDark,
-              ]}
-            >
-              {t('noMessagesFound')}
-            </Text>
-            <Text
-              style={[
-                styles.emptySubtitle,
-                isDark && styles.emptySubtitleDark,
-              ]}
-            >
-              {searchQuery
-                ? t('tryModifyingSearch')
-                : t('noMessagesInInbox')}
-            </Text>
-          </View>
-        ) : (
-          filteredThreads.map((thread) => {
-            const isRequest = thread.type === 'Request';
-            const isUnread = thread.isUnread;
-
+        {/* Filter Pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterPillsRow}
+        >
+          {(['All', 'Farmers', 'Buyers', 'Unread'] as MessageFilterTab[]).map((tab) => {
+            const isActive = activeTab === tab;
+            const label =
+              tab === 'All'
+                ? t('filterAll')
+                : tab === 'Unread'
+                ? t('tabUnread')
+                : tab;
             return (
               <TouchableOpacity
-                key={thread.id}
-                activeOpacity={0.88}
-                onPress={() => handleOpenThread(thread)}
+                key={tab}
+                activeOpacity={0.8}
+                onPress={() => setActiveTab(tab)}
                 style={[
-                  styles.threadCard,
-                  isDark && styles.threadCardDark,
+                  styles.filterPill,
+                  isActive
+                    ? isDark
+                      ? styles.filterPillActiveDark
+                      : styles.filterPillActive
+                    : isDark
+                    ? styles.filterPillInactiveDark
+                    : styles.filterPillInactive,
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Open message with ${thread.senderName}`}
               >
-                {/* Left: Avatar with Unread Badge */}
-                <View style={styles.avatarContainer}>
-                  <Image
-                    source={thread.avatarUrl}
-                    style={styles.avatarImage}
-                  />
-                  {isUnread && (
-                    <View
-                      style={[
-                        styles.unreadDot,
-                        isDark && styles.unreadDotDark,
-                      ]}
-                    />
-                  )}
-                </View>
-
-                {/* Right: Message Details */}
-                <View style={styles.threadContent}>
-                  {/* Top Header Row: Sender Name & Timestamp */}
-                  <View style={styles.threadHeaderRow}>
-                    <Text
-                      style={[
-                        styles.senderNameText,
-                        isDark && styles.senderNameTextDark,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {thread.senderName}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.timestampText,
-                        isUnread && styles.timestampTextUnread,
-                        isDark && styles.timestampTextDark,
-                      ]}
-                    >
-                      {thread.timestamp}
-                    </Text>
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    isActive
+                      ? styles.filterPillTextActive
+                      : isDark
+                      ? styles.filterPillTextInactiveDark
+                      : styles.filterPillTextInactive,
+                  ]}
+                >
+                  {label}
+                </Text>
+                {tab === 'Unread' && unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
                   </View>
-
-                  {/* Sub-Row: Type Pill Badge & Status Indicator */}
-                  <View style={styles.tagsSubRow}>
-                    {/* Type Badge: Request (amber) vs Note (green) */}
-                    <View
-                      style={[
-                        styles.typeBadge,
-                        isRequest
-                          ? styles.typeBadgeRequest
-                          : styles.typeBadgeNote,
-                      ]}
-                    >
-                      <Text style={styles.typeBadgeText}>
-                        {getTypeLabel(thread.type)}
-                      </Text>
-                    </View>
-
-                    {/* Status Tag */}
-                    {thread.statusTag === 'New' && (
-                      <View style={styles.statusTagRow}>
-                        <MaterialCommunityIcons
-                          name="creation"
-                          size={13}
-                          color="#E59325"
-                          style={{ marginRight: 3 }}
-                        />
-                        <Text style={styles.statusNewText}>{t('tagNew')}</Text>
-                      </View>
-                    )}
-
-                    {thread.statusTag === 'Replied' && (
-                      <View style={styles.statusTagRow}>
-                        <MaterialCommunityIcons
-                          name="check"
-                          size={14}
-                          color="#348B52"
-                          style={{ marginRight: 2 }}
-                        />
-                        <Text style={styles.statusRepliedText}>{t('tagReplied')}</Text>
-                      </View>
-                    )}
-
-                    {thread.statusTag === 'Pending' && (
-                      <View style={styles.statusTagRow}>
-                        <MaterialCommunityIcons
-                          name="timer-sand"
-                          size={13}
-                          color="#3B82F6"
-                          style={{ marginRight: 3 }}
-                        />
-                        <Text style={styles.statusPendingText}>{t('tagPending')}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Message Snippet */}
-                  <Text
-                    style={[
-                      styles.messageSnippetText,
-                      isDark && styles.messageSnippetTextDark,
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {thread.lastMessage}
-                  </Text>
-                </View>
+                )}
               </TouchableOpacity>
             );
-          })
+          })}
+        </ScrollView>
+      </View>
+
+      {/* THREADS LIST */}
+      <ScrollView
+        style={styles.listScroll}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={isDark ? '#4ADE80' : '#1E4D2B'}
+          />
+        }
+      >
+        {isLoading && threads.length === 0 ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1E4D2B'} />
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 12 }]}>
+              Loading conversations...
+            </Text>
+          </View>
+        ) : filteredThreads.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons
+              name="chat-outline"
+              size={46}
+              color={isDark ? '#4ADE80' : '#A0ADA2'}
+            />
+            <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>
+              {activeTab !== 'All' ? t('noMessagesFound') : 'No messages yet'}
+            </Text>
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+              {searchQuery.trim()
+                ? 'No messages match your search.'
+                : 'Connect with farmers and buyers for real-time supply updates and continuous feedback.'}
+            </Text>
+            {activeTab !== 'All' ? (
+              <TouchableOpacity
+                style={[styles.composeBtn, isDark && styles.composeBtnDark]}
+                onPress={() => {
+                  setActiveTab('All');
+                  setSearchQuery('');
+                }}
+              >
+                <Text style={styles.composeBtnText}>View All Messages</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.composeBtn, isDark && styles.composeBtnDark]}
+                onPress={handleOpenContactsPicker}
+              >
+                <Text style={styles.composeBtnText}>Message Farmer or Buyer</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          filteredThreads.map((thread) => (
+            <BuyerMessageCard
+              key={thread.senderId || thread.id}
+              message={thread}
+              onPress={handleOpenThread}
+            />
+          ))
         )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* QUICK CHAT CONVERSATION MODAL */}
+      {/* CONTACT FARMER OR BUYER MODAL */}
       <Modal
-        visible={!!activeThread}
+        visible={contactsModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setActiveThread(null)}
+        transparent
+        onRequestClose={() => setContactsModalVisible(false)}
       >
-        <SafeAreaView
-          style={[
-            styles.modalSafeArea,
-            isDark && styles.modalSafeAreaDark,
-          ]}
-        >
-          {activeThread && (
-            <KeyboardAvoidingView
-              style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            >
-              {/* Modal Header */}
-              <View
-                style={[
-                  styles.modalHeader,
-                  isDark && styles.modalHeaderDark,
-                ]}
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, isDark && styles.modalSheetDark]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>
+                Message Farmer or Buyer
+              </Text>
+              <TouchableOpacity
+                onPress={() => setContactsModalVisible(false)}
+                style={[styles.iconCircleButton, isDark && styles.iconCircleButtonDark]}
               >
-                <View style={styles.modalHeaderLeft}>
-                  <Image
-                    source={activeThread.avatarUrl}
-                    style={styles.modalAvatar}
-                  />
-                  <View style={{ marginLeft: 10 }}>
-                    <Text
-                      style={[
-                        styles.modalName,
-                        isDark && styles.modalNameDark,
-                      ]}
-                    >
-                      {activeThread.senderName}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.modalStatus,
-                        isDark && styles.modalStatusDark,
-                      ]}
-                    >
-                      {getTypeLabel(activeThread.type)} • {getStatusTagLabel(activeThread.statusTag)}
-                    </Text>
-                  </View>
-                </View>
+                <Ionicons name="close" size={18} color={isDark ? '#F0F5F1' : '#374151'} />
+              </TouchableOpacity>
+            </View>
 
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setActiveThread(null)}
-                  style={styles.modalCloseButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <MaterialCommunityIcons
-                    name="close"
-                    size={22}
-                    color={isDark ? '#F0F5F1' : '#162C1A'}
-                  />
-                </TouchableOpacity>
-              </View>
+            <View style={[styles.searchBar, isDark && styles.searchBarDark]}>
+              <MaterialCommunityIcons
+                name="magnify"
+                size={18}
+                color={isDark ? '#7E9684' : '#8E9F90'}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                value={contactSearch}
+                onChangeText={setContactSearch}
+                placeholder="Search farmers or buyers..."
+                placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
+                style={[styles.searchInput, isDark && styles.searchInputDark]}
+              />
+            </View>
 
-              {/* Chat Messages */}
-              <ScrollView
-                style={styles.chatScroll}
-                contentContainerStyle={styles.chatContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {activeThread.messages.map((msg) => {
-                  const isUser = msg.sender === 'user';
-                  return (
-                    <View
-                      key={msg.id}
-                      style={[
-                        styles.bubbleRow,
-                        isUser ? styles.bubbleRowUser : styles.bubbleRowOther,
-                      ]}
-                    >
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              {loadingContacts ? (
+                <ActivityIndicator
+                  size="large"
+                  color={isDark ? '#4ADE80' : '#1E4D2B'}
+                  style={{ marginTop: 24 }}
+                />
+              ) : filteredContacts.length === 0 ? (
+                <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 24 }]}>
+                  No contacts found yet.
+                </Text>
+              ) : (
+                filteredContacts.map((contact) => (
+                  <TouchableOpacity
+                    key={contact.id}
+                    activeOpacity={0.8}
+                    onPress={() => handleSelectContact(contact)}
+                    style={[styles.contactRow, isDark && styles.contactRowDark]}
+                  >
+                    {contact.avatarUrl ? (
+                      <Image source={{ uri: contact.avatarUrl }} style={styles.contactAvatar} />
+                    ) : (
                       <View
                         style={[
-                          styles.chatBubble,
-                          isUser
-                            ? styles.chatBubbleUser
-                            : isDark
-                            ? styles.chatBubbleOtherDark
-                            : styles.chatBubbleOther,
+                          styles.contactAvatarFallback,
+                          isDark && styles.contactAvatarFallbackDark,
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.chatBubbleText,
-                            isUser
-                              ? styles.chatBubbleTextUser
-                              : isDark
-                              ? styles.chatBubbleTextOtherDark
-                              : styles.chatBubbleTextOther,
-                          ]}
-                        >
-                          {msg.text}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.chatTimestampText,
-                            isUser
-                              ? styles.chatTimestampTextUser
-                              : isDark
-                              ? styles.chatTimestampTextOtherDark
-                              : styles.chatTimestampTextOther,
-                          ]}
-                        >
-                          {msg.timestamp}
+                        <Text style={styles.contactAvatarText}>
+                          {contact.fullName.charAt(0).toUpperCase()}
                         </Text>
                       </View>
+                    )}
+                    <View style={styles.contactInfo}>
+                      <Text style={[styles.contactName, isDark && styles.contactNameDark]}>
+                        {contact.fullName}
+                      </Text>
+                      {!!contact.contextLabel && (
+                        <Text style={[styles.contactContext, isDark && styles.contactContextDark]}>
+                          {contact.contextLabel}
+                        </Text>
+                      )}
                     </View>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Bottom Reply Bar */}
-              <View
-                style={[
-                  styles.replyBarContainer,
-                  isDark && styles.replyBarContainerDark,
-                ]}
-              >
-                <TextInput
-                  value={replyText}
-                  onChangeText={setReplyText}
-                  placeholder={t('typeMessagePlaceholder')}
-                  placeholderTextColor={isDark ? '#6E8572' : '#9E9A8E'}
-                  style={[
-                    styles.replyInput,
-                    isDark && styles.replyInputDark,
-                  ]}
-                  multiline
-                />
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={handleSendReply}
-                  style={[
-                    styles.sendButton,
-                    !replyText.trim() && styles.sendButtonDisabled,
-                  ]}
-                  disabled={!replyText.trim()}
-                  accessibilityLabel={t('send')}
-                >
-                  <MaterialCommunityIcons
-                    name="send"
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                </TouchableOpacity>
-              </View>
-            </KeyboardAvoidingView>
-          )}
-        </SafeAreaView>
+                    <MaterialCommunityIcons
+                      name="chat-plus-outline"
+                      size={20}
+                      color={isDark ? '#4ADE80' : '#1E4D2B'}
+                    />
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -685,53 +491,51 @@ export default function SupplierMessagesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F2EB', // Warm natural linen cream matching Figma
+    backgroundColor: '#F5F2EB',
   },
   safeAreaDark: {
     backgroundColor: '#0E1710',
   },
-
-  /* TOP HEADER CARD */
   topHeaderCard: {
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ECE6DB',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowRadius: 8,
     elevation: 3,
     zIndex: 10,
   },
   topHeaderCardDark: {
-    backgroundColor: '#142417',
-    borderBottomColor: '#233827',
+    backgroundColor: '#18271C',
+    borderBottomWidth: 1,
+    borderColor: '#253B2A',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   backButton: {
-    paddingRight: 6,
-    paddingVertical: 4,
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '700',
     color: '#162C1A',
-    marginLeft: 8,
-    letterSpacing: -0.3,
   },
   headerTitleDark: {
     color: '#F0F5F1',
@@ -742,427 +546,234 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconCircleButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F2EFE9',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconCircleButtonDark: {
-    backgroundColor: '#203625',
+    backgroundColor: '#203924',
   },
   iconCircleButtonActive: {
-    backgroundColor: '#1C3723',
+    backgroundColor: '#224528',
   },
   iconCircleButtonActiveDark: {
-    backgroundColor: '#2F5739',
+    backgroundColor: '#2D6036',
   },
-
-  /* SEARCH BAR */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F2EB',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 40,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#DFD8CC',
+    borderColor: '#E5E0D5',
   },
   searchBarDark: {
-    backgroundColor: '#1A2C1F',
-    borderColor: '#29432F',
+    backgroundColor: '#122015',
+    borderColor: '#253B2A',
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13.5,
     color: '#162C1A',
-    padding: 0,
+    paddingVertical: 4,
   },
   searchInputDark: {
     color: '#F0F5F1',
   },
-
-  /* FILTER PILLS ROW */
   filterPillsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   filterPill: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 22,
     justifyContent: 'center',
+    gap: 6,
   },
   filterPillActive: {
-    backgroundColor: '#1C3723', // Dark forest green matching Figma
-    shadowColor: '#1C3723',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.22,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#1E4D2B',
   },
   filterPillActiveDark: {
-    backgroundColor: '#264B30',
+    backgroundColor: '#2E6930',
   },
   filterPillInactive: {
-    backgroundColor: '#F5F2EA',
+    backgroundColor: '#F3F4F6',
   },
   filterPillInactiveDark: {
-    backgroundColor: '#1D2E21',
+    backgroundColor: '#122015',
+    borderWidth: 1,
+    borderColor: '#253B2A',
   },
   filterPillText: {
-    fontSize: 13.5,
-    fontWeight: '500',
+    fontSize: 13,
   },
   filterPillTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
   filterPillTextInactive: {
-    color: '#6A7B6E',
+    color: '#4B5563',
+    fontWeight: '500',
   },
   filterPillTextInactiveDark: {
-    color: '#A2B9A5',
+    color: '#98B39B',
   },
-  unreadBadgePill: {
-    backgroundColor: '#E6821E', // Vibrant orange unread badge
+  unreadBadge: {
     width: 18,
     height: 18,
     borderRadius: 9,
+    backgroundColor: '#E66826',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 6,
   },
-  unreadBadgePillActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  unreadBadgeNumber: {
+  unreadBadgeText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '800',
   },
-
-  /* CONVERSATION LIST */
-  scrollView: {
+  listScroll: {
     flex: 1,
   },
-  scrollContent: {
+  listContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 120, // Clearance for bottom tab bar
   },
-  emptyContainer: {
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 50,
+    paddingHorizontal: 20,
   },
   emptyTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#162C1A',
+    color: '#1F2937',
     marginTop: 12,
+    marginBottom: 4,
   },
   emptyTitleDark: {
     color: '#F0F5F1',
   },
   emptySubtitle: {
     fontSize: 13,
-    color: '#718573',
-    marginTop: 4,
+    color: '#6B7280',
     textAlign: 'center',
+    marginBottom: 16,
   },
   emptySubtitleDark: {
-    color: '#8EA491',
+    color: '#98B39B',
   },
-
-  /* THREAD CARD */
-  threadCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#ECE6DC',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+  composeBtn: {
+    backgroundColor: '#1E4D2B',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 18,
   },
-  threadCardDark: {
-    backgroundColor: '#16271A',
-    borderColor: '#263D2B',
+  composeBtnDark: {
+    backgroundColor: '#2E6930',
   },
-  avatarContainer: {
-    position: 'relative',
-    width: 52,
-    height: 52,
-  },
-  avatarImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#EAE5D9',
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: -1,
-    right: -1,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#E6821E', // Orange notification dot
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  unreadDotDark: {
-    borderColor: '#16271A',
-  },
-  threadContent: {
-    flex: 1,
-    marginLeft: 14,
-    justifyContent: 'center',
-  },
-  threadHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 3,
-  },
-  senderNameText: {
-    fontSize: 16.5,
-    fontWeight: '700',
-    color: '#162C1A',
-    flex: 1,
-    marginRight: 8,
-  },
-  senderNameTextDark: {
-    color: '#F0F5F1',
-  },
-  timestampText: {
-    fontSize: 12,
-    color: '#718573',
-    fontWeight: '500',
-  },
-  timestampTextUnread: {
-    color: '#3C6E4A',
-    fontWeight: '600',
-  },
-  timestampTextDark: {
-    color: '#8EA491',
-  },
-
-  /* TAGS SUB ROW */
-  tagsSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-    marginBottom: 6,
-  },
-  typeBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    marginRight: 8,
-  },
-  typeBadgeRequest: {
-    backgroundColor: '#E59325', // Warm amber from Figma
-  },
-  typeBadgeNote: {
-    backgroundColor: '#224D30', // Deep forest green from Figma
-  },
-  typeBadgeText: {
+  composeBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12.5,
     fontWeight: '700',
   },
-  statusTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusNewText: {
-    color: '#D9822B',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusRepliedText: {
-    color: '#348B52',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusPendingText: {
-    color: '#3B82F6',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  /* MESSAGE SNIPPET */
-  messageSnippetText: {
-    fontSize: 13.5,
-    color: '#6A7D6C',
-    lineHeight: 18.5,
-  },
-  messageSnippetTextDark: {
-    color: '#9EAF9F',
-  },
-
-  /* CHAT MODAL */
-  modalSafeArea: {
+  modalBackdrop: {
     flex: 1,
-    backgroundColor: '#F5F2EB',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
   },
-  modalSafeAreaDark: {
-    backgroundColor: '#0E1710',
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 20,
+    maxHeight: '78%',
+  },
+  modalSheetDark: {
+    backgroundColor: '#142217',
+    borderTopWidth: 1,
+    borderColor: '#263B2B',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ECE6DC',
+    marginBottom: 14,
   },
-  modalHeaderDark: {
-    backgroundColor: '#16271A',
-    borderBottomColor: '#263D2B',
-  },
-  modalHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modalAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EAE5D9',
-  },
-  modalName: {
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#162C1A',
+    color: '#16301A',
   },
-  modalNameDark: {
+  modalTitleDark: {
     color: '#F0F5F1',
   },
-  modalStatus: {
-    fontSize: 11.5,
-    color: '#718573',
+  modalList: {
+    maxHeight: 380,
   },
-  modalStatusDark: {
-    color: '#8EA491',
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  chatScroll: {
-    flex: 1,
-  },
-  chatContent: {
-    padding: 16,
-    gap: 12,
-  },
-  bubbleRow: {
-    flexDirection: 'row',
-    width: '100%',
-  },
-  bubbleRowUser: {
-    justifyContent: 'flex-end',
-  },
-  bubbleRowOther: {
-    justifyContent: 'flex-start',
-  },
-  chatBubble: {
-    maxWidth: '82%',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
-  },
-  chatBubbleUser: {
-    backgroundColor: '#1C3723',
-    borderBottomRightRadius: 4,
-  },
-  chatBubbleOther: {
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: '#ECE6DC',
-  },
-  chatBubbleOtherDark: {
-    backgroundColor: '#16271A',
-    borderColor: '#263D2B',
-  },
-  chatBubbleText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  chatBubbleTextUser: {
-    color: '#FFFFFF',
-  },
-  chatBubbleTextOther: {
-    color: '#162C1A',
-  },
-  chatBubbleTextOtherDark: {
-    color: '#F0F5F1',
-  },
-  chatTimestampText: {
-    fontSize: 10,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  chatTimestampTextUser: {
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  chatTimestampTextOther: {
-    color: '#8E9F90',
-  },
-  chatTimestampTextOtherDark: {
-    color: '#718573',
-  },
-  replyBarContainer: {
+  contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#ECE6DC',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#F7F5EE',
+    marginBottom: 8,
   },
-  replyBarContainerDark: {
-    backgroundColor: '#16271A',
-    borderTopColor: '#263D2B',
+  contactRowDark: {
+    backgroundColor: '#18271C',
+    borderWidth: 1,
+    borderColor: '#263B2B',
   },
-  replyInput: {
-    flex: 1,
-    backgroundColor: '#F5F2EB',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    fontSize: 14,
-    color: '#162C1A',
-    maxHeight: 100,
+  contactAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
   },
-  replyInputDark: {
-    backgroundColor: '#101F14',
-    color: '#F0F5F1',
-  },
-  sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1C3723',
+  contactAvatarFallback: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#2E6930',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 10,
   },
-  sendButtonDisabled: {
-    backgroundColor: '#A8BAAC',
+  contactAvatarFallbackDark: {
+    backgroundColor: '#203924',
+  },
+  contactAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  contactName: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#16301A',
+  },
+  contactNameDark: {
+    color: '#F0F5F1',
+  },
+  contactContext: {
+    fontSize: 12,
+    color: '#6B7E6C',
+    marginTop: 2,
+  },
+  contactContextDark: {
+    color: '#98B39B',
   },
 });

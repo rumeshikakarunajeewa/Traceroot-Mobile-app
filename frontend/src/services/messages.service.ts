@@ -205,66 +205,117 @@ class MessagesService {
     }
   }
 
+  private getRoleDisplayLabel(role: string): string {
+    if (role === 'farmer') return 'Farmer · Verified Producer';
+    if (role === 'supplier') return 'Supplier · Inputs & Tools';
+    if (role === 'buyer') return 'Buyer · Wholesale';
+    return 'TraceRoot User';
+  }
+
   /**
-   * Fetch contacts relevant for starting a new conversation
-   * (e.g., for buyers: farmers from orders + verified farmers; for farmers: buyers from orders + verified buyers).
+   * Fetch contacts relevant for starting a new conversation across Farmer, Buyer, and Supplier roles.
    */
   async fetchContactsForMessaging(
     userId: string,
-    myRole: 'buyer' | 'farmer'
+    myRole: 'buyer' | 'farmer' | 'supplier'
   ): Promise<MessagingContact[]> {
     try {
       if (!userId) return [];
-      const targetRole = myRole === 'buyer' ? 'farmer' : 'buyer';
       const contactsMap = new Map<string, MessagingContact>();
 
-      // 1. Prioritize contacts the user has existing orders with
-      const orderColumn = myRole === 'buyer' ? 'buyer_id' : 'farmer_id';
-      const partnerColumn = myRole === 'buyer' ? 'farmer_id' : 'buyer_id';
+      // 1. Prioritize active order partners (produce orders + agricultural supply orders)
+      if (myRole === 'buyer' || myRole === 'farmer') {
+        const orderColumn = myRole === 'buyer' ? 'buyer_id' : 'farmer_id';
+        const partnerColumn = myRole === 'buyer' ? 'farmer_id' : 'buyer_id';
+        const fallbackPartnerRole = myRole === 'buyer' ? 'farmer' : 'buyer';
 
-      const { data: orderRows } = await supabase
-        .from('orders')
-        .select(`
-          ${partnerColumn},
-          linked_crop_batch,
-          partner:profiles!orders_${partnerColumn}_fkey(id, full_name, avatar_url, role)
-        `)
-        .eq(orderColumn, userId)
-        .order('created_at', { ascending: false })
-        .limit(30);
+        const { data: orderRows } = await supabase
+          .from('orders')
+          .select(`
+            ${partnerColumn},
+            linked_crop_batch,
+            partner:profiles!orders_${partnerColumn}_fkey(id, full_name, avatar_url, role)
+          `)
+          .eq(orderColumn, userId)
+          .order('created_at', { ascending: false })
+          .limit(30);
 
-      if (Array.isArray(orderRows)) {
-        for (const row of orderRows as any[]) {
-          const p = row.partner;
-          if (p?.id && p.id !== userId && !contactsMap.has(p.id)) {
-            contactsMap.set(p.id, {
-              id: p.id,
-              fullName: p.full_name || (targetRole === 'farmer' ? 'TraceRoot Farmer' : 'TraceRoot Buyer'),
-              avatarUrl: p.avatar_url || undefined,
-              role: p.role || targetRole,
-              contextLabel: row.linked_crop_batch ? `Order: ${row.linked_crop_batch}` : 'Active Order Partner',
-            });
+        if (Array.isArray(orderRows)) {
+          for (const row of orderRows as any[]) {
+            const p = row.partner;
+            if (p?.id && p.id !== userId && !contactsMap.has(p.id)) {
+              const pRole = p.role || fallbackPartnerRole;
+              contactsMap.set(p.id, {
+                id: p.id,
+                fullName: p.full_name || 'TraceRoot Partner',
+                avatarUrl: p.avatar_url || undefined,
+                role: pRole,
+                contextLabel: row.linked_crop_batch
+                  ? `${pRole === 'farmer' ? 'Farmer' : 'Buyer'} · Order: ${row.linked_crop_batch}`
+                  : `${pRole === 'farmer' ? 'Farmer' : 'Buyer'} · Active Order Partner`,
+              });
+            }
           }
         }
       }
 
-      // 2. Also include other active target-role profiles so new feedback threads can start anytime
+      if (myRole === 'supplier' || myRole === 'farmer') {
+        const supplyFilterCol = myRole === 'supplier' ? 'supplier_id' : 'farmer_id';
+        const supplyPartnerCol = myRole === 'supplier' ? 'farmer_id' : 'supplier_id';
+        const fallbackSupplyRole = myRole === 'supplier' ? 'farmer' : 'supplier';
+
+        const { data: supplyRows } = await supabase
+          .from('supplier_orders')
+          .select(`
+            ${supplyPartnerCol},
+            partner:profiles!supplier_orders_${supplyPartnerCol}_fkey(id, full_name, avatar_url, role)
+          `)
+          .eq(supplyFilterCol, userId)
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (Array.isArray(supplyRows)) {
+          for (const row of supplyRows as any[]) {
+            const p = row.partner;
+            if (p?.id && p.id !== userId && !contactsMap.has(p.id)) {
+              const pRole = p.role || fallbackSupplyRole;
+              contactsMap.set(p.id, {
+                id: p.id,
+                fullName: p.full_name || 'TraceRoot Partner',
+                avatarUrl: p.avatar_url || undefined,
+                role: pRole,
+                contextLabel: `${pRole === 'farmer' ? 'Farmer' : 'Supplier'} · Supply Order Partner`,
+              });
+            }
+          }
+        }
+      }
+
+      // 2. Also include active profiles for the counterpart roles so new feedback threads can start anytime
+      const targetRoles =
+        myRole === 'supplier'
+          ? ['farmer', 'buyer']
+          : myRole === 'farmer'
+          ? ['buyer', 'supplier']
+          : ['farmer', 'supplier'];
+
       const { data: profileRows } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, role')
-        .eq('role', targetRole)
+        .in('role', targetRoles)
         .neq('id', userId)
-        .limit(30);
+        .limit(40);
 
       if (Array.isArray(profileRows)) {
         for (const p of profileRows) {
           if (p.id && !contactsMap.has(p.id)) {
+            const pRole = p.role || targetRoles[0];
             contactsMap.set(p.id, {
               id: p.id,
-              fullName: p.full_name || (targetRole === 'farmer' ? 'TraceRoot Farmer' : 'TraceRoot Buyer'),
+              fullName: p.full_name || 'TraceRoot User',
               avatarUrl: p.avatar_url || undefined,
-              role: p.role || targetRole,
-              contextLabel: targetRole === 'farmer' ? 'Verified Producer' : 'Registered Buyer',
+              role: pRole,
+              contextLabel: this.getRoleDisplayLabel(pRole),
             });
           }
         }
