@@ -513,7 +513,20 @@ export default function OrderDetailScreen() {
         <View style={styles.bottomButtons}>
           <TouchableOpacity
             activeOpacity={0.88}
-            onPress={() => router.push('/(buyer)/messages' as any)}
+            onPress={() => {
+              if (order.farmerId) {
+                router.push({
+                  pathname: '/(buyer)/messages/[userId]',
+                  params: {
+                    userId: order.farmerId,
+                    name: order.farmerName,
+                    category: 'Request',
+                  },
+                } as any);
+              } else {
+                router.push('/(buyer)/messages' as any);
+              }
+            }}
             style={[styles.chatFarmerBtn, isDark && styles.chatFarmerBtnDark]}
           >
             <MaterialCommunityIcons

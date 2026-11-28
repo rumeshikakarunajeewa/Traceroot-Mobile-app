@@ -256,7 +256,20 @@ export default function OrderDetailsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.contactBtn, isDark && styles.contactBtnDark]}
-              onPress={() => router.push('/messages')}
+              onPress={() => {
+                if (order.buyer_id) {
+                  router.push({
+                    pathname: '/(farmer)/messages/[userId]',
+                    params: {
+                      userId: order.buyer_id,
+                      name: order.buyer_name,
+                      category: 'Request',
+                    },
+                  } as any);
+                } else {
+                  router.push('/(farmer)/messages' as any);
+                }
+              }}
               activeOpacity={0.8}
             >
               <Ionicons name="chatbubble-outline" size={18} color={isDark ? '#4ADE80' : '#26542D'} />
@@ -285,7 +298,7 @@ export default function OrderDetailsScreen() {
         <View style={[styles.card, isDark && styles.cardDark]}>
           <Text style={[styles.cardSectionTitle, isDark && styles.cardSectionTitleDark]}>Order Invoice & Purchase Bill</Text>
           <Text style={[styles.traceDesc, isDark && styles.traceDescDark]}>
-            Invoice #{order.invoice_number || `INV-${order.id}`} has been automatically generated according to this order's agreed quantity and price.
+            Invoice #{order.invoice_number || `INV-${order.id}`} has been automatically generated according to this order&apos;s agreed quantity and price.
           </Text>
           <TouchableOpacity
             style={styles.viewInvoiceBtn}

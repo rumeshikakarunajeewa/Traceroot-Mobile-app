@@ -36,11 +36,20 @@ export default function BuyerMessageDetailScreen() {
     avatar?: string;
   }>();
 
-  const recipientName = params.name || 'TraceRoot Contact';
+  const [fetchedPartner, setFetchedPartner] = useState<{
+    id: string;
+    name: string;
+    avatar: string;
+  } | null>(null);
+  const recipientName =
+    params.name ||
+    (fetchedPartner && fetchedPartner.id === params.userId ? fetchedPartner.name : '') ||
+    'TraceRoot Farmer';
   const recipientAvatar =
     params.avatar ||
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
-  const isRequest = params.category === 'Request';
+    (fetchedPartner && fetchedPartner.id === params.userId ? fetchedPartner.avatar : '') ||
+    '';
+  const isRequest = (params.category || 'Request') === 'Request';
 
   const [inputMessage, setInputMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -50,8 +59,26 @@ export default function BuyerMessageDetailScreen() {
 
   const userId = user?.id;
   const otherUserId = params.userId;
+  const showLoading = isLoading && Boolean(userId && otherUserId);
 
-  // Load chat history from Supabase
+  useEffect(() => {
+    if (!otherUserId || (params.name && params.avatar)) return;
+    let active = true;
+    messagesService.fetchPartnerProfile(otherUserId).then((partner) => {
+      if (active && partner) {
+        setFetchedPartner({
+          id: partner.id,
+          name: partner.fullName,
+          avatar: partner.avatarUrl || '',
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [otherUserId, params.name, params.avatar]);
+
+  // Load chat history from Supabase and mark incoming messages read
   const loadHistory = useCallback(async () => {
     if (!userId || !otherUserId) {
       setIsLoading(false);
@@ -73,6 +100,7 @@ export default function BuyerMessageDetailScreen() {
         };
       });
       setMessages(mapped);
+      await messagesService.markConversationAsRead(userId, otherUserId);
     } catch (err) {
       console.warn('[BuyerMessageDetail] Error loading chat:', err);
     } finally {
@@ -82,9 +110,12 @@ export default function BuyerMessageDetailScreen() {
 
   useEffect(() => {
     let isMounted = true;
-    if (!userId || !otherUserId) return;
+    if (!userId || !otherUserId) {
+      return;
+    }
 
-    messagesService.fetchMessagesBetween(userId, otherUserId)
+    messagesService
+      .fetchMessagesBetween(userId, otherUserId)
       .then((items) => {
         if (!isMounted) return;
         const mapped: ChatMessage[] = items.map((m) => {
@@ -102,6 +133,7 @@ export default function BuyerMessageDetailScreen() {
         });
         setMessages(mapped);
         setIsLoading(false);
+        messagesService.markConversationAsRead(userId, otherUserId);
       })
       .catch((err) => {
         console.warn('[BuyerMessageDetail] Error loading chat:', err);
@@ -180,7 +212,15 @@ export default function BuyerMessageDetailScreen() {
           />
         </TouchableOpacity>
 
-        <Image source={{ uri: recipientAvatar }} style={styles.avatar} resizeMode="cover" />
+        {recipientAvatar ? (
+          <Image source={{ uri: recipientAvatar }} style={styles.avatar} resizeMode="cover" />
+        ) : (
+          <View style={[styles.avatarFallback, isDark && styles.avatarFallbackDark]}>
+            <Text style={styles.avatarFallbackText}>
+              {recipientName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.headerTextGroup}>
           <Text
@@ -232,11 +272,11 @@ export default function BuyerMessageDetailScreen() {
           style={[styles.messagesList, isDark && styles.messagesListDark]}
           contentContainerStyle={[
             styles.messagesContent,
-            (isLoading || messages.length === 0) && { flex: 1, justifyContent: 'center', alignItems: 'center' },
+            (showLoading || messages.length === 0) && { flex: 1, justifyContent: 'center', alignItems: 'center' },
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {isLoading ? (
+          {showLoading ? (
             <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1D3724'} />
           ) : messages.length === 0 ? (
             <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
@@ -314,6 +354,25 @@ export default function BuyerMessageDetailScreen() {
           )}
         </ScrollView>
 
+        {/* Quick Feedback Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.quickChipsBar, isDark && styles.quickChipsBarDark]}
+          contentContainerStyle={styles.quickChipsContent}
+        >
+          {['Any harvest update?', 'Confirming delivery', 'Great produce quality!'].map((chip) => (
+            <TouchableOpacity
+              key={chip}
+              activeOpacity={0.8}
+              onPress={() => setInputMessage(chip)}
+              style={[styles.quickChip, isDark && styles.quickChipDark]}
+            >
+              <Text style={[styles.quickChipText, isDark && styles.quickChipTextDark]}>{chip}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         {/* Input Bar */}
         <View style={[styles.inputContainer, isDark && styles.inputContainerDark]}>
           <TextInput
@@ -379,6 +438,23 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     backgroundColor: '#E5EAE3',
     marginRight: 12,
+  },
+  avatarFallback: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#2E6930',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarFallbackDark: {
+    backgroundColor: '#203924',
+  },
+  avatarFallbackText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   headerTextGroup: {
     flex: 1,
@@ -569,5 +645,40 @@ const styles = StyleSheet.create({
   },
   sendButtonActiveDark: {
     backgroundColor: '#2EB854',
+  },
+  quickChipsBar: {
+    flexGrow: 0,
+    backgroundColor: '#F7F5EE',
+    borderTopWidth: 1,
+    borderTopColor: '#ECE9E2',
+  },
+  quickChipsBarDark: {
+    backgroundColor: '#0E1710',
+    borderTopColor: '#1E3323',
+  },
+  quickChipsContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  quickChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#EAF3E9',
+    borderWidth: 1,
+    borderColor: '#D4E6D3',
+  },
+  quickChipDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#263B2B',
+  },
+  quickChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E4D2B',
+  },
+  quickChipTextDark: {
+    color: '#98B39B',
   },
 });

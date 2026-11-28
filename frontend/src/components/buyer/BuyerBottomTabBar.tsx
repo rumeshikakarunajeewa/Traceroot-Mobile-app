@@ -1,10 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDarkMode } from '../../store/uiStore';
+import { useAuth } from '../../store/authStore';
+import { messagesService } from '../../services/messages.service';
 
 export interface BuyerBottomTabBarProps {
   state?: any;
@@ -55,7 +57,6 @@ const BUYER_TABS: TabConfig[] = [
     name: 'messages',
     routePath: '/(buyer)/messages',
     label: 'Messages',
-    badge: 1,
     iconName: 'chat-outline',
     focusedIconName: 'chat',
     size: 22,
@@ -77,8 +78,34 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
   navigateToTab,
 }) => {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 16) : 20;
+
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid) {
+      return;
+    }
+
+    let mounted = true;
+    const refreshUnread = () => {
+      messagesService.getUnreadCount(uid).then((cnt) => {
+        if (mounted) setUnreadCount(cnt);
+      });
+    };
+
+    refreshUnread();
+    const unsubscribe = messagesService.subscribeToMessages(uid, () => {
+      refreshUnread();
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
 
   const currentRouteName = state?.routes?.[state?.index]?.name || '';
 
@@ -199,9 +226,11 @@ export const BuyerBottomTabBar: React.FC<BuyerBottomTabBarProps> = ({
                   color={color}
                 />
 
-                {tab.badge !== undefined && (
+                {(tab.name === 'messages' ? unreadCount > 0 : tab.badge !== undefined && tab.badge > 0) && (
                   <View style={styles.badgePill}>
-                    <Text style={styles.badgeNumber}>{tab.badge}</Text>
+                    <Text style={styles.badgeNumber}>
+                      {tab.name === 'messages' ? unreadCount : tab.badge}
+                    </Text>
                   </View>
                 )}
               </View>

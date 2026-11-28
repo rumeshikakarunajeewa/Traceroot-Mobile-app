@@ -48,9 +48,15 @@ export default function FarmerLayout() {
         }}
       />
       <Tabs.Screen
-        name="messages"
+        name="messages/index"
         options={{
           title: 'Messages',
+        }}
+      />
+      <Tabs.Screen
+        name="messages/[userId]"
+        options={{
+          href: null,
         }}
       />
       {/* Subroutes rendered without bottom bar */}

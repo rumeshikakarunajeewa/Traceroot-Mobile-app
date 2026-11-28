@@ -29,11 +29,19 @@ export const BuyerMessageCard: React.FC<BuyerMessageCardProps> = ({
     >
       {/* Left: Avatar with Unread Dot Indicator */}
       <View style={styles.avatarWrapper}>
-        <Image
-          source={{ uri: message.avatarUrl }}
-          style={[styles.avatarImage, isDark && styles.avatarImageDark]}
-          resizeMode="cover"
-        />
+        {message.avatarUrl && message.avatarUrl.trim() !== '' ? (
+          <Image
+            source={{ uri: message.avatarUrl }}
+            style={[styles.avatarImage, isDark && styles.avatarImageDark]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.avatarFallback, isDark && styles.avatarFallbackDark]}>
+            <Text style={styles.avatarFallbackText}>
+              {(message.senderName || 'U').charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
         {message.isUnread && <View style={[styles.unreadDot, isDark && styles.unreadDotDark]} />}
       </View>
 
@@ -115,6 +123,24 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     backgroundColor: '#E5E7EB',
+  },
+  avatarFallback: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#2E6930',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarFallbackDark: {
+    backgroundColor: '#203924',
+    borderWidth: 1,
+    borderColor: '#35543A',
+  },
+  avatarFallbackText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
   unreadDot: {
     position: 'absolute',

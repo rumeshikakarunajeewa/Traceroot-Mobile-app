@@ -1,15 +1,23 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform, Image, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
 import { BuyerProfile } from '../../types/buyer.types';
 import { useDarkMode } from '../../store/uiStore';
 
 interface BuyerHeaderProps {
   profile: BuyerProfile;
+  unreadNotificationsCount?: number;
   onPressProfile?: () => void;
+  onNotificationPress?: () => void;
 }
 
-export const BuyerHeader: React.FC<BuyerHeaderProps> = ({ profile, onPressProfile }) => {
+export const BuyerHeader: React.FC<BuyerHeaderProps> = ({
+  profile,
+  unreadNotificationsCount = 0,
+  onPressProfile,
+  onNotificationPress,
+}) => {
   const [isDark] = useDarkMode();
 
   return (
@@ -42,6 +50,24 @@ export const BuyerHeader: React.FC<BuyerHeaderProps> = ({ profile, onPressProfil
             {profile.fullName}
           </Text>
         </View>
+      </TouchableOpacity>
+
+      {/* Right: Circular Notification Bell with Alert Dot */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onNotificationPress}
+        style={[styles.bellContainer, isDark && styles.bellContainerDark]}
+        accessibilityRole="button"
+        accessibilityLabel="Notifications"
+      >
+        <MaterialCommunityIcons
+          name="bell-outline"
+          size={21}
+          color={isDark ? '#E2ECE4' : '#2A3C2E'}
+        />
+        {Boolean(unreadNotificationsCount) && (
+          <View style={[styles.notificationDot, isDark && styles.notificationDotDark]} />
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -117,5 +143,39 @@ const styles = StyleSheet.create({
   },
   userNameDark: {
     color: '#F0F5F1',
+  },
+  bellContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ECE7DC',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  bellContainerDark: {
+    backgroundColor: '#18271C',
+    borderColor: '#253B2A',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 10,
+    right: 11,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E66826',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  notificationDotDark: {
+    borderColor: '#18271C',
   },
 });

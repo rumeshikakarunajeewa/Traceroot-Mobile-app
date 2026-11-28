@@ -134,6 +134,7 @@ export interface BuyerMessageThread {
   id: string;
   senderId: string;
   senderName: string;
+  partnerRole?: string;
   avatarUrl: string;
   category: MessageCategory;
   status: MessageStatus;
@@ -141,6 +142,7 @@ export interface BuyerMessageThread {
   messageSnippet: string;
   isOnline?: boolean;
   isUnread?: boolean;
+  unreadCount?: number;
 }
 
 export interface BuyerOrderItem {
@@ -168,13 +170,16 @@ export type MessageStatusType = 'New' | 'Replied' | 'Pending';
 
 export interface BuyerMessageItem {
   id: string;
+  senderId?: string;
   senderName: string;
+  partnerRole?: string;
   avatarUrl: string;
   timestamp: string;
   tag: MessageTagType;
   status: MessageStatusType;
   snippet: string;
   isUnread?: boolean;
+  unreadCount?: number;
 }
 
 

@@ -208,7 +208,18 @@ export default function BuyerProfileViewScreen() {
   };
 
   const handleMessage = () => {
-    router.push('/(farmer)/messages' as any);
+    if (buyer.id && buyer.id !== 'buyer-saman') {
+      router.push({
+        pathname: '/(farmer)/messages/[userId]',
+        params: {
+          userId: buyer.id,
+          name: buyer.fullName,
+          category: 'Request',
+        },
+      } as any);
+    } else {
+      router.push('/(farmer)/messages' as any);
+    }
   };
 
   const handleBack = () => {

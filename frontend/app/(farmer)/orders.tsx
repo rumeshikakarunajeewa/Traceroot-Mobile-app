@@ -60,13 +60,27 @@ export default function FarmerOrdersScreen() {
   }, [farmerId]);
 
   useEffect(() => {
-    loadOrders();
+    let active = true;
+    fetchOrders(farmerId || 'farmer-1')
+      .then((data) => {
+        if (active) {
+          setIsError(false);
+          setOrders(data);
+        }
+      })
+      .catch(() => {
+        if (active) setIsError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
 
     const unsubscribe = ordersService.subscribeToOrders({ farmerId }, () => {
       loadOrders();
     });
 
     return () => {
+      active = false;
       unsubscribe();
     };
   }, [farmerId, loadOrders]);
@@ -248,7 +262,7 @@ export default function FarmerOrdersScreen() {
 
           <TouchableOpacity
             style={[styles.messagesIconButton, isDark && styles.messagesIconButtonDark]}
-            onPress={() => router.push('/messages')}
+            onPress={() => router.push('/(farmer)/messages' as any)}
             activeOpacity={0.8}
           >
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? '#4ADE80' : '#2A4832'} />

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,25 +8,90 @@ import {
   StyleSheet,
   StatusBar,
   RefreshControl,
-  Alert,
+  ActivityIndicator,
+  Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { BuyerMessageItem } from '../../../src/types/buyer.types';
 import { BuyerMessageCard } from '../../../src/components/buyer/BuyerMessageCard';
 import { useDarkMode } from '../../../src/store/uiStore';
+import { useAuth } from '../../../src/store/authStore';
+import { authService } from '../../../src/services/auth.service';
+import { messagesService, MessagingContact } from '../../../src/services/messages.service';
 
 type FilterType = 'All' | 'Requests' | 'Notes' | 'Unread';
 
 export default function BuyerMessagesScreen() {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('All');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [messages] = useState<BuyerMessageItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [messages, setMessages] = useState<BuyerMessageItem[]>([]);
+
+  // New conversation / Contact Farmer modal state
+  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [contacts, setContacts] = useState<MessagingContact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+
+  const userId = user?.id;
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const uid = userId || (await authService.getSession())?.user?.id;
+      if (!uid) {
+        setMessages([]);
+        return;
+      }
+      const threads = await messagesService.fetchConversations(uid);
+      const mapped: BuyerMessageItem[] = threads.map((t) => ({
+        id: t.id,
+        senderId: t.senderId,
+        senderName: t.senderName,
+        partnerRole: t.partnerRole,
+        avatarUrl: t.avatarUrl || '',
+        timestamp: t.timestamp,
+        tag: t.category,
+        status: t.status,
+        snippet: t.messageSnippet,
+        isUnread: t.isUnread,
+        unreadCount: t.unreadCount,
+      }));
+      setMessages(mapped);
+    } catch (err) {
+      console.warn('[BuyerMessages] Failed to load conversations:', err);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [userId]);
+
+  // Refresh whenever screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+    }, [loadConversations])
+  );
+
+  // Real-time subscription for continuous two-way feedback
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid) return;
+
+    const unsubscribe = messagesService.subscribeToMessages(uid, () => {
+      loadConversations();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.id, loadConversations]);
 
   // Unread messages count
   const unreadCount = useMemo(() => {
@@ -36,7 +101,6 @@ export default function BuyerMessagesScreen() {
   // Filtered messages list
   const filteredMessages = useMemo(() => {
     return messages.filter((item) => {
-      // 1. Category tab filter
       if (selectedFilter === 'Requests' && item.tag !== 'Request') {
         return false;
       }
@@ -47,7 +111,6 @@ export default function BuyerMessagesScreen() {
         return false;
       }
 
-      // 2. Search query filter
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
       return (
@@ -59,26 +122,62 @@ export default function BuyerMessagesScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 700);
+    loadConversations();
   };
 
   const handleMessagePress = (message: BuyerMessageItem) => {
-    Alert.alert(
-      message.senderName,
-      `"${message.snippet}"\n\nTag: ${message.tag}\nStatus: ${message.status}\nReceived: ${message.timestamp}`,
-      [
-        { text: 'Close', style: 'cancel' },
-        {
-          text: 'Reply Message',
-          onPress: () => {
-            Alert.alert('Reply Sent', `Your message to ${message.senderName} has been queued.`);
-          },
-        },
-      ]
-    );
+    const partnerId = message.senderId;
+    if (!partnerId) return;
+    router.push({
+      pathname: '/(buyer)/messages/[userId]',
+      params: {
+        userId: partnerId,
+        name: message.senderName,
+        category: message.tag,
+        avatar: message.avatarUrl || '',
+      },
+    } as any);
   };
+
+  const handleOpenContactsPicker = async () => {
+    setContactsModalVisible(true);
+    setLoadingContacts(true);
+    try {
+      const uid = user?.id || (await authService.getSession())?.user?.id;
+      if (uid) {
+        const list = await messagesService.fetchContactsForMessaging(uid, 'buyer');
+        setContacts(list);
+      }
+    } catch (err) {
+      console.warn('[BuyerMessages] Failed to load farmer contacts:', err);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handleSelectContact = (contact: MessagingContact) => {
+    setContactsModalVisible(false);
+    setContactSearch('');
+    router.push({
+      pathname: '/(buyer)/messages/[userId]',
+      params: {
+        userId: contact.id,
+        name: contact.fullName,
+        category: 'Request',
+        avatar: contact.avatarUrl || '',
+      },
+    } as any);
+  };
+
+  const filteredContacts = useMemo(() => {
+    if (!contactSearch.trim()) return contacts;
+    const q = contactSearch.toLowerCase().trim();
+    return contacts.filter(
+      (c) =>
+        c.fullName.toLowerCase().includes(q) ||
+        (c.contextLabel && c.contextLabel.toLowerCase().includes(q))
+    );
+  }, [contacts, contactSearch]);
 
   return (
     <SafeAreaView style={[styles.safeArea, isDark && styles.safeAreaDark]} edges={['top']}>
@@ -114,14 +213,14 @@ export default function BuyerMessagesScreen() {
               <Ionicons name="search-outline" size={18} color={isDark ? '#A6C5A8' : '#374151'} />
             </TouchableOpacity>
 
-            {/* Grid/Options Icon Button */}
+            {/* New Message / Contact Farmer Button */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setSelectedFilter('All')}
+              onPress={handleOpenContactsPicker}
               style={[styles.iconCircleButton, isDark && styles.iconCircleButtonDark]}
             >
               <MaterialCommunityIcons
-                name="dots-grid"
+                name="square-edit-outline"
                 size={18}
                 color={isDark ? '#A6C5A8' : '#374151'}
               />
@@ -198,7 +297,7 @@ export default function BuyerMessagesScreen() {
                   : [styles.filterTextInactive, isDark && styles.filterTextInactiveDark],
               ]}
             >
-              Requests
+              Farmers
             </Text>
           </TouchableOpacity>
 
@@ -270,10 +369,17 @@ export default function BuyerMessagesScreen() {
           />
         }
       >
-        {filteredMessages.length > 0 ? (
+        {isLoading && messages.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={isDark ? '#4ADE80' : '#1E4D2B'} />
+            <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 12 }]}>
+              Loading conversations...
+            </Text>
+          </View>
+        ) : filteredMessages.length > 0 ? (
           filteredMessages.map((message) => (
             <BuyerMessageCard
-              key={message.id}
+              key={message.senderId || message.id}
               message={message}
               onPress={handleMessagePress}
             />
@@ -291,9 +397,9 @@ export default function BuyerMessagesScreen() {
             <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
               {selectedFilter !== 'All'
                 ? `No conversations under "${selectedFilter}" category`
-                : 'Direct inquiries and updates from producers will appear here.'}
+                : 'Start a live feedback chat with a farmer about harvests, quality, or deliveries.'}
             </Text>
-            {selectedFilter !== 'All' && (
+            {selectedFilter !== 'All' ? (
               <TouchableOpacity
                 style={[styles.resetButton, isDark && styles.resetButtonDark]}
                 onPress={() => {
@@ -303,10 +409,107 @@ export default function BuyerMessagesScreen() {
               >
                 <Text style={styles.resetButtonText}>View All Messages</Text>
               </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.resetButton, isDark && styles.resetButtonDark]}
+                onPress={handleOpenContactsPicker}
+              >
+                <Text style={styles.resetButtonText}>Message a Farmer</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
       </ScrollView>
+
+      {/* ========================================================
+          3. CONTACT FARMER MODAL
+         ======================================================== */}
+      <Modal
+        visible={contactsModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setContactsModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, isDark && styles.modalSheetDark]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>
+                Message a Farmer
+              </Text>
+              <TouchableOpacity
+                onPress={() => setContactsModalVisible(false)}
+                style={[styles.iconCircleButton, isDark && styles.iconCircleButtonDark]}
+              >
+                <Ionicons name="close" size={18} color={isDark ? '#F0F5F1' : '#374151'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.searchBarWrapper, isDark && styles.searchBarWrapperDark]}>
+              <Ionicons
+                name="search-outline"
+                size={16}
+                color={isDark ? '#8EA790' : '#6B7280'}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                value={contactSearch}
+                onChangeText={setContactSearch}
+                placeholder="Search farmers..."
+                placeholderTextColor={isDark ? '#8EA790' : '#9CA3AF'}
+                style={[styles.searchInput, isDark && styles.searchInputDark]}
+              />
+            </View>
+
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              {loadingContacts ? (
+                <ActivityIndicator
+                  size="large"
+                  color={isDark ? '#4ADE80' : '#1E4D2B'}
+                  style={{ marginTop: 24 }}
+                />
+              ) : filteredContacts.length === 0 ? (
+                <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark, { marginTop: 24 }]}>
+                  No farmers found yet.
+                </Text>
+              ) : (
+                filteredContacts.map((contact) => (
+                  <TouchableOpacity
+                    key={contact.id}
+                    activeOpacity={0.8}
+                    onPress={() => handleSelectContact(contact)}
+                    style={[styles.contactRow, isDark && styles.contactRowDark]}
+                  >
+                    {contact.avatarUrl ? (
+                      <Image source={{ uri: contact.avatarUrl }} style={styles.contactAvatar} />
+                    ) : (
+                      <View style={[styles.contactAvatarFallback, isDark && styles.contactAvatarFallbackDark]}>
+                        <Text style={styles.contactAvatarText}>
+                          {contact.fullName.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.contactInfo}>
+                      <Text style={[styles.contactName, isDark && styles.contactNameDark]}>
+                        {contact.fullName}
+                      </Text>
+                      {!!contact.contextLabel && (
+                        <Text style={[styles.contactContext, isDark && styles.contactContextDark]}>
+                          {contact.contextLabel}
+                        </Text>
+                      )}
+                    </View>
+                    <MaterialCommunityIcons
+                      name="chat-plus-outline"
+                      size={20}
+                      color={isDark ? '#4ADE80' : '#1E4D2B'}
+                    />
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -314,7 +517,7 @@ export default function BuyerMessagesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F6F3', // Soft organic off-white
+    backgroundColor: '#F5F6F3',
   },
 
   /* 1. White Header Container */
@@ -393,7 +596,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   filterPillActive: {
-    backgroundColor: '#1E4D2B', // Dark forest green
+    backgroundColor: '#1E4D2B',
     shadowColor: '#1E4D2B',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -418,7 +621,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#D97706', // Orange badge
+    backgroundColor: '#D97706',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -435,7 +638,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 115, // Space for the floating bottom navigation bar
+    paddingBottom: 115,
   },
 
   /* Empty State */
@@ -468,6 +671,97 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '700',
+  },
+
+  /* Contact Picker Modal */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 20,
+    maxHeight: '78%',
+  },
+  modalSheetDark: {
+    backgroundColor: '#142217',
+    borderTopWidth: 1,
+    borderColor: '#263B2B',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#16301A',
+  },
+  modalTitleDark: {
+    color: '#F0F5F1',
+  },
+  modalList: {
+    maxHeight: 380,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#F7F5EE',
+    marginBottom: 8,
+  },
+  contactRowDark: {
+    backgroundColor: '#18271C',
+    borderWidth: 1,
+    borderColor: '#263B2B',
+  },
+  contactAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  contactAvatarFallback: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#2E6930',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactAvatarFallbackDark: {
+    backgroundColor: '#203924',
+  },
+  contactAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  contactName: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#16301A',
+  },
+  contactNameDark: {
+    color: '#F0F5F1',
+  },
+  contactContext: {
+    fontSize: 12,
+    color: '#6B7E6C',
+    marginTop: 2,
+  },
+  contactContextDark: {
+    color: '#98B39B',
   },
 
   /* Dark Mode Overrides */

@@ -32,6 +32,7 @@ import {
 } from '../../src/constants/buyerMockData';
 import {
   BuyerProfile,
+  BuyerOrder,
   ProduceListing,
   ActiveContractItem,
   QuickActionItem,
@@ -42,6 +43,7 @@ export default function BuyerHomeScreen() {
   const { user, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<BuyerProfile | null>(null);
   const [listings, setListings] = useState<ProduceListing[]>([]);
+  const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [activeContracts, setActiveContracts] = useState<ActiveContractItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,8 +66,14 @@ export default function BuyerHomeScreen() {
       }
 
       if (currentUser?.id) {
-        const contracts = await contractsService.getBuyerContracts(currentUser.id);
+        const [contracts, buyerOrders] = await Promise.all([
+          contractsService.getBuyerContracts(currentUser.id),
+          ordersService.fetchBuyerOrders(currentUser.id),
+        ]);
         setActiveContracts(contracts);
+        if (Array.isArray(buyerOrders)) {
+          setOrders(buyerOrders);
+        }
       }
     } catch (err) {
       console.warn('Failed to load buyer home data:', err);
@@ -107,10 +115,49 @@ export default function BuyerHomeScreen() {
     kgSourced: '0 kg',
   };
 
+  const pendingOrdersCount = orders.filter(
+    (o) => o.status === 'Pending' || o.status === 'processing'
+  ).length;
+
+  const activeOrdersCount = orders.filter(
+    (o) => o.status !== 'Delivered' && o.status !== 'delivered' && o.status !== 'cancelled'
+  ).length;
+
   const dynamicStats = {
-    activeOrders: profile?.ordersCount ?? 0,
+    activeOrders: activeOrdersCount || (profile?.ordersCount ?? 0),
     contractsCount: activeContracts.length || (profile?.contractsCount ?? 0),
     verifiedFarmsCount: listings.length > 0 ? new Set(listings.map((l) => l.farmerId)).size : 0,
+  };
+
+  const handleNotificationPress = () => {
+    if (pendingOrdersCount > 0) {
+      Alert.alert(
+        'Notifications',
+        `You have ${pendingOrdersCount} pending ${
+          pendingOrdersCount === 1 ? 'order' : 'orders'
+        } awaiting farmer confirmation.`,
+        [
+          { text: 'Close', style: 'cancel' },
+          { text: 'View Orders', onPress: () => router.push('/(buyer)/orders') },
+        ]
+      );
+    } else if (activeOrdersCount > 0 || activeContracts.length > 0) {
+      Alert.alert(
+        'Notifications',
+        `You have ${activeOrdersCount} active ${
+          activeOrdersCount === 1 ? 'order' : 'orders'
+        } and ${activeContracts.length} active ${
+          activeContracts.length === 1 ? 'contract' : 'contracts'
+        } in progress.`,
+        [{ text: 'Close' }]
+      );
+    } else {
+      Alert.alert(
+        'Notifications',
+        "You're all caught up! No new notifications right now.",
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   // Filter listings based on search query
@@ -199,7 +246,9 @@ export default function BuyerHomeScreen() {
         {/* Top App Bar / Profile Header with real owner data */}
         <BuyerHeader
           profile={displayProfile}
+          unreadNotificationsCount={pendingOrdersCount}
           onPressProfile={() => router.push('/(buyer)/profile')}
+          onNotificationPress={handleNotificationPress}
         />
 
         {/* Hero Banner with Handshake photo, Search & Stats */}

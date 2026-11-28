@@ -73,9 +73,20 @@ export default function OrderCard({
     } as any);
   };
 
-  // Navigate to messages
+  // Navigate to messages with this buyer
   const handleNavigateToMessages = () => {
-    router.push('/(farmer)/messages' as any);
+    if (order.buyer_id) {
+      router.push({
+        pathname: '/(farmer)/messages/[userId]',
+        params: {
+          userId: order.buyer_id,
+          name: order.buyer_name,
+          category: 'Request',
+        },
+      } as any);
+    } else {
+      router.push('/(farmer)/messages' as any);
+    }
   };
 
   const deadline = order.deadline || '25 Sep 2026';

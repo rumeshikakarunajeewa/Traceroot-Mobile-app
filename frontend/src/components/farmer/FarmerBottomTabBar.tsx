@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useDarkMode } from '../../store/uiStore';
+import { useAuth } from '../../store/authStore';
+import { messagesService } from '../../services/messages.service';
 
 export interface FarmerBottomTabBarProps {
   state?: any;
@@ -23,13 +25,39 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
   onAddPress,
 }) => {
   const [isDark] = useDarkMode();
+  const { user } = useAuth();
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16;
+
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid) return;
+
+    let mounted = true;
+    const refreshUnread = () => {
+      messagesService.getUnreadCount(uid).then((cnt) => {
+        if (mounted) setUnreadMessagesCount(cnt);
+      });
+    };
+
+    refreshUnread();
+    const unsubscribe = messagesService.subscribeToMessages(uid, () => {
+      refreshUnread();
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
 
   const currentRouteName = state?.routes?.[state?.index]?.name;
 
   const navigateTab = (routeName: string) => {
-    const route = state?.routes?.find((r: any) => r.name === routeName);
+    const route = state?.routes?.find(
+      (r: any) => r.name === routeName || r.name === `${routeName}/index`
+    );
     
     let defaultPrevented = false;
     if (route) {
@@ -58,7 +86,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
       if (navigateToTab && route?.key) {
         navigateToTab(route.key);
       } else if (navigation?.navigate && route) {
-        navigation.navigate(routeName);
+        navigation.navigate(route.name);
       } else {
         router.push(`/${routeName === 'index' ? '' : routeName}` as any);
       }
@@ -71,7 +99,8 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
     currentRouteName === 'harvests/[id]/stage';
   const isCropsFocused = currentRouteName === 'crops';
   const isOrdersFocused = currentRouteName === 'orders';
-  const isMessagesFocused = currentRouteName === 'messages';
+  const isMessagesFocused =
+    currentRouteName === 'messages' || currentRouteName === 'messages/index';
 
   // Render floating tab bar on main tabs, farming journey, and stage details
   const isTabScreen = [
@@ -79,6 +108,7 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
     'crops',
     'orders',
     'messages',
+    'messages/index',
     'harvests/[id]',
     'harvests/[id]/stage',
     'profile',
@@ -207,9 +237,11 @@ export const FarmerBottomTabBar: React.FC<FarmerBottomTabBarProps> = ({
               size={20}
               color={isMessagesFocused ? '#FFFFFF' : '#88A38E'}
             />
-            <View style={styles.badgePill}>
-              <Text style={styles.badgeText}>1</Text>
-            </View>
+            {unreadMessagesCount > 0 && (
+              <View style={styles.badgePill}>
+                <Text style={styles.badgeText}>{unreadMessagesCount}</Text>
+              </View>
+            )}
           </View>
           <Text
             style={[

@@ -143,6 +143,23 @@ export default function BuyerExploreScreen() {
           },
         },
         {
+          text: 'Message Farmer',
+          onPress: () => {
+            if (listing.farmerId) {
+              router.push({
+                pathname: '/(buyer)/messages/[userId]',
+                params: {
+                  userId: listing.farmerId,
+                  name: listing.farmerName,
+                  category: 'Request',
+                },
+              } as any);
+            } else {
+              router.push('/(buyer)/messages' as any);
+            }
+          },
+        },
+        {
           text: 'Initiate Contract',
           onPress: () => {
             router.push({
