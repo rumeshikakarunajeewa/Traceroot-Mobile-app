@@ -2,8 +2,10 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { SupplierBottomTabBar } from '../../src/components/supplier/SupplierBottomTabBar';
 import { useDarkMode } from '../../src/store/uiStore';
+import { useRoleGuard } from '../../src/hooks/useRoleGuard';
 
 export default function SupplierLayout() {
+  useRoleGuard('supplier');
   const [isDark] = useDarkMode();
 
   return (

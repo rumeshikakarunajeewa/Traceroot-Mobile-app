@@ -143,6 +143,73 @@ export interface AuthResponse {
 
 class AuthService {
   /**
+   * Clear any partial or invalid session when rejecting a login/callback.
+   */
+  private async clearInvalidAuthSession(): Promise<void> {
+    await supabase.auth.signOut().catch(() => {});
+    await AsyncStorage.removeItem('@traceroot_pending_google_role').catch(() => {});
+    lastProcessedCallback = null;
+    authStateUpdater?.({
+      user: null,
+      profile: null,
+      session: null,
+      token: null,
+      isLoading: false,
+    });
+  }
+
+  /**
+   * Check whether an email already belongs to a registered account and return its fixed role.
+   */
+  async checkEmailRegistration(email: string): Promise<{
+    exists: boolean;
+    userId?: string | null;
+    role?: UserRole | null;
+    roleLocked?: boolean;
+  }> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return { exists: false };
+
+    try {
+      const { data, error } = await supabase.rpc('check_email_registration', {
+        p_email: normalized,
+      });
+
+      if (!error && data && typeof data === 'object') {
+        return {
+          exists: Boolean(data.exists),
+          userId: data.user_id || null,
+          role: (data.role as UserRole) || null,
+          roleLocked: Boolean(data.role_locked),
+        };
+      }
+    } catch {
+      // Fall back to direct profile lookup if RPC is not yet deployed
+    }
+
+    try {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, role, role_locked')
+        .ilike('email', normalized)
+        .maybeSingle();
+
+      if (existingProfile) {
+        return {
+          exists: true,
+          userId: existingProfile.id,
+          role: (existingProfile.role as UserRole) || null,
+          roleLocked: existingProfile.role_locked !== false,
+        };
+      }
+    } catch {
+      // Ignore query errors
+    }
+
+    return { exists: false };
+  }
+
+  /**
    * Sign in with email and password, verify credentials with Bcrypt,
    * extract the user's role, and return signed JWT access token.
    */
@@ -197,8 +264,9 @@ class AuthService {
         };
       }
 
+      const loginEmail = email.includes('@') ? email.trim().toLowerCase() : email.trim();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: loginEmail,
         password,
       });
 
@@ -241,15 +309,18 @@ class AuthService {
       let profile = await this.getProfile(data.user.id);
 
       // Self-healing fallback: If trigger hasn't fired or profile row was missing,
-      // recover the profile from the user's metadata
+      // recover the profile from the user's metadata or existing sub-profiles
       if (!profile) {
-        const metaRole = (data.user.user_metadata?.role as UserRole) || selectedRole || 'farmer';
+        const existingSubRole = await this.detectUserAccountRole(data.user.id);
+        const metaRole =
+          (data.user.user_metadata?.role as UserRole) || existingSubRole || selectedRole || 'farmer';
         const metaName = data.user.user_metadata?.full_name || 'TraceRoot User';
         profile = {
           id: data.user.id,
           email: data.user.email || email.trim(),
           full_name: metaName,
           role: metaRole,
+          role_locked: true,
           phone: data.user.user_metadata?.phone || null,
           is_verified: false,
         };
@@ -260,7 +331,7 @@ class AuthService {
 
       const actualRole = profile.role;
 
-      // Enforce strict role matching: block login if selected tab doesn't match registered role
+      // Enforce strict role matching: block login if selected tab doesn't match fixed registered role
       if (selectedRole && actualRole !== selectedRole) {
         await supabase.auth.signOut();
 
@@ -274,7 +345,7 @@ class AuthService {
           token: null,
           roleMismatch: true,
           actualRole,
-          error: `This account is registered as a ${readableActual}, not a ${readableSelected}. Please select "${readableActual}" above to sign in.`,
+          error: `This account is permanently registered as a ${readableActual}, not a ${readableSelected}. Account roles cannot be changed after creation. Please select "${readableActual}" above to sign in.`,
         };
       }
 
@@ -309,8 +380,32 @@ class AuthService {
     phone,
   }: SignUpParams): Promise<AuthResponse> {
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // 1. Pre-check: Block duplicate registration across roles for the same email
+      const existing = await this.checkEmailRegistration(normalizedEmail);
+      if (existing.exists) {
+        const actualRole = existing.role || undefined;
+        const readableRole = actualRole
+          ? actualRole.charAt(0).toUpperCase() + actualRole.slice(1)
+          : null;
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          roleMismatch: Boolean(actualRole && actualRole !== role),
+          actualRole,
+          error: readableRole
+            ? actualRole !== role
+              ? `This email is already registered as a ${readableRole}. You cannot create another role account with the same email. Please sign in as "${readableRole}".`
+              : `An account with this email already exists as a ${readableRole}. Please sign in instead.`
+            : 'An account with this email already exists. Please sign in with your registered role.',
+        };
+      }
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -323,9 +418,13 @@ class AuthService {
 
       if (error) {
         let friendlyMessage = error.message;
-        if (error.message.toLowerCase().includes('rate limit')) {
+        const lower = error.message.toLowerCase();
+        if (lower.includes('rate limit')) {
           friendlyMessage =
             'Email rate limit exceeded. Please disable "Confirm email" in Supabase Dashboard (Authentication -> Providers -> Email) to allow instant testing.';
+        } else if (lower.includes('already registered') || lower.includes('already exists')) {
+          friendlyMessage =
+            'This email is already registered. Each email can only hold one fixed role account — please sign in instead.';
         }
         return { user: null, profile: null, session: null, token: null, error: friendlyMessage };
       }
@@ -334,12 +433,25 @@ class AuthService {
         return { user: null, profile: null, session: null, token: null, error: 'Failed to create user account' };
       }
 
+      // Guard against duplicate signup on an already-registered email (Supabase obfuscated empty identities)
+      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          user: null,
+          profile: null,
+          session: null,
+          token: null,
+          error:
+            'An account with this email already exists. Account roles are fixed at creation — please sign in with your registered role.',
+        };
+      }
+
       // Fallback manual profile upsert in case trigger is pending
       const newProfile: UserProfile = {
         id: data.user.id,
-        email: email.trim(),
+        email: normalizedEmail,
         full_name: fullName,
         role,
+        role_locked: true,
         phone: phone || null,
         is_verified: false,
       };
@@ -349,34 +461,22 @@ class AuthService {
         .upsert(newProfile);
 
       if (profileError) {
+        const lowerProf = profileError.message.toLowerCase();
+        if (lowerProf.includes('duplicate') || lowerProf.includes('unique') || lowerProf.includes('already')) {
+          await this.clearInvalidAuthSession();
+          return {
+            user: null,
+            profile: null,
+            session: null,
+            token: null,
+            error: 'An account with this email already exists under a fixed role. Please sign in instead.',
+          };
+        }
         console.warn('Profile creation error (trigger may handle it):', profileError.message);
       }
 
       // Also ensure connected role-based profile row is initialized
-      try {
-        if (role === 'farmer') {
-          await supabase.from('farmer_profiles').upsert({
-            id: data.user.id,
-            farming_type: 'open_field',
-            farmer_name: fullName,
-          });
-        } else if (role === 'buyer') {
-          await supabase.from('buyer_profiles').upsert({
-            id: data.user.id,
-            buyer_type: 'supermarket',
-            buyer_name: fullName,
-            company_name: '',
-          });
-        } else if (role === 'supplier') {
-          await supabase.from('supplier_profiles').upsert({
-            id: data.user.id,
-            supplier_name: fullName,
-            company_name: '',
-          });
-        }
-      } catch (roleErr) {
-        console.warn('Role profile initialization error:', roleErr);
-      }
+      await this.ensureSubProfileRow(data.user.id, role, fullName);
 
       return {
         user: data.user,
@@ -531,8 +631,38 @@ class AuthService {
   }
 
   /**
+   * Ensure the matching role-specific sub-profile row exists (without modifying role).
+   */
+  private async ensureSubProfileRow(userId: string, role: UserRole, fullName: string): Promise<void> {
+    try {
+      if (role === 'farmer') {
+        await supabase.from('farmer_profiles').upsert({
+          id: userId,
+          farming_type: 'open_field',
+          farmer_name: fullName,
+        });
+      } else if (role === 'buyer') {
+        await supabase.from('buyer_profiles').upsert({
+          id: userId,
+          buyer_type: 'supermarket',
+          buyer_name: fullName,
+          company_name: '',
+        });
+      } else if (role === 'supplier') {
+        await supabase.from('supplier_profiles').upsert({
+          id: userId,
+          supplier_name: fullName,
+          company_name: '',
+        });
+      }
+    } catch (roleErr) {
+      console.warn('Role profile initialization error:', roleErr);
+    }
+  }
+
+  /**
    * Intelligently inspect the database to determine an existing user account's authentic role.
-   * Checks public.profiles, farmer_profiles, supplier_profiles, and buyer_profiles.
+   * Checks public.profiles (when locked), farmer_profiles, supplier_profiles, and buyer_profiles.
    */
   async detectUserAccountRole(userId: string): Promise<UserRole | null> {
     try {
@@ -541,11 +671,14 @@ class AuthService {
       // 1. Query public.profiles
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, role_locked')
         .eq('id', userId)
         .maybeSingle();
 
       if (profile?.role === 'admin') return 'admin';
+      if (profile?.role_locked === true && profile?.role) {
+        return profile.role as UserRole;
+      }
 
       // 2. Check if user has an established farmer profile
       const { data: farmer } = await supabase
@@ -569,12 +702,7 @@ class AuthService {
         return 'supplier';
       }
 
-      // 4. If profile.role in public.profiles is explicitly farmer or supplier, trust it
-      if (profile?.role === 'farmer' || profile?.role === 'supplier') {
-        return profile.role as UserRole;
-      }
-
-      // 5. Check if user has an established buyer profile
+      // 4. Check if user has an established buyer profile
       const { data: buyer } = await supabase
         .from('buyer_profiles')
         .select('id, company_name, buyer_name')
@@ -585,9 +713,9 @@ class AuthService {
         return 'buyer';
       }
 
-      // 6. If profile exists in public.profiles, return its role
-      if (profile?.role === 'buyer') {
-        return 'buyer';
+      // 5. Fallback for legacy profiles without role_locked === false
+      if (profile?.role_locked !== false && profile?.role) {
+        return profile.role as UserRole;
       }
 
       return null;
@@ -860,98 +988,231 @@ class AuthService {
           };
         }
 
-        // 4. Determine user's authentic effective role:
-        // Priority 1: User explicitly confirmed their role in the modal (e.g. 'supplier' or 'farmer').
-        // That explicit user choice is the primary source of truth and must never be overridden by an old database default.
-        // Priority 2: If no role was confirmed or passed, detect existing account role in the database.
-        // Priority 3: Default to 'buyer'.
-        let effectiveRole: UserRole;
-        if (confirmedRole) {
-          effectiveRole = confirmedRole;
-        } else {
-          const existingAccountRole = await this.detectUserAccountRole(user.id);
-          effectiveRole = existingAccountRole || 'buyer';
+        // 3b. Cross-provider duplicate email guard:
+        // If this email already belongs to a different user_id with a fixed role,
+        // reject creating a duplicate account under another role.
+        if (user.email) {
+          const emailCheck = await this.checkEmailRegistration(user.email);
+          if (emailCheck.exists && emailCheck.userId && emailCheck.userId !== user.id) {
+            await this.clearInvalidAuthSession();
+            const existingRole = emailCheck.role || undefined;
+            const readableExisting = existingRole
+              ? existingRole.charAt(0).toUpperCase() + existingRole.slice(1)
+              : null;
+            return {
+              user: null,
+              profile: null,
+              session: null,
+              token: null,
+              roleMismatch: Boolean(confirmedRole && existingRole && confirmedRole !== existingRole),
+              actualRole: existingRole,
+              error: readableExisting
+                ? `This email is already registered as a ${readableExisting}. You cannot create another role account with the same email. Please sign in with your ${readableExisting} account.`
+                : 'This email is already registered under another account. Please sign in with your original account.',
+            };
+          }
         }
-        console.log(
-          `🔗 [AuthService] User ${user.id} -> confirmedRole: ${confirmedRole} | effectiveRole: ${effectiveRole}`
-        );
 
+        // 4. Enforce immutable initial user role:
+        // - If this Google user already has a fixed/locked account role, NEVER change it.
+        //   Reject login if the user selected a different role in the modal.
+        // - Only if this is a brand-new unlocked Google user, finalize & lock their chosen initial role once.
         let profile = await this.getProfile(user.id);
+        const subProfileRole = await this.detectUserAccountRole(user.id);
+        const rawMetaRole = user.user_metadata?.role;
+        const metadataRole: UserRole | null =
+          rawMetaRole === 'farmer' ||
+          rawMetaRole === 'buyer' ||
+          rawMetaRole === 'supplier' ||
+          rawMetaRole === 'admin'
+            ? (rawMetaRole as UserRole)
+            : null;
+
+        const createdAtMs = user.created_at ? new Date(user.created_at).getTime() : 0;
+        const isVeryFreshGoogleUser =
+          createdAtMs > 0 && Date.now() - createdAtMs < 45000 && !metadataRole && !subProfileRole;
+
+        let fixedRole: UserRole | null = null;
+        if (profile?.role_locked === true) {
+          fixedRole = profile.role;
+        } else if (profile && profile.role_locked === false) {
+          fixedRole = metadataRole || subProfileRole || null;
+        } else if (profile) {
+          // Legacy schema fallback when role_locked column is not yet present
+          if (!isVeryFreshGoogleUser) {
+            fixedRole = subProfileRole || metadataRole || profile.role;
+          } else if (metadataRole || subProfileRole) {
+            fixedRole = metadataRole || subProfileRole;
+          }
+        } else if (metadataRole || subProfileRole) {
+          fixedRole = metadataRole || subProfileRole;
+        }
 
         const googleName =
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
           user.email?.split('@')[0] ||
           'TraceRoot User';
-
         const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
+        let effectiveRole: UserRole;
+
+        if (fixedRole) {
+          // Existing account: enforce fixed role, never overwrite!
+          if (confirmedRole && confirmedRole !== fixedRole) {
+            await this.clearInvalidAuthSession();
+
+            const readableFixed = fixedRole.charAt(0).toUpperCase() + fixedRole.slice(1);
+            const readableSelected = confirmedRole.charAt(0).toUpperCase() + confirmedRole.slice(1);
+            return {
+              user: null,
+              profile: null,
+              session: null,
+              token: null,
+              roleMismatch: true,
+              actualRole: fixedRole,
+              error: `This Google account is permanently registered as a ${readableFixed}, not a ${readableSelected}. Account roles cannot be changed after creation. Please select "${readableFixed}" to sign in.`,
+            };
+          }
+
+          effectiveRole = fixedRole;
+          if (!profile) {
+            profile = {
+              id: user.id,
+              email: user.email || '',
+              full_name: googleName,
+              role: effectiveRole,
+              role_locked: true,
+              avatar_url: avatarUrl,
+              is_verified: true,
+            };
+            await supabase.from('profiles').upsert(profile);
+          } else if (avatarUrl && !profile.avatar_url) {
+            await supabase
+              .from('profiles')
+              .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+              .eq('id', user.id);
+            profile.avatar_url = avatarUrl;
+          }
+          await this.ensureSubProfileRow(user.id, effectiveRole, profile.full_name || googleName);
+        } else {
+          // Brand-new account: commit & permanently lock initial role once
+          effectiveRole = confirmedRole || 'buyer';
+          let finalizedOk = false;
+
+          try {
+            const { data: rpcRes, error: rpcErr } = await supabase.rpc('finalize_initial_user_role', {
+              p_role: effectiveRole,
+            });
+
+            if (!rpcErr && rpcRes) {
+              if (rpcRes.success) {
+                finalizedOk = true;
+                profile = await this.getProfile(user.id);
+              } else if (rpcRes.duplicate_email) {
+                await this.clearInvalidAuthSession();
+                const dupRole = (rpcRes.role as UserRole) || undefined;
+                const readableDup = dupRole
+                  ? dupRole.charAt(0).toUpperCase() + dupRole.slice(1)
+                  : null;
+                return {
+                  user: null,
+                  profile: null,
+                  session: null,
+                  token: null,
+                  roleMismatch: Boolean(confirmedRole && dupRole && confirmedRole !== dupRole),
+                  actualRole: dupRole,
+                  error: readableDup
+                    ? `This email is already registered as a ${readableDup}. You cannot create another role account with the same email.`
+                    : rpcRes.error || 'This email is already registered under another role.',
+                };
+              } else if (rpcRes.locked && rpcRes.role) {
+                // Race condition or already locked server-side
+                const lockedRole = rpcRes.role as UserRole;
+                if (confirmedRole && confirmedRole !== lockedRole) {
+                  await this.clearInvalidAuthSession();
+
+                  const readableFixed = lockedRole.charAt(0).toUpperCase() + lockedRole.slice(1);
+                  const readableSelected =
+                    confirmedRole.charAt(0).toUpperCase() + confirmedRole.slice(1);
+                  return {
+                    user: null,
+                    profile: null,
+                    session: null,
+                    token: null,
+                    roleMismatch: true,
+                    actualRole: lockedRole,
+                    error: `This Google account is permanently registered as a ${readableFixed}, not a ${readableSelected}. Account roles cannot be changed after creation.`,
+                  };
+                }
+                effectiveRole = lockedRole;
+                finalizedOk = true;
+                profile = await this.getProfile(user.id);
+              }
+            }
+          } catch (rpcException) {
+            console.warn('[AuthService] finalize_initial_user_role fallback:', rpcException);
+          }
+
+          if (!finalizedOk) {
+            if (!profile) {
+              profile = {
+                id: user.id,
+                email: user.email || '',
+                full_name: googleName,
+                role: effectiveRole,
+                role_locked: true,
+                avatar_url: avatarUrl,
+                is_verified: true,
+              };
+              const { error: insertErr } = await supabase.from('profiles').upsert(profile);
+              if (insertErr) {
+                console.warn('[AuthService] Profile upsert error in Google callback:', insertErr.message);
+              }
+            } else {
+              await supabase
+                .from('profiles')
+                .update({
+                  role: effectiveRole,
+                  role_locked: true,
+                  updated_at: new Date().toISOString(),
+                  ...(avatarUrl && !profile.avatar_url ? { avatar_url: avatarUrl } : {}),
+                })
+                .eq('id', user.id);
+              profile.role = effectiveRole;
+              profile.role_locked = true;
+            }
+            await this.ensureSubProfileRow(user.id, effectiveRole, profile?.full_name || googleName);
+          }
+
+          // Sync Supabase Auth User metadata once at initial lock
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                role: effectiveRole,
+                full_name: profile?.full_name || googleName,
+              },
+            });
+          } catch (metaErr) {
+            console.warn('[AuthService] updateUser metadata sync error:', metaErr);
+          }
+        }
+
         if (!profile) {
-          // Brand new user: Create initial profile with the effective role
           profile = {
             id: user.id,
             email: user.email || '',
             full_name: googleName,
             role: effectiveRole,
+            role_locked: true,
             avatar_url: avatarUrl,
             is_verified: true,
           };
-
-          const { error: insertErr } = await supabase.from('profiles').upsert(profile);
-          if (insertErr) {
-            console.warn('[AuthService] Profile upsert error in Google callback:', insertErr.message);
-          }
-        } else if (profile.role !== effectiveRole) {
-          // Sync profile.role in public.profiles with the user's authentic account role
-          await supabase
-            .from('profiles')
-            .update({
-              role: effectiveRole,
-              updated_at: new Date().toISOString(),
-              ...(avatarUrl && !profile.avatar_url ? { avatar_url: avatarUrl } : {}),
-            })
-            .eq('id', user.id);
-
-          profile.role = effectiveRole;
         }
 
-        // Ensure the corresponding role-specific profile row exists for this effective role
-        try {
-          if (effectiveRole === 'farmer') {
-            await supabase.from('farmer_profiles').upsert({
-              id: user.id,
-              farming_type: 'open_field',
-              farmer_name: profile?.full_name || googleName,
-            });
-          } else if (effectiveRole === 'buyer') {
-            await supabase.from('buyer_profiles').upsert({
-              id: user.id,
-              buyer_type: 'supermarket',
-              buyer_name: profile?.full_name || googleName,
-              company_name: '',
-            });
-          } else if (effectiveRole === 'supplier') {
-            await supabase.from('supplier_profiles').upsert({
-              id: user.id,
-              supplier_name: profile?.full_name || googleName,
-              company_name: '',
-            });
-          }
-        } catch (roleErr) {
-          console.warn('[AuthService] Role profile sync error:', roleErr);
-        }
-
-        // Sync Supabase Auth User metadata with the effective role
-        try {
-          await supabase.auth.updateUser({
-            data: {
-              role: effectiveRole,
-              full_name: profile?.full_name || googleName,
-            },
-          });
-        } catch (metaErr) {
-          console.warn('[AuthService] updateUser metadata sync error:', metaErr);
-        }
+        console.log(
+          `🔗 [AuthService] User ${user.id} -> confirmedRole: ${confirmedRole} | effectiveRole: ${effectiveRole} | fixedRole: ${fixedRole}`
+        );
 
         // Note: Keep @traceroot_pending_google_role in storage to guard against parallel deep-link re-renders;
         // it gets refreshed on next signInWithGoogle or cleared on signOut.

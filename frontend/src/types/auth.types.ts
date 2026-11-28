@@ -3,6 +3,7 @@ export type UserRole = 'farmer' | 'buyer' | 'supplier' | 'admin';
 export interface UserProfile {
   id: string;
   role: UserRole;
+  role_locked?: boolean;
   full_name: string;
   email: string;
   phone?: string | null;

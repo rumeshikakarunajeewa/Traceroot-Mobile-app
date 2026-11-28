@@ -2,8 +2,10 @@ import React from 'react';
 import { Tabs, router } from 'expo-router';
 import { FarmerBottomTabBar } from '../../src/components/farmer/FarmerBottomTabBar';
 import { useDarkMode } from '../../src/store/uiStore';
+import { useRoleGuard } from '../../src/hooks/useRoleGuard';
 
 export default function FarmerLayout() {
+  useRoleGuard('farmer');
   const [isDark] = useDarkMode();
 
   const handleOpenAddRecord = () => {

@@ -202,6 +202,7 @@ export default function RegisterScreen() {
 
   const handleRoleSelect = (selected: Role) => {
     setRole(selected);
+    setAuthError(null);
     setErrors((prev) => ({ ...prev, role: '' }));
   };
 

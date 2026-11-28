@@ -165,7 +165,8 @@ export function GoogleRoleConfirmModal({
             />
             <Text style={styles.noticeText}>
               Signing in as <Text style={styles.boldRole}>{getReadableRole(selectedRole)}</Text>.
-              New accounts will be registered with this role; existing accounts are matched safely.
+              Your initial role is permanently fixed upon account creation and cannot be changed
+              later. Existing accounts must sign in with their registered role.
             </Text>
           </View>
 

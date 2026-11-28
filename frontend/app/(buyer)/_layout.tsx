@@ -2,8 +2,10 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { BuyerBottomTabBar } from '@/components/buyer/BuyerBottomTabBar';
 import { useDarkMode } from '@/store/uiStore';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function BuyerTabsLayout() {
+  useRoleGuard('buyer');
   const [isDark] = useDarkMode();
 
   return (
