@@ -183,7 +183,12 @@ export default function FarmerSupplyOrderDetailScreen() {
   }, [id, processOrderData]);
 
   useEffect(() => {
-    loadOrderDetail();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        void loadOrderDetail();
+      }
+    });
 
     const channel = supabase
       .channel(`supplier-order-detail-${id}`)
@@ -192,13 +197,14 @@ export default function FarmerSupplyOrderDetailScreen() {
         { event: 'UPDATE', schema: 'public', table: 'supplier_orders' },
         (payload) => {
           if (payload.new && (payload.new.id === id || order?.dbId === payload.new.id)) {
-            loadOrderDetail();
+            void loadOrderDetail();
           }
         }
       )
       .subscribe();
 
     return () => {
+      active = false;
       supabase.removeChannel(channel);
     };
   }, [id, loadOrderDetail, order?.dbId]);

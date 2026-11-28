@@ -117,7 +117,7 @@ export default function SupplierBuybackDetailScreen() {
             color={isDark ? '#DCE8DE' : '#2D4030'}
           />
           <Text style={[styles.backPillText, isDark && styles.backPillTextDark]}>
-            Agreements
+            Buy-Back Programs
           </Text>
         </TouchableOpacity>
 
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 8,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   centerContainer: {
     flex: 1,

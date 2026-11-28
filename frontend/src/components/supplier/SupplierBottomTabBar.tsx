@@ -142,7 +142,10 @@ export const SupplierBottomTabBar: React.FC<SupplierBottomTabBarProps> = ({
 
           const isFocused =
             tab.name === 'index'
-              ? currentRouteName === 'index'
+              ? currentRouteName === 'index' ||
+                currentRouteName === 'buyback/index' ||
+                currentRouteName === 'buyback/[id]' ||
+                currentRouteName === 'farmers/index'
               : currentRouteName === tab.name ||
                 currentRouteName === `${tab.name}/index` ||
                 currentRouteName.startsWith(`${tab.name}/`);
